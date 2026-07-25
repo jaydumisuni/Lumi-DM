@@ -6,6 +6,15 @@ This document is the source of truth for every future render, design, implementa
 
 Do not redesign, simplify, expand, or reinterpret this behavior without explicit owner approval.
 
+## Mandatory pre-render and pre-code rule
+
+Before producing any widget mockup, image render, UI implementation, or code change:
+
+1. Read this file first.
+2. Use the approved Lumi logo assets without redrawing or replacing them.
+3. Verify every non-negotiable regression check at the end of this document.
+4. Do not proceed from memory alone.
+
 ## Scope
 
 The widget belongs only to **Lumi DM**.
@@ -18,9 +27,20 @@ It must not include THETECHGUY Software Builder controls, project health, depend
 - Blue and purple neon accents.
 - Use the approved ring colors from the last accepted widget render.
 - Rounded, premium, compact form.
-- Proper Lumi logo and icon assets only.
+- Proper approved Lumi logo and icon assets only.
+- Never redraw, reinterpret, simplify, or replace the Lumi logo.
 - No hand-drawn-looking controls or arrows.
 - The ring exists only in the floating widget, not in the main Lumi application.
+
+## Absolute ring rule
+
+- The circular ring visually represents download progress by filling clockwise.
+- **The ring must never contain a percentage number or percentage text.**
+- No percentage may appear inside, beside, over, or attached to the ring.
+- While downloading, the ring contains only the **Pause** control.
+- While paused, the ring contains only the **Play** control.
+- When completed, the ring contains only the green **checkmark**.
+- The progress amount is communicated by the ring fill itself.
 
 ## Window behavior
 
@@ -48,11 +68,11 @@ The widget has these distinct states:
 When no download is active:
 
 - The widget remains compact.
-- It shows the Lumi logo.
+- It shows the approved Lumi logo.
 - It shows live connection speed/capacity information.
 - The ring is not used as download progress.
 - The ring may be inactive or use a very subtle idle animation.
-- Clicking the idle widget may open the connection-capacity test or Lumi DM, according to the final interaction mapping.
+- Clicking the idle widget opens the in-app Connection Capacity speed-test widget according to the approved interaction mapping.
 - No old completed-download notification flood is allowed at Windows startup.
 
 ## 2. New download captured
@@ -116,7 +136,6 @@ The compact widget shows only:
 
 - File name.
 - Download speed.
-- Percentage.
 - Circular progress ring.
 - Pause/play control inside the ring.
 - Tiny download-switch control when multiple downloads are active.
@@ -124,7 +143,8 @@ The compact widget shows only:
 
 ### Circular ring behavior
 
-- The ring fills clockwise according to download percentage.
+- The ring fills clockwise according to progress.
+- The ring contains **no percentage number or percentage text**.
 - While downloading, the icon inside the ring is **Pause**.
 - While paused, the icon inside the ring is **Play**.
 - When complete, the ring becomes full and the icon changes to a green checkmark.
@@ -143,7 +163,8 @@ The compact widget shows only:
 - The compact widget displays one selected download at a time.
 - A tiny adjacent switch control cycles through active downloads.
 - It may show a small position indicator such as `1 of 3`.
-- Switching updates the filename, speed, percentage, ring progress, and pause/play state.
+- Switching updates the filename, speed, ring fill, and pause/play state.
+- No percentage text is shown during switching.
 - This switch control is separate from the expand/collapse arrow.
 
 ## 4. Arrow and expanded downloads view
@@ -170,12 +191,13 @@ Each active item may show:
 
 - File name.
 - Speed.
-- Percentage.
 - Circular progress ring.
 - Pause/resume inside the ring.
 - Downloaded size / total size.
 - Remaining time.
 - Cancel action.
+
+The expanded widget must not display percentage text inside or beside any ring.
 
 ### Completed download rows
 
@@ -211,9 +233,9 @@ The expanded view must not become a dashboard and must not contain unrelated cat
 
 When a selected download completes:
 
-- The ring reaches 100%.
 - The ring becomes fully filled.
 - Pause/play changes to a green checkmark.
+- No `100%` text appears in or around the ring.
 - Speed disappears.
 - Status becomes **Completed**.
 - Clicking the completed ring opens the file location.
@@ -230,18 +252,21 @@ If no active downloads remain:
 
 - The circular progress ring is for the floating widget only.
 - Do not add the widget ring to the main Lumi application UI.
-- The main Lumi application retains its own download-list design.
+- The main Lumi application uses horizontal progress bars for downloads.
 
 ## Non-negotiable regression checks
 
 Every implementation or render must prove:
 
+- This specification was read before rendering or coding.
+- The approved Lumi logo is used exactly and is not redrawn.
 - New download capture expands into folder/name confirmation.
 - Full Lumi window does not open during capture.
 - Save folder can be changed.
 - File name can be edited.
 - Download now shrinks back to compact monitoring mode.
-- Ring is the only progress bar.
+- Ring is the only progress bar in the widget.
+- **No percentage appears anywhere in or around a widget ring.**
 - Pause/play/checkmark states work inside the ring.
 - Long filenames loop without changing widget width.
 - Multiple downloads can be switched from the compact widget.
@@ -255,4 +280,4 @@ Every implementation or render must prove:
 
 Any change to this contract requires explicit owner approval.
 
-Before producing another widget render or changing widget code, read this file first.
+Before producing another widget render or changing widget code, read this file first and verify every non-negotiable regression check.
