@@ -1,10 +1,12 @@
 # Lumi DM — Locked Main Application Design Specification
 
-Status: **LOCKED**
+Status: **DESIGN LOCKED — IMPLEMENTATION NOT YET VISUALLY APPROVED**
 
 This document is the source of truth for the Lumi DM main application design. It is separate from `LUMI_WIDGET_SPEC.md`, which controls only the floating widget.
 
 Before rendering, redesigning, or implementing the Lumi DM interface, read this file first. Do not introduce visual or functional changes that conflict with it without explicit owner approval.
+
+A locked design is not proof that the repository implementation matches it. Implementation acceptance is tracked in `OVERVIEW_VISUAL_ACCEPTANCE.md` and requires inspection of a rendered application screen.
 
 ## 1. Product identity
 
@@ -308,6 +310,8 @@ Before claiming a design or implementation is complete:
 - verify buttons and scrolling are present
 - verify the background and glass layers are correct
 - verify functionality rather than relying only on appearance
+- render or launch the actual repository implementation and compare its screenshot with the approved reference
+- record the result in the relevant visual acceptance file before using the word approved or complete
 
 ## 15. Change control
 
