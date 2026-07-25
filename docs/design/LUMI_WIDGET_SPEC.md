@@ -2,55 +2,78 @@
 
 Status: **LOCKED**
 
-This document is the source of truth for every future render, design, implementation, review, and regression test of the Lumi DM floating widget.
+This document is the source of truth for every future render, implementation, review, and regression test of the Lumi DM floating widget.
 
-Do not redesign, simplify, expand, or reinterpret this behavior without explicit owner approval.
+Do not redesign, enlarge, simplify, or reinterpret it without explicit owner approval.
 
 ## Mandatory pre-render and pre-code rule
 
-Before producing any widget mockup, image render, UI implementation, or code change:
+Before producing a widget mockup or changing widget code:
 
 1. Read this file first.
-2. Use the approved Lumi logo assets without redrawing or replacing them.
-3. Verify every non-negotiable regression check at the end of this document.
-4. Do not proceed from memory alone.
+2. Use the exact approved Lumi logo asset from the repository.
+3. Do not redraw, replace, crop, stretch, or distort the logo.
+4. Verify the regression checklist at the end.
+5. Do not proceed from memory alone.
 
 ## Scope
 
 The widget belongs only to **Lumi DM**.
 
-It must not include THETECHGUY Software Builder controls, project health, dependencies, build targets, diagnostics dashboards, release controls, deployment tools, or unrelated system-management features.
+It must never contain THETECHGUY Software Builder controls, project health, build targets, diagnostics dashboards, release controls, deployment tools, or unrelated system-management functions.
+
+## Locked window dimensions
+
+The current repository dimensions are approved and must remain the baseline:
+
+- Compact widget: **240 × 66 px** before the user scale setting is applied.
+- Expanded widget: **360 × 320 px** before the user scale setting is applied.
+
+The existing scale preference may resize those dimensions proportionally. The design itself must not make the widget wider or taller than the established baseline.
 
 ## Approved visual direction
 
-- Dark glass appearance.
+- Dark premium glass appearance.
 - Blue and purple neon accents.
-- Use the approved ring colors from the last accepted widget render.
-- Rounded, premium, compact form.
-- Proper approved Lumi logo and icon assets only.
-- Never redraw, reinterpret, simplify, or replace the Lumi logo.
-- No hand-drawn-looking controls or arrows.
-- The ring exists only in the floating widget, not in the main Lumi application.
+- Rounded compact form.
+- Exact approved Lumi logo asset only.
+- Clean rendered chevron for expand/collapse.
+- No rough or hand-drawn-looking arrows.
+- No horizontal progress bar anywhere inside the widget.
+- Circular download-progress rings belong only to the widget, not the main Lumi application.
 
-## Absolute ring rule
+## Ring and percentage rule
 
-- The circular ring visually represents download progress by filling clockwise.
-- **The ring must never contain a percentage number or percentage text.**
-- No percentage may appear inside, beside, over, or attached to the ring.
-- While downloading, the ring contains only the **Pause** control.
-- While paused, the ring contains only the **Play** control.
-- When completed, the ring contains only the green **checkmark**.
-- The progress amount is communicated by the ring fill itself.
+The ring visually represents progress by filling clockwise.
+
+While downloading:
+
+- The ring contains only **Pause**.
+- The numeric percentage appears as separate text **beside the ring**.
+- The percentage must never appear inside or over the ring.
+
+While paused:
+
+- The ring retains its current progress.
+- The ring contains only **Play**.
+- The numeric percentage remains beside the ring.
+
+When completed:
+
+- The ring becomes completely filled.
+- The ring contains only the green **checkmark**.
+- No `100%` text is shown.
+- Clicking the completed ring opens the file location in Explorer and selects the file.
 
 ## Window behavior
 
-- User chooses the widget corner in Lumi settings.
-- The chosen position is remembered.
+- The user chooses the screen corner in Lumi settings.
+- The selected corner is remembered.
 - The widget does not steal focus unnecessarily.
-- It must not cover or interfere with Windows taskbar, Start menu, system tray, notification area, popups, or other system controls.
-- When the user activates a Windows system element or another application, that element may appear above the widget.
-- The widget stays quiet in its chosen corner and does not force itself to the front.
-- It must never open the full Lumi window merely because a download is captured.
+- It must not cover or interfere with the Windows taskbar, Start menu, system tray, notification area, or other system controls.
+- When another application or Windows system element is activated, it may appear above the widget.
+- The widget remains quiet in its selected corner and does not force itself forward.
+- Capturing a download must never open the complete Lumi application.
 
 ## Widget states
 
@@ -60,224 +83,170 @@ The widget has these distinct states:
 2. New-download confirmation panel.
 3. Compact active-download monitor.
 4. Expanded downloads view.
-5. Paused download state.
+5. Paused-download state.
 6. Completed-download state.
 
-## 1. Idle connection monitor
+## Idle connection monitor
 
 When no download is active:
 
-- The widget remains compact.
-- It shows the approved Lumi logo.
+- The widget stays compact.
+- It shows the exact Lumi logo.
 - It shows live connection speed/capacity information.
-- The ring is not used as download progress.
-- The ring may be inactive or use a very subtle idle animation.
-- Clicking the idle widget opens the in-app Connection Capacity speed-test widget according to the approved interaction mapping.
-- No old completed-download notification flood is allowed at Windows startup.
+- The ring is inactive or has only a very subtle idle state.
+- It does not replay old completed-download alerts after Windows starts.
 
-## 2. New download captured
+## New download captured
 
-A captured download may come from:
+A captured download may come from the browser extension, copied link, New Download, LinkGrabber, OS catalogue, firmware catalogue, or another application handing a URL to Lumi.
 
-- Browser extension.
-- Copied link.
-- New Download inside Lumi.
-- LinkGrabber.
-- Operating-system catalogue.
-- Firmware catalogue.
-- Another application handing a URL to Lumi.
+When a download is captured:
 
-When a new download is captured:
+- The compact widget automatically expands into the new-download confirmation panel.
+- The full Lumi application remains closed.
 
-- The compact corner widget **must expand automatically**.
-- The full Lumi application must not open.
-- This expanded state is the **new-download confirmation panel**.
+The confirmation panel must provide:
 
-### New-download confirmation content
-
-The panel must show:
-
-- Detected file name.
-- Editable file name.
-- File type.
-- Expected size when available.
-- Source/domain.
-- Full URL or safe shortened URL view.
-- Save folder.
-- Browse button to choose another folder.
-- Available storage space.
-- Category when useful.
-- Duplicate-file warning when applicable.
-
-Useful options may include:
-
-- Remember this folder for this file type.
-- Start automatically next time.
-- Add to queue.
-- Start later.
-
-Required actions:
-
-- **Download now**.
-- **Download later / Add to queue**.
-- **Cancel**.
+- detected file name;
+- editable file name;
+- file type;
+- expected size when known;
+- source/domain;
+- URL or safe shortened URL;
+- save folder;
+- Browse control;
+- available storage;
+- category when useful;
+- duplicate warning when applicable;
+- Download now;
+- Download later / Add to queue;
+- Cancel.
 
 The user must be able to rename the file and choose exactly where it will be saved before the download starts.
 
-## 3. Compact active-download monitor
+After **Download now**, the panel shrinks back to compact monitoring mode.
 
-After the user presses **Download now**:
-
-- The confirmation panel shrinks back to the compact widget.
-- The circular ring becomes the only progress bar.
-- There must be no separate horizontal progress bar.
+## Compact active-download monitor
 
 The compact widget shows only:
 
-- File name.
-- Download speed.
-- Circular progress ring.
-- Pause/play control inside the ring.
-- Tiny download-switch control when multiple downloads are active.
-- Expand/collapse arrow.
+- exact Lumi logo;
+- looping filename;
+- download speed;
+- percentage beside the ring;
+- circular progress ring;
+- Pause/Play inside the ring;
+- tiny download-switch control when multiple downloads are active;
+- clean expand/collapse chevron.
 
-### Circular ring behavior
-
-- The ring fills clockwise according to progress.
-- The ring contains **no percentage number or percentage text**.
-- While downloading, the icon inside the ring is **Pause**.
-- While paused, the icon inside the ring is **Play**.
-- When complete, the ring becomes full and the icon changes to a green checkmark.
-- The approved ring colors are retained.
-
-### Long file names
+### Long filenames
 
 - The filename area has a fixed width.
-- The widget must not grow wider for a long filename.
-- Long names scroll smoothly inside their own area.
-- The motion loops continuously like text travelling through a subway/train destination display.
-- Only the filename scrolls; the rest of the widget remains fixed.
+- The widget never grows wider for a long filename.
+- Only the filename scrolls.
+- The filename loops smoothly like text moving through a train/subway destination display.
+- Other controls remain fixed.
 
 ### Multiple downloads
 
 - The compact widget displays one selected download at a time.
-- A tiny adjacent switch control cycles through active downloads.
-- It may show a small position indicator such as `1 of 3`.
-- Switching updates the filename, speed, ring fill, and pause/play state.
-- No percentage text is shown during switching.
-- This switch control is separate from the expand/collapse arrow.
+- The tiny adjacent switch control cycles through active downloads.
+- It may display a position indicator such as `1/3`.
+- Switching updates the filename, speed, percentage, ring fill, and Pause/Play state.
+- The switch is separate from the expand/collapse chevron.
 
-## 4. Arrow and expanded downloads view
+## Expanded downloads view
 
-The arrow is the user-controlled expand/collapse control.
+The chevron manually expands or collapses the widget without opening the full Lumi application.
 
-- In compact mode, it points up to expand.
-- In expanded mode, it points down to return to compact mode.
-- The arrow must be a clean, properly rendered chevron—not a rough drawing.
+Expanded sections:
 
-When expanded manually, the widget shows the downloads view without opening the full Lumi application.
-
-### Expanded sections
-
-- **Downloading**.
-- **Downloaded**.
-- **Queued / waiting**.
+- **Downloading**
+- **Downloaded**
+- **Queued**
 
 The list scrolls internally without a visible Windows-style scrollbar.
 
-### Active download rows
+### Downloading rows
 
-Each active item may show:
+Each downloading row may show:
 
-- File name.
-- Speed.
-- Circular progress ring.
-- Pause/resume inside the ring.
-- Downloaded size / total size.
-- Remaining time.
-- Cancel action.
+- file icon;
+- filename;
+- speed;
+- downloaded size / total size;
+- percentage beside the ring;
+- circular progress ring;
+- Pause/Play inside the ring;
+- cancel/more action.
 
-The expanded widget must not display percentage text inside or beside any ring.
+No horizontal progress bar is allowed.
 
-### Completed download rows
+### Downloaded rows
 
-Each completed item shows:
+Each completed row shows:
 
-- File name.
-- Completion time.
-- File size.
-- Full ring.
-- Green checkmark inside the ring.
+- file icon;
+- filename;
+- completion state/time when available;
+- file size;
+- full green ring;
+- green checkmark.
 
-Completed ring interaction:
+Clicking the completed ring opens the file location.
 
-- Clicking the completed ring opens the file location in Windows Explorer and selects the file.
-- A file-name click may open the file itself if that behavior is approved during implementation.
-- Optional item actions may include Open file, Open location, and Remove from history.
+### Queued rows
 
-## 5. Active-download expanded controls
+Each queued row may show:
 
-When a current active download is expanded, useful controls may include:
-
-- Full filename.
-- Downloaded amount / total size.
-- Time remaining.
-- Pause or resume.
+- file icon;
+- filename;
+- expected size when known;
+- Start/Resume;
 - Cancel.
-- Open containing folder when available.
-- Previous / next selected download.
 
-The expanded view must not become a dashboard and must not contain unrelated categories, system diagnostics, build information, or project-management controls.
+## Completed state
 
-## 6. Completed state
+When the selected download completes:
 
-When a selected download completes:
-
-- The ring becomes fully filled.
-- Pause/play changes to a green checkmark.
-- No `100%` text appears in or around the ring.
-- Speed disappears.
-- Status becomes **Completed**.
-- Clicking the completed ring opens the file location.
-
-If another active download exists:
-
-- The widget may automatically switch to that download after a short delay.
-
-If no active downloads remain:
-
-- The widget returns to the idle connection-monitor state.
+- the ring becomes full;
+- Pause/Play becomes a green checkmark;
+- speed changes to **Completed**;
+- percentage text disappears;
+- clicking the ring opens the file location;
+- another active download may become selected after a short delay;
+- if no active download remains, the widget returns to idle connection monitoring.
 
 ## Main application boundary
 
-- The circular progress ring is for the floating widget only.
-- Do not add the widget ring to the main Lumi application UI.
-- The main Lumi application uses horizontal progress bars for downloads.
+- Widget downloads use circular progress rings.
+- Main-application downloads use horizontal progress bars.
+- Never copy the widget ring into the main Lumi application.
 
-## Non-negotiable regression checks
+## Non-negotiable regression checklist
 
-Every implementation or render must prove:
+Every widget change must prove:
 
-- This specification was read before rendering or coding.
-- The approved Lumi logo is used exactly and is not redrawn.
-- New download capture expands into folder/name confirmation.
-- Full Lumi window does not open during capture.
-- Save folder can be changed.
-- File name can be edited.
-- Download now shrinks back to compact monitoring mode.
-- Ring is the only progress bar in the widget.
-- **No percentage appears anywhere in or around a widget ring.**
-- Pause/play/checkmark states work inside the ring.
-- Long filenames loop without changing widget width.
-- Multiple downloads can be switched from the compact widget.
-- Arrow expands and collapses the downloads view.
-- Downloading, Downloaded, and Queued sections appear in expanded mode.
-- Completed ring opens the file location.
-- Taskbar and Windows system controls are never blocked.
-- Approved visual colors and Lumi assets are preserved.
+- this document was read first;
+- compact size remains 240 × 66 px before scaling;
+- expanded size remains 360 × 320 px before scaling;
+- the exact repository Lumi logo is used without distortion;
+- new-download capture opens filename/folder confirmation;
+- the full Lumi application does not open during capture;
+- file name and save folder are editable;
+- Download now returns to compact mode;
+- no horizontal progress bar exists in the widget;
+- percentage appears beside active rings, never inside them;
+- no percentage appears for a completed ring;
+- Pause, Play, and checkmark states work inside the ring;
+- long filenames loop without changing widget width;
+- multiple downloads can be switched from compact mode;
+- the chevron expands and collapses the widget;
+- Downloading, Downloaded, and Queued sections work;
+- completed-ring click opens the file location;
+- taskbar and Windows system controls are not blocked;
+- approved colors and assets are preserved.
 
 ## Change control
 
 Any change to this contract requires explicit owner approval.
-
-Before producing another widget render or changing widget code, read this file first and verify every non-negotiable regression check.
