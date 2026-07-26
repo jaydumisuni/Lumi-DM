@@ -212,7 +212,92 @@ function installDownloadIconObserver() {
   }
 }
 
+function installAttachedExpandControl() {
+  const install = () => {
+    const widget = document.getElementById('widget');
+    const button = document.getElementById('expand-button');
+    if (!widget || !button) return;
+
+    document.body.appendChild(button);
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .widget {
+        overflow: visible !important;
+      }
+      .compact-actions {
+        position: static !important;
+      }
+      body > .expand {
+        position: absolute !important;
+        z-index: 50 !important;
+        top: 0 !important;
+        right: 12px !important;
+        width: 28px !important;
+        height: 16px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        display: grid !important;
+        place-items: center !important;
+        overflow: visible !important;
+        cursor: pointer !important;
+        -webkit-app-region: no-drag !important;
+      }
+      body > .expand::before {
+        content: "" !important;
+        position: absolute !important;
+        inset: 0 !important;
+        border: 1px solid rgba(190,116,255,.72) !important;
+        border-radius: 9px 9px 6px 6px !important;
+        background: linear-gradient(180deg, rgba(60,37,94,.99), rgba(16,17,38,.99)) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 -1px 7px rgba(141,64,255,.28), 0 3px 8px rgba(0,0,0,.38) !important;
+        transition: border-color .18s, background .18s, box-shadow .18s, transform .18s !important;
+      }
+      body > .expand:hover::before {
+        border-color: rgba(218,158,255,.92) !important;
+        background: linear-gradient(180deg, rgba(78,46,119,.99), rgba(22,20,49,.99)) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 -1px 10px rgba(161,77,255,.38), 0 4px 10px rgba(0,0,0,.4) !important;
+        transform: translateY(-1px) !important;
+      }
+      body > .expand:active::before {
+        transform: translateY(1px) !important;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.32) !important;
+      }
+      body > .expand .chevron {
+        position: relative !important;
+        z-index: 1 !important;
+        width: 7px !important;
+        height: 7px !important;
+        margin: 2px 0 0 !important;
+        border-left: 2.8px solid #fff !important;
+        border-top: 2.8px solid #fff !important;
+        border-radius: 1px !important;
+        transform: rotate(45deg) !important;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,.62)) !important;
+        transition: transform .18s !important;
+      }
+      body > .expand.is-expanded .chevron {
+        margin-top: -2px !important;
+        transform: rotate(225deg) !important;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const sync = () => button.classList.toggle('is-expanded', widget.classList.contains('expanded'));
+    sync();
+    new MutationObserver(sync).observe(widget, { attributes: true, attributeFilter: ['class'] });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', install, { once: true });
+  } else {
+    install();
+  }
+}
+
 installDownloadIconObserver();
+installAttachedExpandControl();
 
 contextBridge.exposeInMainWorld('lumiWidget', {
   snapshot: async () => {
