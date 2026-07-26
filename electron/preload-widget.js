@@ -218,23 +218,18 @@ function installAttachedExpandControl() {
     const button = document.getElementById('expand-button');
     if (!widget || !button) return;
 
+    // Keep the tab outside the compact flex row so it consumes no filename/control space.
     document.body.appendChild(button);
 
     const style = document.createElement('style');
     style.textContent = `
-      .widget {
-        overflow: visible !important;
-      }
-      .compact-actions {
-        position: static !important;
-      }
       body > .expand {
         position: absolute !important;
         z-index: 50 !important;
         top: 0 !important;
-        right: 12px !important;
-        width: 28px !important;
-        height: 16px !important;
+        right: 13px !important;
+        width: 19px !important;
+        height: 9px !important;
         padding: 0 !important;
         border: 0 !important;
         background: transparent !important;
@@ -248,37 +243,38 @@ function installAttachedExpandControl() {
         content: "" !important;
         position: absolute !important;
         inset: 0 !important;
-        border: 1px solid rgba(190,116,255,.72) !important;
-        border-radius: 9px 9px 6px 6px !important;
-        background: linear-gradient(180deg, rgba(60,37,94,.99), rgba(16,17,38,.99)) !important;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 -1px 7px rgba(141,64,255,.28), 0 3px 8px rgba(0,0,0,.38) !important;
+        border: 1px solid rgba(190,116,255,.66) !important;
+        border-bottom: 0 !important;
+        border-radius: 8px 8px 0 0 !important;
+        background: linear-gradient(180deg, rgba(58,36,91,.99), rgba(9,12,24,.99)) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 -1px 6px rgba(141,64,255,.24) !important;
         transition: border-color .18s, background .18s, box-shadow .18s, transform .18s !important;
       }
       body > .expand:hover::before {
-        border-color: rgba(218,158,255,.92) !important;
-        background: linear-gradient(180deg, rgba(78,46,119,.99), rgba(22,20,49,.99)) !important;
-        box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 -1px 10px rgba(161,77,255,.38), 0 4px 10px rgba(0,0,0,.4) !important;
+        border-color: rgba(218,158,255,.9) !important;
+        background: linear-gradient(180deg, rgba(75,44,113,.99), rgba(11,14,29,.99)) !important;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 -1px 8px rgba(161,77,255,.34) !important;
         transform: translateY(-1px) !important;
       }
       body > .expand:active::before {
         transform: translateY(1px) !important;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.32) !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,.28), 0 -1px 4px rgba(141,64,255,.18) !important;
       }
       body > .expand .chevron {
         position: relative !important;
         z-index: 1 !important;
-        width: 7px !important;
-        height: 7px !important;
+        width: 5px !important;
+        height: 5px !important;
         margin: 2px 0 0 !important;
-        border-left: 2.8px solid #fff !important;
-        border-top: 2.8px solid #fff !important;
-        border-radius: 1px !important;
+        border-left: 2px solid #fff !important;
+        border-top: 2px solid #fff !important;
+        border-radius: .5px !important;
         transform: rotate(45deg) !important;
-        filter: drop-shadow(0 1px 2px rgba(0,0,0,.62)) !important;
+        filter: drop-shadow(0 1px 1px rgba(0,0,0,.65)) !important;
         transition: transform .18s !important;
       }
       body > .expand.is-expanded .chevron {
-        margin-top: -2px !important;
+        margin-top: -1px !important;
         transform: rotate(225deg) !important;
       }
     `;
