@@ -4,6 +4,8 @@
 (() => {
   if (!window.electronApp?.isElectron) return;
 
+  try { viewMeta.settings = ["Settings", "Downloads, storage, security, tool health and widget"]; } catch (_) {}
+
   const THEME_KEY = "TTG.shell.theme";
   const allowedThemes = new Set(["system", "dark", "light"]);
   const systemTheme = window.matchMedia("(prefers-color-scheme: light)");
