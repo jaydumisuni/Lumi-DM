@@ -85,7 +85,6 @@
     const element = document.getElementById("view-settings");
     if (!element) return;
     const settings = appState().settings || {};
-    const capabilities = appState().capabilities || {};
     const defaultConnections = Number(settings.default_connections || 32);
     element.innerHTML = `<div class="settings-layout"><nav class="settings-nav">
       <button class="active" data-action="settings-tab" data-tab="general">General</button>
@@ -97,7 +96,7 @@
       <section class="settings-section active" data-settings-section="general">${generalHtml(settings, defaultConnections)}</section>
       <section class="settings-section" data-settings-section="storage">${storageHtml(settings)}</section>
       <section class="settings-section" data-settings-section="security">${securityHtml()}</section>
-      <section class="settings-section" data-settings-section="health">${healthHtml(capabilities)}</section>
+      <section class="settings-section" data-settings-section="health">${healthHtml()}</section>
       <section class="settings-section" data-settings-section="widget" id="owner-widget-settings">${widgetLoadingHtml()}</section>
     </div></div>`;
     if (element.dataset.polishBound !== "true") {
@@ -130,16 +129,16 @@
     return `<section class="settings-card"><div class="settings-card-head"><h3>Pair another device</h3><p>Connect another Lumi client such as mobile, macOS or a trusted browser extension</p></div><div class="settings-card-body"><form class="form-stack" data-form="pairing-code"><div class="field-row"><label>Device name<input class="input" name="client_name" required value="Another Lumi device"></label><label>Access<select class="select" name="role"><option value="owner">Full access</option><option value="read_only">Read only</option></select></label></div><button class="btn primary" type="submit">Generate one-time code</button><div id="pair-code-output"></div></form></div></section><section class="settings-card"><div class="settings-card-head"><h3>Paired devices</h3><p>Revoke access immediately when a device is no longer trusted</p></div><div class="settings-card-body" id="paired-clients"><div class="empty">Open this tab to load paired devices.</div></div></section>`;
   }
 
-  function healthHtml(capabilities) {
-    const engines = [
-      ["Adaptive HTTP", capabilities.http, "LUMI-HTTP-01"],
-      ["FTP", capabilities.ftp, "LUMI-FTP-01"],
-      ["Media downloads", capabilities.video || capabilities.media_v3, "LUMI-MEDIA-01"],
-      ["Torrent", capabilities.torrent, "LUMI-TORRENT-01"],
-      ["Archive support", capabilities.archive_7zip, "LUMI-ARCHIVE-01"],
-      ["Post-processing", capabilities.post_processing, "LUMI-POST-01"],
-    ];
-    return `<section class="settings-card"><div class="settings-card-head"><h3>Tool Health</h3><p>Health states and reportable error codes for Lumi download engines</p></div><div class="settings-card-body"><div class="health-list">${engines.map(([name, ok, code]) => `<div class="health-engine"><div><strong>${safe(name)}</strong><small>${ok ? "Ready for downloads" : "Component needs attention"}</small><div class="error-code">${ok ? "No error" : code}</div></div><div class="health-state ${ok ? "" : "bad"}"><i></i>${ok ? "Healthy" : "Error"}</div></div>`).join("")}</div><div class="form-actions"><button class="btn" type="button" data-polish-action="report-health">Report a problem through Bonny</button></div></div></section>`;
+  function healthHtml() {
+    return `<section class="settings-card simple-health-card">
+      <div class="settings-card-head"><h3>Tool Health</h3><p>Run one check to confirm Lumi is working correctly.</p></div>
+      <div class="settings-card-body simple-health-body">
+        <div class="simple-health-ring idle" aria-hidden="true">✓</div>
+        <strong class="simple-health-title">Ready to check</strong>
+        <p class="simple-health-copy">Lumi will only show an error code when something needs attention.</p>
+        <button class="btn primary" type="button" data-tool-health-action="check">Check Tool Health</button>
+      </div>
+    </section>`;
   }
 
   function widgetLoadingHtml() {
@@ -188,7 +187,6 @@
   async function onSettingsClick(event) {
     const browse = event.target.closest("[data-browse-target]");
     if (browse) { event.preventDefault(); return browseForFolder(browse.dataset.browseTarget, browse.closest("form")); }
-    if (event.target.closest('[data-polish-action="report-health"]')) { event.preventDefault(); return openTools("report-bug"); }
   }
 
   async function browseForFolder(fieldName, form) {
@@ -198,7 +196,7 @@
       const picker = window.electronApp?.chooseDirectory || window.electronApp?.selectDirectory || window.electronApp?.browseForFolder;
       if (picker) { const result = await picker(input.value || ""); const path = typeof result === "string" ? result : result?.path || result?.filePath; if (path) input.value = path; return; }
       const chooser = document.createElement("input"); chooser.type = "file"; chooser.webkitdirectory = true; chooser.hidden = true;
-      chooser.addEventListener("change", () => { const first = chooser.files?.[0]; const full = first?.path || ""; if (full) { const relative = first.webkitRelativePath || first.name; input.value = full.slice(0, Math.max(0, full.length - relative.length)).replace(/[\\/]$/, ""); } chooser.remove(); }, { once: true });
+      chooser.addEventListener("change", () => { const first = chooser.files?.[0]; const full = first?.path || ""; if (full) { const relative = first.webkitRelativePath || first.name; input.value = full.slice(0, Math.max(0, full.length - relative.length)).replace(/[\\\/]$/, ""); } chooser.remove(); }, { once: true });
       document.body.appendChild(chooser); chooser.click();
       setTimeout(() => { if (chooser.isConnected && !chooser.files?.length) chooser.remove(); }, 30000);
       return;
