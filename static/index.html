@@ -23,7 +23,6 @@
   <div class="boot-status" id="boot-status">Starting secure local session…</div>
   <button class="btn primary" id="boot-retry" hidden>Retry</button>
 </div>
-
 <div class="app-shell" id="app-shell" hidden>
   <aside class="sidebar" id="sidebar">
     <div class="brand-block">
@@ -31,7 +30,6 @@
       <div><div class="brand-name">Lumi</div><div class="brand-sub">Download Manager</div></div>
       <button class="icon-btn mobile-only" id="sidebar-close" aria-label="Close menu">×</button>
     </div>
-
     <nav class="nav-list" aria-label="Main navigation">
       <button class="nav-item active" data-view="overview"><span>⌂</span>Overview</button>
       <button class="nav-item" data-view="downloads"><span>↓</span>All downloads <b id="nav-all-count">0</b></button>
@@ -45,7 +43,6 @@
       <button class="nav-item" data-view="categories"><span>◇</span>Categories</button>
       <button class="nav-item" data-view="grabber"><span>⌁</span>LinkGrabber</button>
     </nav>
-
     <button class="hunter-promo" id="hunter-promo" hidden type="button">
       <img id="hunter-promo-image" alt="">
       <span><strong id="hunter-promo-title"></strong><small id="hunter-promo-copy"></small></span>
@@ -56,7 +53,6 @@
       <div class="sidebar-speed"><span>Current speed</span><strong id="sidebar-speed">0 B/s</strong></div>
     </div>
   </aside>
-
   <div class="workspace">
     <header class="topbar">
       <button class="icon-btn mobile-only" id="sidebar-open" aria-label="Open menu">☰</button>
@@ -67,7 +63,6 @@
         <button class="btn primary" id="new-download-btn">＋ New download</button>
       </div>
     </header>
-
     <main class="content" id="content">
       <section class="view active" id="view-overview"></section>
       <section class="view" id="view-downloads"></section>
@@ -83,7 +78,6 @@
     </main>
   </div>
 </div>
-
 <div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
 <aside class="inspector" id="inspector" aria-label="Download inspector" hidden>
   <div class="inspector-head"><div><small>Task inspector</small><h2 id="inspector-title">Download</h2></div><button class="icon-btn" id="inspector-close">×</button></div>
@@ -92,7 +86,6 @@
   </div>
   <div class="inspector-body" id="inspector-body"></div>
 </aside>
-
 <div class="modal-backdrop" id="new-modal" hidden>
   <section class="modal wide" role="dialog" aria-modal="true" aria-labelledby="new-modal-title">
     <div class="modal-head"><div><small>Add source</small><h2 id="new-modal-title">New download</h2></div><button class="icon-btn" data-close-modal="new-modal">×</button></div>
@@ -100,15 +93,12 @@
     <div class="modal-body" id="source-body"></div>
   </section>
 </div>
-
 <div class="modal-backdrop" id="queue-modal" hidden>
   <section class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>Create queue</h2><button class="icon-btn" data-close-modal="queue-modal">×</button></div><form class="modal-body form-stack" id="queue-form"><label>Name<input class="input" name="name" required maxlength="80"></label><label>Queue ID<input class="input" name="id" required pattern="[a-zA-Z0-9_-]+" maxlength="60"></label><label>Maximum running tasks<input class="input" name="max_running" type="number" min="0" max="128" value="0"><small>0 uses the global limit.</small></label><button class="btn primary" type="submit">Create queue</button></form></section>
 </div>
-
 <div class="modal-backdrop" id="category-modal" hidden>
   <section class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>Create category</h2><button class="icon-btn" data-close-modal="category-modal">×</button></div><form class="modal-body form-stack" id="category-form"><label>Name<input class="input" name="name" required maxlength="80"></label><label>Category ID<input class="input" name="id" required pattern="[a-zA-Z0-9_-]+" maxlength="60"></label><label>File extensions<input class="input" name="extensions" placeholder="zip, rar, 7z"></label><label>Domains<input class="input" name="domains" placeholder="downloads.example.com, *.mirror.net"></label><label>Folder name<input class="input" name="folder" required></label><label class="check"><input name="auto_extract" type="checkbox">Automatically extract completed archives</label><button class="btn primary" type="submit">Create category</button></form></section>
 </div>
-
 <div class="context-menu" id="context-menu" hidden></div>
 <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 <script src="/static/app.js"></script>
@@ -120,5 +110,6 @@
 <script src="/static/ui-polish.js"></script>
 <script src="/static/tool-health.js"></script>
 <script src="/static/locked-ui.js"></script>
+<script src="/static/locked-brand-assets.js"></script>
 </body>
 </html>
