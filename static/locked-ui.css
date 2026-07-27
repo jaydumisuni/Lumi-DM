@@ -1,4 +1,7 @@
 /* Owner-locked Lumi navigation, overview and platform branding. Main app only. */
+.nav-list{display:flex;flex-direction:column}
+.locked-nav-label{min-width:0;flex:1}
+body.lumi-overview-active{--topbar:58px}
 .nav-item .locked-nav-icon,.nav-group-toggle .locked-nav-icon{width:25px;height:25px;display:grid;place-items:center;flex:none;color:#f2f4fb}
 .nav-item .locked-nav-icon svg,.nav-group-toggle .locked-nav-icon svg{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nav-item.active .locked-nav-icon{color:#fff;filter:drop-shadow(0 0 8px rgba(173,86,255,.28))}
