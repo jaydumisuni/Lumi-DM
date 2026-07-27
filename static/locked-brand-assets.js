@@ -8,14 +8,20 @@
     Ubuntu: "/static/brand/ubuntu.svg",
     Linux: "/static/brand/linux.svg",
   });
+  const PRODUCTS = Object.freeze({
+    Ventoy: "https://raw.githubusercontent.com/ventoy/Ventoy/master/ICON/logo_256.png",
+    Rufus: "https://raw.githubusercontent.com/pbatard/rufus/master/res/rufus.ico",
+  });
 
-  function brandFromText(value) {
+  function assetFromText(value) {
     const text = String(value || "").toLowerCase();
-    if (text.includes("windows") || /\bwin(?:10|11)\b/.test(text)) return "Windows";
-    if (text.includes("ubuntu")) return "Ubuntu";
-    if (text.includes("linux") || text.includes("debian") || text.includes("fedora") || text.includes("mint") || text.includes("arch")) return "Linux";
-    if (text.includes("macos") || text.includes("iphone") || text.includes("ipad") || text.includes("apple") || text.includes("ipsw")) return "Apple";
-    if (text.includes("android") || text.includes("apk") || text.includes("aab")) return "Android";
+    if (text.includes("ventoy")) return PRODUCTS.Ventoy;
+    if (text.includes("rufus")) return PRODUCTS.Rufus;
+    if (text.includes("ubuntu")) return LOCAL.Ubuntu;
+    if (text.includes("macos") || text.includes("iphone") || text.includes("ipad") || text.includes("apple") || text.includes("ipsw")) return LOCAL.Apple;
+    if (text.includes("android") || text.includes("apk") || text.includes("aab")) return LOCAL.Android;
+    if (text.includes("linux") || text.includes("debian") || text.includes("fedora") || text.includes("mint") || text.includes("arch")) return LOCAL.Linux;
+    if (text.includes("windows") || /\bwin(?:10|11)\b/.test(text)) return LOCAL.Windows;
     return "";
   }
 
@@ -28,15 +34,13 @@
     root.querySelectorAll("[data-os-family]").forEach(card => {
       useAsset(card.querySelector(".os-platform-icon img"), LOCAL[card.dataset.osFamily]);
     });
-
     root.querySelectorAll(".firmware-card").forEach(card => {
-      useAsset(card.querySelector(".firmware-source-icon img"), LOCAL[brandFromText(card.textContent)]);
+      useAsset(card.querySelector(".firmware-source-icon img"), assetFromText(card.textContent));
     });
-
     root.querySelectorAll("#view-firmware .empty-icon img").forEach(image => useAsset(image, LOCAL.Android));
     root.querySelectorAll("#view-operating_systems .empty-icon img").forEach(image => useAsset(image, LOCAL.Windows));
     root.querySelectorAll(".locked-recent-row").forEach(row => {
-      useAsset(row.querySelector(".locked-recent-name img"), LOCAL[brandFromText(row.textContent)]);
+      useAsset(row.querySelector(".locked-recent-name img"), assetFromText(row.textContent));
     });
   }
 
