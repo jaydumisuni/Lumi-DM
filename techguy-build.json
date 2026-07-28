@@ -56,6 +56,7 @@
         "name": "LUMIDM-server",
         "requirements": "requirements.txt",
         "output": "dist/server",
+        "console": false,
         "extraRequirements": [
           "libtorrent==2.0.13",
           "imageio-ffmpeg>=0.5,<1"
