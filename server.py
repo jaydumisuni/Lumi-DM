@@ -1,4 +1,20 @@
 """Lumi Download Manager source launcher."""
+from __future__ import annotations
+
+import os
+import sys
+
+
+# PyInstaller's Windows GUI/no-console bootloader intentionally leaves these
+# streams unavailable. Lumi's internal Flask service still emits normal startup
+# and Werkzeug logging, so provide a harmless sink instead of allowing a print
+# or logging write to abort the sidecar before Electron can connect to it.
+if getattr(sys, "frozen", False):
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
 from core.v2.server_app import app, main
 from core.v3.api import wave3_api
 from core.v3 import hardening as _wave3_hardening  # noqa: F401
