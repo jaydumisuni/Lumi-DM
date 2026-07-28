@@ -1,6 +1,7 @@
 "use strict";
 
 const { app } = require("electron");
+require("./window-contract");
 const http = require("http");
 
 const originalRequest = http.request.bind(http);
