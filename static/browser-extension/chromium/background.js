@@ -3,36 +3,22 @@
 const API_BASE = "http://127.0.0.1:7000";
 const pending = new Map();
 
-function storageGet(keys) {
-  return new Promise(resolve => chrome.storage.local.get(keys, resolve));
-}
-
-function storageSet(value) {
-  return new Promise(resolve => chrome.storage.local.set(value, resolve));
-}
-
-function storageRemove(keys) {
-  return new Promise(resolve => chrome.storage.local.remove(keys, resolve));
-}
-
+function storageGet(keys) { return new Promise(resolve => chrome.storage.local.get(keys, resolve)); }
+function storageSet(value) { return new Promise(resolve => chrome.storage.local.set(value, resolve)); }
+function storageRemove(keys) { return new Promise(resolve => chrome.storage.local.remove(keys, resolve)); }
 function downloadCall(method, ...args) {
   return new Promise((resolve, reject) => {
     chrome.downloads[method](...args, result => {
       const error = chrome.runtime.lastError;
-      if (error) reject(new Error(error.message));
-      else resolve(result);
+      if (error) reject(new Error(error.message)); else resolve(result);
     });
   });
 }
 
 function friendlyError(error) {
   const message = String(error?.message || error || "Lumi request failed");
-  if (/not paired|authentication required|unauthori[sz]ed|token/i.test(message)) {
-    return "Pair the extension with Lumi from the toolbar button first.";
-  }
-  if (/failed to fetch|networkerror|connection refused/i.test(message)) {
-    return "Open Lumi DM and wait until it says Lumi ready.";
-  }
+  if (/not paired|authentication required|unauthori[sz]ed|token/i.test(message)) return "Pair the extension with Lumi from the toolbar button first.";
+  if (/failed to fetch|networkerror|connection refused/i.test(message)) return "Open Lumi DM and wait until it says Lumi ready.";
   return message;
 }
 
@@ -50,8 +36,7 @@ async function lumiRequest(path, options = {}, tokenRequired = true) {
   });
   const text = await response.text();
   let data = {};
-  try { data = text ? JSON.parse(text) : {}; }
-  catch { data = { error: text.slice(0, 500) }; }
+  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text.slice(0, 500) }; }
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) await storageRemove(["lumiToken"]);
     throw new Error(data.error || `Lumi returned ${response.status}`);
@@ -61,27 +46,17 @@ async function lumiRequest(path, options = {}, tokenRequired = true) {
 
 async function extensionStatus() {
   const stored = await storageGet(["lumiToken", "lumiEnabled"]);
-  if (!stored.lumiToken) {
-    return { paired: false, available: false, enabled: stored.lumiEnabled !== false, message: "Pair the extension with Lumi." };
-  }
+  if (!stored.lumiToken) return { paired: false, available: false, enabled: stored.lumiEnabled !== false, message: "Pair the extension with Lumi." };
   try {
     const me = await lumiRequest("/api/v4/security/me");
-    return {
-      paired: true,
-      available: true,
-      enabled: stored.lumiEnabled !== false,
-      clientName: me.client_name || "Lumi owner",
-      role: me.role || "owner",
-      message: "Connected to Lumi DM",
-    };
+    return { paired: true, available: true, enabled: stored.lumiEnabled !== false, clientName: me.client_name || "Lumi owner", role: me.role || "owner", message: "Connected to Lumi DM" };
   } catch (error) {
     return { paired: false, available: false, enabled: stored.lumiEnabled !== false, message: friendlyError(error) };
   }
 }
 
 async function defaultSettings() {
-  try { return await lumiRequest("/api/settings"); }
-  catch (_) { return {}; }
+  try { return await lumiRequest("/api/settings"); } catch (_) { return {}; }
 }
 
 function cleanMediaInfo(info) {
@@ -102,24 +77,6 @@ async function inspectMedia(url) {
   return cleanMediaInfo(info);
 }
 
-async function startMedia({ url, formatId = "", audioOnly = false, videoOnly = false } = {}) {
-  if (!/^https?:/i.test(String(url || ""))) throw new Error("This media address is not supported");
-  const settings = await defaultSettings();
-  const body = {
-    url,
-    target_dir: settings.default_dir || "",
-    queue_id: "default",
-    playlist: false,
-    audio_only: Boolean(audioOnly),
-    video_only: Boolean(videoOnly),
-    subtitles: false,
-    thumbnail: true,
-    metadata: true,
-  };
-  if (formatId) body.format_id = String(formatId);
-  return lumiRequest("/api/v3/media/start", { method: "POST", body: JSON.stringify(body) });
-}
-
 function filenameFromUrl(value) {
   try {
     const parsed = new URL(value);
@@ -128,28 +85,54 @@ function filenameFromUrl(value) {
   } catch (_) { return "download"; }
 }
 
-async function startDirect({ url, filename = "" } = {}) {
-  if (!/^https?:/i.test(String(url || ""))) throw new Error("This direct media address is not supported");
+async function stageCapture({ url, filename = "", formatId = "", audioOnly = false, videoOnly = false, type = "auto", referrer = "" } = {}) {
+  if (!/^https?:/i.test(String(url || ""))) throw new Error("This address is not supported");
   const settings = await defaultSettings();
-  return lumiRequest("/api/downloads/start", {
-    method: "POST",
-    body: JSON.stringify({
+  const normalizedType = String(type || "auto").toLowerCase();
+  const body = {
+    url,
+    filename: filename || (normalizedType === "video" ? "Media download" : filenameFromUrl(url)),
+    referrer,
+    browser_download_id: "",
+    type: normalizedType,
+    target_dir: settings.default_dir || "",
+    temp_dir: settings.temp_dir || "",
+    queue_id: "default",
+    connections: Number(settings.default_connections || 32),
+    format_id: formatId || (audioOnly ? "bestaudio/best" : videoOnly ? "bestvideo" : "bestvideo+bestaudio/best"),
+    request_envelope: {
       url,
-      target_dir: settings.default_dir || "",
-      filename: filename || filenameFromUrl(url),
-      queue_id: "default",
-      connections: Number(settings.default_connections || 32),
-      duplicate_policy: "reuse",
-    }),
-  });
+      original_page: referrer || url,
+      browser_profile: "chromium",
+      suggested_filename: filename || "",
+    },
+  };
+  const result = await lumiRequest("/api/v5/browser/capture", { method: "POST", body: JSON.stringify(body) });
+  if (!result.handoff?.id) throw new Error("Lumi did not create a setup handoff");
+  return result;
+}
+
+async function stageMedia(message = {}) {
+  return stageCapture({ ...message, type: "video", referrer: message.url });
+}
+
+async function stageDirect(message = {}) {
+  const value = String(message.url || "");
+  const type = /\.m3u8(?:$|\?)/i.test(value) ? "hls" : /\.mpd(?:$|\?)/i.test(value) ? "dash" : "video";
+  return stageCapture({ ...message, type, referrer: message.referrer || "" });
+}
+
+async function openMain() {
+  return lumiRequest("/api/v5/desktop/command", { method: "POST", body: JSON.stringify({ action: "show-main" }) });
 }
 
 async function handleMessage(message) {
   const type = String(message?.type || "");
   if (type === "lumi-extension-status") return extensionStatus();
   if (type === "lumi-media-info") return { info: await inspectMedia(message.url) };
-  if (type === "lumi-media-start") return { task: await startMedia(message) };
-  if (type === "lumi-download-direct") return { task: await startDirect(message) };
+  if (type === "lumi-media-start" || type === "lumi-media-stage") return { handoff: await stageMedia(message) };
+  if (type === "lumi-download-direct" || type === "lumi-direct-stage") return { handoff: await stageDirect(message) };
+  if (type === "lumi-open-main") return { command: await openMain() };
   if (type === "lumi-set-enabled") {
     await storageSet({ lumiEnabled: message.enabled !== false });
     return { enabled: message.enabled !== false };
@@ -158,32 +141,17 @@ async function handleMessage(message) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  void handleMessage(message)
-    .then(result => sendResponse({ ok: true, ...result }))
-    .catch(error => sendResponse({ ok: false, error: friendlyError(error) }));
+  void handleMessage(message).then(result => sendResponse({ ok: true, ...result })).catch(error => sendResponse({ ok: false, error: friendlyError(error) }));
   return true;
 });
 
-async function safeResume(downloadId) {
-  try { await downloadCall("resume", downloadId); } catch (_) {}
-}
-
+async function safeResume(downloadId) { try { await downloadCall("resume", downloadId); } catch (_) {} }
 async function safeCancel(downloadId, erase = false) {
   try { await downloadCall("cancel", downloadId); } catch (_) {}
-  if (erase) {
-    try { await downloadCall("erase", { id: downloadId }); } catch (_) {}
-  }
+  if (erase) { try { await downloadCall("erase", { id: downloadId }); } catch (_) {} }
 }
-
 async function notify(title, message) {
-  try {
-    await chrome.notifications.create({
-      type: "basic",
-      title,
-      message,
-      iconUrl: chrome.runtime.getURL("icon.svg"),
-    });
-  } catch (_) {}
+  try { await chrome.notifications.create({ type: "basic", title, message, iconUrl: chrome.runtime.getURL("icon.svg") }); } catch (_) {}
 }
 
 async function monitorHandoff(downloadId, handoffId) {
@@ -200,10 +168,7 @@ async function monitorHandoff(downloadId, handoffId) {
         await notify("Lumi is downloading", result.task?.filename || "Browser download transferred to Lumi.");
         return;
       }
-      if (decision === "browser") {
-        await safeResume(downloadId);
-        return;
-      }
+      if (decision === "browser") { await safeResume(downloadId); return; }
       await safeCancel(downloadId, true);
       return;
     }
@@ -212,9 +177,7 @@ async function monitorHandoff(downloadId, handoffId) {
   } catch (error) {
     await safeResume(downloadId);
     await notify("Lumi capture failed", `${friendlyError(error)} The browser download was resumed.`);
-  } finally {
-    pending.delete(downloadId);
-  }
+  } finally { pending.delete(downloadId); }
 }
 
 async function captureDownload(item) {
@@ -250,7 +213,6 @@ async function captureDownload(item) {
 }
 
 chrome.downloads.onCreated.addListener(item => { void captureDownload(item); });
-
 chrome.runtime.onInstalled.addListener(() => {
   void storageGet(["lumiEnabled"]).then(value => {
     if (value.lumiEnabled === undefined) return storageSet({ lumiEnabled: true });
