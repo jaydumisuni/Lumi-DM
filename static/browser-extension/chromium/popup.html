@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lumi DM</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <header><div class="mark">L</div><div><strong>Lumi DM</strong><small>Browser Capture</small></div></header>
+    <section class="status" id="status"><i></i><span>Checking Lumi…</span></section>
+    <label class="switch-row"><span><strong>Capture downloads</strong><small>Ask Lumi before the browser continues.</small></span><input id="enabled" type="checkbox" checked></label>
+    <form id="pair-form">
+      <label>Pairing code<input id="code" name="code" autocomplete="one-time-code" placeholder="ABCD-2345" maxlength="9" required></label>
+      <button type="submit">Pair with Lumi</button>
+    </form>
+    <button class="secondary" id="forget" type="button">Forget this pairing</button>
+    <p class="note">Generate a code in Lumi → Settings → Security → Pair another device.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
