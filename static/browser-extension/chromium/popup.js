@@ -1,31 +1,44 @@
 "use strict";
 
 const API_BASE = "http://127.0.0.1:7000";
-const statusBox = document.getElementById("status");
+const connectionCard = document.getElementById("connection-card");
+const connectionTitle = document.getElementById("connection-title");
+const connectionMessage = document.getElementById("connection-message");
 const pairForm = document.getElementById("pair-form");
+const pairedPanel = document.getElementById("paired-panel");
 const forgetButton = document.getElementById("forget");
 const enabled = document.getElementById("enabled");
+const refreshButton = document.getElementById("refresh");
+const openLumiButton = document.getElementById("open-lumi");
 const pageCard = document.getElementById("page-card");
 const pageTitle = document.getElementById("page-title");
-const pageDetail = document.getElementById("page-detail");
-const openMediaPanel = document.getElementById("open-media-panel");
-const note = document.getElementById("note");
-let currentTab = null;
+const pageMessage = document.getElementById("page-message");
+const openMediaButton = document.getElementById("open-media");
 
-function getStorage(keys) {
-  return new Promise(resolve => chrome.storage.local.get(keys, resolve));
+function getStorage(keys) { return new Promise(resolve => chrome.storage.local.get(keys, resolve)); }
+function setStorage(value) { return new Promise(resolve => chrome.storage.local.set(value, resolve)); }
+function removeStorage(keys) { return new Promise(resolve => chrome.storage.local.remove(keys, resolve)); }
+function activeTabs() { return new Promise(resolve => chrome.tabs.query({ active: true, currentWindow: true }, resolve)); }
+
+function request(path, options = {}, token = "") {
+  return fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Lumi-Client": "browser-extension-chromium",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+  }).then(async response => {
+    const text = await response.text();
+    let data = {};
+    try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
+    if (!response.ok) throw new Error(data.error || `Lumi returned ${response.status}`);
+    return data;
+  });
 }
-function setStorage(value) {
-  return new Promise(resolve => chrome.storage.local.set(value, resolve));
-}
-function removeStorage(keys) {
-  return new Promise(resolve => chrome.storage.local.remove(keys, resolve));
-}
-function status(text, type = "") {
-  statusBox.className = `status ${type}`.trim();
-  statusBox.querySelector("span").textContent = text;
-}
-function runtimeMessage(message) {
+
+function sendRuntime(message) {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(message, response => {
       const error = chrome.runtime.lastError;
@@ -35,95 +48,80 @@ function runtimeMessage(message) {
     });
   });
 }
-function tabMessage(tabId, message) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, message, response => {
-      const error = chrome.runtime.lastError;
-      if (error) reject(new Error(error.message));
-      else if (!response?.ok) reject(new Error(response?.error || "This page is not ready for Lumi"));
-      else resolve(response);
-    });
-  });
+
+function setConnection(title, message, type = "") {
+  connectionCard.className = `connection-card ${type}`.trim();
+  connectionTitle.textContent = title;
+  connectionMessage.textContent = message;
 }
-function activeTab() {
-  return new Promise(resolve => chrome.tabs.query({ active: true, currentWindow: true }, tabs => resolve(tabs[0] || null)));
-}
-async function requestPair(code) {
-  const response = await fetch(`${API_BASE}/api/security/pair`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Lumi-Client": "browser-extension-chromium" },
-    body: JSON.stringify({ code, client_name: "Lumi Chrome / Edge Extension" }),
-  });
-  const text = await response.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text }; }
-  if (!response.ok) throw new Error(data.error || `Lumi returned ${response.status}`);
-  return data;
-}
-async function refreshPageCard(paired) {
+
+async function pageState() {
   pageCard.hidden = true;
-  currentTab = await activeTab();
-  if (!paired || !currentTab?.id || !/^https?:/i.test(currentTab.url || "")) return;
   try {
-    const state = await tabMessage(currentTab.id, { type: "lumi-page-state" });
-    if (!state.hasMedia) return;
-    pageTitle.textContent = state.title || currentTab.title || "Current video";
-    pageDetail.textContent = state.directCount
-      ? `${state.directCount} direct source${state.directCount === 1 ? "" : "s"} detected. Lumi can also inspect the page for real qualities.`
-      : "Lumi can inspect this page and list its available video and audio qualities.";
+    const [tab] = await activeTabs();
+    if (!tab?.id || !/^https?:/i.test(tab.url || "")) return;
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "lumi-page-state" });
+    if (!result?.ok || !result.hasMedia) return;
+    pageTitle.textContent = result.title || "Video detected";
+    pageMessage.textContent = result.directCount ? `${result.directCount} direct source${result.directCount === 1 ? "" : "s"} detected` : "Lumi can inspect available qualities";
     pageCard.hidden = false;
-  } catch (_) {
-    pageCard.hidden = true;
-  }
+  } catch (_) {}
 }
+
 async function refresh() {
-  const value = await getStorage(["lumiEnabled"]);
+  refreshButton.disabled = true;
+  setConnection("Checking Lumi…", "Looking for the Lumi desktop app.");
+  const value = await getStorage(["lumiToken", "lumiEnabled"]);
   enabled.checked = value.lumiEnabled !== false;
-  let paired = false;
-  try {
-    const result = await runtimeMessage({ type: "lumi-extension-status" });
-    paired = Boolean(result.paired && result.available);
-    if (paired) {
-      status(`Connected · ${result.clientName || "Lumi owner"}`, "ok");
-      pairForm.hidden = true;
-      forgetButton.hidden = false;
-      note.textContent = "Open a video page and use the Lumi quality button on the player.";
-    } else {
-      status(result.message || "Not paired with Lumi", "bad");
-      pairForm.hidden = false;
-      forgetButton.hidden = true;
-      note.textContent = "Generate a code in Lumi → Settings → Security → Pair another device.";
-    }
-  } catch (error) {
-    status(`Lumi unavailable · ${error.message}`, "bad");
+  if (!value.lumiToken) {
+    setConnection("Not paired", "Generate a secure code inside Lumi to connect this browser.", "bad");
     pairForm.hidden = false;
-    forgetButton.hidden = false;
+    pairedPanel.hidden = true;
+    pageCard.hidden = true;
+    refreshButton.disabled = false;
+    return;
   }
-  await refreshPageCard(paired);
+  try {
+    const me = await request("/api/v4/security/me", {}, value.lumiToken);
+    setConnection("Lumi is ready", `Connected as ${me.client_name || "Lumi owner"}.`, "ok");
+    pairForm.hidden = true;
+    pairedPanel.hidden = false;
+    await pageState();
+  } catch (error) {
+    setConnection("Lumi is unavailable", error.message, "bad");
+    pairForm.hidden = false;
+    pairedPanel.hidden = false;
+    pageCard.hidden = true;
+  } finally {
+    refreshButton.disabled = false;
+  }
 }
 
 pairForm.addEventListener("submit", async event => {
   event.preventDefault();
-  const code = String(document.getElementById("code").value || "").trim().toUpperCase();
+  const codeInput = document.getElementById("code");
+  const code = String(codeInput.value || "").trim().toUpperCase();
   if (!code) return;
-  status("Pairing with Lumi…");
+  const submit = pairForm.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  setConnection("Pairing…", "Confirming the one-time Lumi code.");
   try {
-    const result = await requestPair(code);
-    if (!result.token) throw new Error("Lumi returned no pairing token");
+    const result = await request("/api/security/pair", {
+      method: "POST",
+      body: JSON.stringify({ code, client_name: "Lumi Chrome / Edge Extension" }),
+    });
     await setStorage({ lumiToken: result.token, lumiEnabled: true });
-    document.getElementById("code").value = "";
+    codeInput.value = "";
     await refresh();
   } catch (error) {
-    status(`Pairing failed · ${error.message}`, "bad");
+    setConnection("Pairing failed", error.message, "bad");
+  } finally {
+    submit.disabled = false;
   }
 });
 
 enabled.addEventListener("change", async () => {
-  await setStorage({ lumiEnabled: enabled.checked });
-  try { await runtimeMessage({ type: "lumi-set-enabled", enabled: enabled.checked }); } catch (_) {}
-  if (currentTab?.id) {
-    try { await chrome.tabs.reload(currentTab.id); } catch (_) {}
-  }
+  await sendRuntime({ type: "lumi-set-enabled", enabled: enabled.checked }).catch(() => setStorage({ lumiEnabled: enabled.checked }));
 });
 
 forgetButton.addEventListener("click", async () => {
@@ -131,17 +129,27 @@ forgetButton.addEventListener("click", async () => {
   await refresh();
 });
 
-openMediaPanel.addEventListener("click", async () => {
-  if (!currentTab?.id) return;
-  openMediaPanel.disabled = true;
-  openMediaPanel.textContent = "Opening Lumi panel…";
+refreshButton.addEventListener("click", () => void refresh());
+openLumiButton.addEventListener("click", async () => {
+  openLumiButton.disabled = true;
   try {
-    await tabMessage(currentTab.id, { type: "lumi-open-panel" });
+    await sendRuntime({ type: "lumi-open-main" });
     window.close();
   } catch (error) {
-    status(error.message, "bad");
-    openMediaPanel.disabled = false;
-    openMediaPanel.textContent = "Open quality list";
+    setConnection("Could not open Lumi", error.message, "bad");
+    openLumiButton.disabled = false;
+  }
+});
+
+openMediaButton.addEventListener("click", async () => {
+  try {
+    const [tab] = await activeTabs();
+    if (!tab?.id) throw new Error("Current browser tab is unavailable");
+    const result = await chrome.tabs.sendMessage(tab.id, { type: "lumi-open-panel" });
+    if (!result?.ok) throw new Error(result?.error || "Media panel could not open");
+    window.close();
+  } catch (error) {
+    setConnection("Media panel unavailable", error.message, "bad");
   }
 });
 
