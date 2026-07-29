@@ -8,15 +8,34 @@
 </head>
 <body>
   <main>
-    <header><div class="mark">L</div><div><strong>Lumi DM</strong><small>Browser Capture</small></div></header>
+    <header>
+      <img class="brand-icon" src="icon.svg" alt="">
+      <div><strong>Lumi DM</strong><small>Browser Capture</small></div>
+    </header>
+
     <section class="status" id="status"><i></i><span>Checking Lumi…</span></section>
-    <label class="switch-row"><span><strong>Capture downloads</strong><small>Ask Lumi before the browser continues.</small></span><input id="enabled" type="checkbox" checked></label>
+
+    <section class="page-card" id="page-card" hidden>
+      <div class="page-copy">
+        <small>Video detected</small>
+        <strong id="page-title">Current page</strong>
+        <span id="page-detail">Choose the quality from the player panel.</span>
+      </div>
+      <button class="media-button" id="open-media-panel" type="button">Open quality list</button>
+    </section>
+
+    <label class="switch-row">
+      <span><strong>Capture normal downloads</strong><small>Pause the browser safely, then ask where Lumi should save the file.</small></span>
+      <input id="enabled" type="checkbox" checked>
+    </label>
+
     <form id="pair-form">
       <label>Pairing code<input id="code" name="code" autocomplete="one-time-code" placeholder="ABCD-2345" maxlength="9" required></label>
       <button type="submit">Pair with Lumi</button>
     </form>
+
     <button class="secondary" id="forget" type="button">Forget this pairing</button>
-    <p class="note">Generate a code in Lumi → Settings → Security → Pair another device.</p>
+    <p class="note" id="note">Generate a code in Lumi → Settings → Security → Pair another device.</p>
   </main>
   <script src="popup.js"></script>
 </body>
