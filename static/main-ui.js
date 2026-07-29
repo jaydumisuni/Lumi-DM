@@ -6,6 +6,7 @@
     "/static/main-ui-settings.js",
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
+    "/static/main-ui-fixes.js",
   ];
 
   function loadModule(source) {
@@ -25,6 +26,7 @@
     UI.bindTechnicianGroup();
     UI.installViewMetadata();
     UI.installDownloadContract();
+    UI.installDesktopActions();
     window.renderOverview = UI.renderOverviewPrimary;
     window.renderDownloads = UI.renderDownloadsPrimary;
     window.renderQueues = UI.renderQueuesPrimary;
