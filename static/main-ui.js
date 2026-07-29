@@ -1,7 +1,26 @@
 "use strict";
 (() => {
-  const UI = window.LumiMainUI;
+  const modules = [
+    "/static/main-ui-core.js",
+    "/static/main-ui-views.js",
+    "/static/main-ui-settings.js",
+    "/static/main-ui-shell.js",
+  ];
+
+  function loadModule(source) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = source;
+      script.async = false;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error(`Lumi UI module not loaded: ${source}`));
+      document.head.appendChild(script);
+    });
+  }
+
   function install() {
+    const UI = window.LumiMainUI;
+    if (!UI) throw new Error("Lumi primary UI did not initialize");
     UI.bindTechnicianGroup();
     UI.installViewMetadata();
     window.renderOverview = UI.renderOverviewPrimary;
@@ -23,6 +42,12 @@
     UI.maybeShowExtensionNotice();
     setTimeout(() => { try { if (typeof renderCurrentView === "function") renderCurrentView(); } catch (_) {} }, 0);
   }
-  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", install, { once: true });
-  else install();
+
+  modules.reduce((promise, source) => promise.then(() => loadModule(source)), Promise.resolve())
+    .then(install)
+    .catch(error => {
+      console.error(error);
+      const status = document.getElementById("boot-status");
+      if (status) status.textContent = `Lumi interface failed to load: ${error.message}`;
+    });
 })();
