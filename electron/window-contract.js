@@ -1,7 +1,7 @@
 "use strict";
 
 /* Enforces the desktop/window contract without changing the locked widget renderer. */
-const { app, nativeImage } = require("electron");
+const { app, ipcMain, nativeImage, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -99,6 +99,23 @@ app.on("browser-window-created", (_event, window) => {
 });
 
 app.whenReady().then(() => {
+  if (!ipcMain.listenerCount("ttg-open-path")) {
+    ipcMain.handle("ttg-open-path", async (_event, value) => {
+      const target = String(value || "").trim();
+      if (!target) throw new Error("No file or folder path was provided");
+      const result = await shell.openPath(target);
+      if (result) throw new Error(result);
+      return { ok: true };
+    });
+  }
+  if (!ipcMain.listenerCount("ttg-open-external")) {
+    ipcMain.handle("ttg-open-external", async (_event, value) => {
+      const target = String(value || "").trim();
+      if (!/^https?:\/\//i.test(target)) throw new Error("Only HTTP or HTTPS links may be opened");
+      await shell.openExternal(target);
+      return { ok: true };
+    });
+  }
   setInterval(syncWidgetVisibility, 350);
 });
 
