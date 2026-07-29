@@ -15,6 +15,12 @@ function approvedIconPath() {
     : path.resolve(__dirname, "..", "static", "favicon-256.png");
 }
 
+function extensionSourcePath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "static", "browser-extension", "chromium")
+    : path.resolve(__dirname, "..", "static", "browser-extension", "chromium");
+}
+
 function widgetSettingsPath() {
   return path.join(app.getPath("userData"), "LUMIDM-desktop-widget.json");
 }
@@ -114,6 +120,20 @@ app.whenReady().then(() => {
       if (!/^https?:\/\//i.test(target)) throw new Error("Only HTTP or HTTPS links may be opened");
       await shell.openExternal(target);
       return { ok: true };
+    });
+  }
+  if (!ipcMain.listenerCount("ttg-prepare-browser-extension")) {
+    ipcMain.handle("ttg-prepare-browser-extension", async () => {
+      const source = extensionSourcePath();
+      if (!fs.existsSync(path.join(source, "manifest.json"))) {
+        throw new Error("The Lumi browser extension package is missing from this build");
+      }
+      const destination = path.join(app.getPath("documents"), "Lumi DM Browser Extension");
+      fs.rmSync(destination, { recursive: true, force: true });
+      fs.cpSync(source, destination, { recursive: true });
+      const result = await shell.openPath(destination);
+      if (result) throw new Error(result);
+      return { ok: true, path: destination };
     });
   }
   setInterval(syncWidgetVisibility, 350);
