@@ -11,9 +11,7 @@
 <link rel="stylesheet" href="/static/operating-systems.css">
 <link rel="stylesheet" href="/static/ttg-shell.css">
 <link rel="stylesheet" href="/static/ttg-theme.css">
-<link rel="stylesheet" href="/static/ui-polish.css">
-<link rel="stylesheet" href="/static/tool-health.css">
-<link rel="stylesheet" href="/static/locked-ui.css">
+<link rel="stylesheet" href="/static/main-ui.css">
 </head>
 <body>
 <div class="brand-background" aria-hidden="true"></div>
@@ -31,17 +29,20 @@
       <button class="icon-btn mobile-only" id="sidebar-close" aria-label="Close menu">×</button>
     </div>
     <nav class="nav-list" aria-label="Main navigation">
-      <button class="nav-item active" data-view="overview"><span>⌂</span>Overview</button>
-      <button class="nav-item" data-view="downloads"><span>↓</span>All downloads <b id="nav-all-count">0</b></button>
-      <button class="nav-item" data-view="unfinished"><span>◔</span>Unfinished <b id="nav-unfinished-count">0</b></button>
-      <button class="nav-item" data-view="finished"><span>✓</span>Finished <b id="nav-finished-count">0</b></button>
-      <div class="nav-label">Technician</div>
-      <button class="nav-item" data-view="firmware"><span>▦</span>Mobile firmware</button>
-      <button class="nav-item" data-view="operating_systems"><span>◫</span>Operating systems</button>
-      <div class="nav-label">Organise</div>
-      <button class="nav-item" data-view="queues"><span>☷</span>Queues</button>
-      <button class="nav-item" data-view="categories"><span>◇</span>Categories</button>
-      <button class="nav-item" data-view="grabber"><span>⌁</span>LinkGrabber</button>
+      <button class="nav-item active" data-view="overview"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.4 9.8V21h5v-6h3.2v6h5V9.8"/></svg></span><span class="lumi-nav-label">Overview</span></button>
+      <button class="nav-item" data-view="downloads"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></svg></span><span class="lumi-nav-label">All Downloads</span><b id="nav-all-count">0</b></button>
+      <button class="nav-item" data-view="unfinished"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span><span class="lumi-nav-label">Unfinished</span><b id="nav-unfinished-count">0</b></button>
+      <button class="nav-item" data-view="finished"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 12 2.6 2.6L16.5 9"/></svg></span><span class="lumi-nav-label">Finished</span><b id="nav-finished-count">0</b></button>
+      <button class="nav-item" data-view="queues"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="m12 3 8 4-8 4-8-4 8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg></span><span class="lumi-nav-label">Queues</span></button>
+      <button class="nav-item" data-view="categories"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="M3 7.5h7l2-2h9v14H3z"/></svg></span><span class="lumi-nav-label">Categories</span></button>
+      <button class="nav-item" data-view="grabber"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></span><span class="lumi-nav-label">LinkGrabber</span></button>
+      <div class="nav-group">
+        <button class="nav-item nav-group-toggle" type="button" aria-expanded="false"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5-5l2.1 2.1-2.4 2.4-2.1-2.1a4 4 0 0 0 5 5L20 16.4 16.4 20l-7.7-7.7"/></svg></span><span class="lumi-nav-label">Technician</span><span class="nav-chevron">›</span></button>
+        <div class="nav-submenu">
+          <button class="nav-item" data-view="firmware"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="1.8"/><path d="M10 5h4M11 19h2"/></svg></span><span class="lumi-nav-label">Mobile Firmware</span></button>
+          <button class="nav-item" data-view="operating_systems"><span class="lumi-nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="1.5"/><path d="M8 21h8M12 17v4"/></svg></span><span class="lumi-nav-label">Operating Systems</span></button>
+        </div>
+      </div>
     </nav>
     <button class="hunter-promo" id="hunter-promo" hidden type="button">
       <img id="hunter-promo-image" alt="">
@@ -56,11 +57,11 @@
   <div class="workspace">
     <header class="topbar">
       <button class="icon-btn mobile-only" id="sidebar-open" aria-label="Open menu">☰</button>
-      <div class="view-heading"><h1 id="view-title">Overview</h1><p id="view-subtitle">Your download activity at a glance</p></div>
+      <div class="view-heading"><h1 id="view-title">Overview</h1><p id="view-subtitle">Complete summary of your download activity</p></div>
       <div class="top-actions">
         <label class="search-box"><span>⌕</span><input id="global-search" type="search" placeholder="Search downloads"></label>
         <div class="live-speed"><i id="speed-dot"></i><span id="top-speed">0 B/s</span></div>
-        <button class="btn primary" id="new-download-btn">＋ New download</button>
+        <button class="btn primary" id="new-download-btn">＋ New Download</button>
       </div>
     </header>
     <main class="content" id="content">
@@ -68,11 +69,11 @@
       <section class="view" id="view-downloads"></section>
       <section class="view" id="view-unfinished"></section>
       <section class="view" id="view-finished"></section>
-      <section class="view" id="view-firmware"></section>
-      <section class="view" id="view-operating_systems"></section>
       <section class="view" id="view-queues"></section>
       <section class="view" id="view-categories"></section>
       <section class="view" id="view-grabber"></section>
+      <section class="view" id="view-firmware"></section>
+      <section class="view" id="view-operating_systems"></section>
       <section class="view" id="view-settings"></section>
       <section class="view" id="view-diagnostics"></section>
     </main>
@@ -88,7 +89,7 @@
 </aside>
 <div class="modal-backdrop" id="new-modal" hidden>
   <section class="modal wide" role="dialog" aria-modal="true" aria-labelledby="new-modal-title">
-    <div class="modal-head"><div><small>Add source</small><h2 id="new-modal-title">New download</h2></div><button class="icon-btn" data-close-modal="new-modal">×</button></div>
+    <div class="modal-head"><div><small>Add source</small><h2 id="new-modal-title">New Download</h2></div><button class="icon-btn" data-close-modal="new-modal">×</button></div>
     <div class="modal-tabs" id="source-tabs"><button class="active" data-source="direct">Direct / FTP</button><button data-source="video">Video</button><button data-source="torrent">Torrent</button><button data-source="archive">Archive</button></div>
     <div class="modal-body" id="source-body"></div>
   </section>
@@ -107,10 +108,6 @@
 <script src="/static/operating-systems.js"></script>
 <script src="/static/ttg-shell.js"></script>
 <script src="/static/ttg-theme.js"></script>
-<script src="/static/ui-polish.js"></script>
-<script src="/static/tool-health.js"></script>
-<script src="/static/locked-ui.js"></script>
-<script src="/static/locked-brand-assets.js"></script>
-<script src="/static/locked-workspaces.js"></script>
+<script src="/static/main-ui.js"></script>
 </body>
 </html>
