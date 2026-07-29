@@ -5,6 +5,7 @@
     "/static/main-ui-views.js",
     "/static/main-ui-settings.js",
     "/static/main-ui-shell.js",
+    "/static/main-ui-download.js",
   ];
 
   function loadModule(source) {
@@ -23,6 +24,7 @@
     if (!UI) throw new Error("Lumi primary UI did not initialize");
     UI.bindTechnicianGroup();
     UI.installViewMetadata();
+    UI.installDownloadContract();
     window.renderOverview = UI.renderOverviewPrimary;
     window.renderDownloads = UI.renderDownloadsPrimary;
     window.renderQueues = UI.renderQueuesPrimary;
