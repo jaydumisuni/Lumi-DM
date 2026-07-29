@@ -8,7 +8,7 @@
   "projectType": "multi-platform-source",
   "entryFile": "electron/main.js",
   "logo": "static/favicon-96.png",
-  "icon": "assets/windows/Lumi-DM.ico",
+  "icon": "static/favicon-256.png",
   "description": "Fast multi-source download manager with browser capture, media, torrents, firmware, operating-system images and technician workflows.",
   "repository": "jaydumisuni/Lumi-DM",
   "distribution": {
