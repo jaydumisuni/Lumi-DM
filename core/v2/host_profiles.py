@@ -146,8 +146,21 @@ class HostProfileManager:
         *,
         connections: int,
         speed_limit_bps: int,
+        profile_id: str = "",
     ) -> tuple[RequestEnvelope, int, int, HostProfile | None]:
-        profile = self.match_url(envelope.url)
+        profile = None
+        requested = str(profile_id or "").strip()
+        if requested:
+            profile = self.get(requested)
+            if profile is None or not profile.enabled:
+                raise ValueError(f"Saved site session is unavailable: {requested}")
+            host = (urlparse(envelope.url).hostname or "").lower()
+            if not profile.matches(host):
+                raise ValueError(
+                    f"Saved site session '{profile.name}' does not match {host or 'this URL'}"
+                )
+        else:
+            profile = self.match_url(envelope.url)
         if profile is None:
             return envelope, connections, speed_limit_bps, None
         if profile.user_agent:
