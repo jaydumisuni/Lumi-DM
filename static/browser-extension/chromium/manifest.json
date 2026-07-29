@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Lumi Download Manager",
-  "version": "1.1.0",
-  "description": "Capture browser downloads and choose detected video qualities with Lumi DM.",
+  "version": "1.2.0",
+  "description": "Safely stage browser downloads and detected media in Lumi DM before they start.",
   "permissions": [
     "activeTab",
     "downloads",
@@ -25,6 +25,12 @@
       "js": ["content.js"],
       "run_at": "document_idle",
       "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.svg"],
+      "matches": ["http://*/*", "https://*/*"]
     }
   ],
   "action": {
