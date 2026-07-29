@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Lumi Download Manager",
+  "version": "1.0.0",
+  "description": "Capture browser downloads and hand them safely to Lumi DM.",
+  "permissions": [
+    "downloads",
+    "storage",
+    "notifications"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:7000/*",
+    "http://localhost:7000/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Lumi DM",
+    "default_popup": "popup.html"
+  }
+}
