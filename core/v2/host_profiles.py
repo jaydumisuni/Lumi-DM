@@ -149,7 +149,7 @@ class HostProfileManager:
         profile_id: str = "",
     ) -> tuple[RequestEnvelope, int, int, HostProfile | None]:
         profile = None
-        requested = str(profile_id or "").strip()
+        requested = str(profile_id or envelope.browser_profile or "").strip()
         if requested:
             profile = self.get(requested)
             if profile is None or not profile.enabled:
