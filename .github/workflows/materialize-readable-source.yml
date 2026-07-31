@@ -1,15 +1,17 @@
 name: Materialize readable Lumi sources
 
 on:
-  push:
-    branches: [ui/approved-replica-integration-20260730]
-    paths: [.github/workflows/materialize-readable-source.yml]
+  pull_request:
+    branches: [main]
+    paths: [.github/workflows/materialize-readable-source.yml, scripts/materialize.py.gz.b64]
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   materialize:
+    if: github.head_ref == 'ui/approved-replica-integration-20260730' || github.ref_name == 'ui/approved-replica-integration-20260730'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
