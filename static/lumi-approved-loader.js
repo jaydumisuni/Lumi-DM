@@ -8,4 +8,6 @@
  const style=document.createElement("style");style.dataset.lumiApproved="true";style.textContent=payload.css;document.head.appendChild(style);
  (0,eval)(payload.ui+"\n//# sourceURL=lumi-approved-ui.js");
  (0,eval)(payload.integration+"\n//# sourceURL=lumi-approved-integration.js");
-})().catch(error=>{console.error("Lumi approved UI failed to start",error);document.body.dataset.lumiUiError=String(error&&error.message||error);});
+ globalThis.__LUMI_APPROVED_READY__=true;
+ window.dispatchEvent(new CustomEvent("lumi-approved-ready"));
+})().catch(error=>{console.error("Lumi approved UI failed to start",error);document.body.dataset.lumiUiError=String(error&&error.message||error);window.dispatchEvent(new CustomEvent("lumi-approved-error",{detail:{message:String(error&&error.message||error)}}));});
