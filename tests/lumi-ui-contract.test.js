@@ -1,11 +1,16 @@
 "use strict";
 const fs=require("fs"),assert=require("assert"),vm=require("vm");
 const hotfix=fs.readFileSync("static/lumi-release-gate-hotfix.js","utf8");
+const loader=fs.readFileSync("static/lumi-approved-loader.js","utf8");
 const preload=fs.readFileSync("electron/preload-main.js","utf8");
 const contract=fs.readFileSync("electron/release-gate-contract.js","utf8");
 const server=fs.readFileSync("server.py","utf8");
 const index=fs.readFileSync("static/index.html","utf8");
 assert(index.includes("lumi-release-gate-hotfix.js"));
+assert(index.includes("lumi-approved-ready"));
+assert(index.indexOf("lumi-approved-loader.js")<index.indexOf("lumi-approved-ready"));
+assert(loader.includes("__LUMI_APPROVED_READY__=true"));
+assert(loader.includes('CustomEvent("lumi-approved-ready")'));
 assert(server.includes("set_default_connections(32)"));
 for(const marker of ["data-test-network","data-export-settings","data-import-settings","data-reset-settings","/api/v4/security/pairing","/api/v4/security/clients","Mozilla Firefox\", \"Unavailable"] )assert(hotfix.includes(marker),marker);
 for(const marker of ["ttg-open-path","ttg-open-external","ttg-prepare-browser-extension","startAtLogin"])assert(contract.includes(marker),marker);
@@ -14,4 +19,4 @@ const match=preload.match(/function normalizedCapacity\(value\)\{([\s\S]*?)\}\nc
 const normalize=vm.runInNewContext(`(function(value){${match[1]}})`);
 const result=normalize({state:"complete",result:{download_mbps:80,upload_mbps:20,latency_ms:12.4}});
 assert.strictEqual(result.capacity_bps,10000000);assert.strictEqual(result.upload_bps,2500000);assert.strictEqual(result.ping_ms,12.4);
-console.log("Lumi UI, settings, speed and extension contract: PASS");
+console.log("Lumi UI, settings, speed, loader and extension contract: PASS");
