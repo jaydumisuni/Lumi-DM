@@ -3,7 +3,13 @@ name: Materialize readable Lumi sources
 on:
   pull_request:
     branches: [main]
-    paths: [.github/workflows/materialize-readable-source.yml, scripts/materialize.py.gz.b64]
+    paths:
+      - .github/workflows/materialize-readable-source.yml
+      - scripts/materialize.part01
+      - scripts/materialize.part02
+      - scripts/materialize.part03
+      - scripts/materialize.part04
+      - scripts/materialize.part05
   workflow_dispatch:
 
 permissions:
@@ -27,14 +33,15 @@ jobs:
       - name: Recover readable production sources
         shell: bash
         run: |
+          cat scripts/materialize.part01 scripts/materialize.part02 scripts/materialize.part03 scripts/materialize.part04 scripts/materialize.part05 > /tmp/materialize.py.gz.b64
           python - <<'PY'
           import base64, gzip
           from pathlib import Path
-          encoded = Path("scripts/materialize.py.gz.b64").read_text(encoding="utf-8")
+          encoded = Path("/tmp/materialize.py.gz.b64").read_text(encoding="utf-8")
           Path("/tmp/materialize.py").write_bytes(gzip.decompress(base64.b64decode(encoded)))
           PY
           python /tmp/materialize.py .
-          rm -f scripts/materialize.py.gz.b64
+          rm -f scripts/materialize.py.gz.b64 scripts/materialize.part0{1,2,3,4,5}
       - name: Validate materialized sources
         shell: bash
         run: |
