@@ -27,6 +27,16 @@ jobs:
       - name: UI settings speed-test and extension contract
         run: node tests/lumi-ui-contract.test.js
 
+  windows-lifecycle-contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Windows tray widget taskbar startup and identity contract
+        run: node tests/lumi-windows-lifecycle.test.js
+
   real-download-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 15
