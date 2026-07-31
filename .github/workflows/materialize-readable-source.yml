@@ -8,7 +8,10 @@ on:
       - scripts/materialize.part01
       - scripts/materialize.v2.part02
       - scripts/materialize.v2.part03
-      - scripts/materialize.v2.part04
+      - scripts/materialize.p4.01
+      - scripts/materialize.p4.02
+      - scripts/materialize.p4.03
+      - scripts/materialize.p4.04
   workflow_dispatch:
 
 permissions:
@@ -32,9 +35,11 @@ jobs:
       - name: Recover readable production sources
         shell: bash
         run: |
-          wc -c scripts/materialize.part01 scripts/materialize.v2.part02 scripts/materialize.v2.part03 scripts/materialize.v2.part04
-          sha256sum scripts/materialize.part01 scripts/materialize.v2.part02 scripts/materialize.v2.part03 scripts/materialize.v2.part04
-          cat scripts/materialize.part01 scripts/materialize.v2.part02 scripts/materialize.v2.part03 scripts/materialize.v2.part04 > /tmp/materialize.py.gz.b64
+          head -c 2800 scripts/materialize.v2.part03 > /tmp/materialize.part03
+          cat scripts/materialize.p4.01 scripts/materialize.p4.02 scripts/materialize.p4.03 scripts/materialize.p4.04 > /tmp/materialize.part04
+          wc -c scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04
+          sha256sum scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04
+          cat scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04 > /tmp/materialize.py.gz.b64
           python - <<'PY'
           import base64, gzip
           from pathlib import Path
@@ -43,7 +48,7 @@ jobs:
           Path("/tmp/materialize.py").write_bytes(gzip.decompress(base64.b64decode(encoded)))
           PY
           python /tmp/materialize.py .
-          rm -f scripts/materialize.py.gz.b64 scripts/materialize.part0{1,2,3,4,5} scripts/materialize.v2.part0{2,3,4}
+          rm -f scripts/materialize.py.gz.b64 scripts/materialize.part0{1,2,3,4,5} scripts/materialize.v2.part0{2,3,4} scripts/materialize.p4.0{1,2,3,4} scripts/ping.tmp
       - name: Validate materialized sources
         shell: bash
         run: |
