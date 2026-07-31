@@ -4,13 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Lumi Download Manager</title>
-  <link rel="stylesheet" href="/static/lumi-approved-ui.css">
+  <meta name="theme-color" content="#070a11">
+  <link rel="icon" href="favicon-32.png">
+  <script>document.write(`<base href="${location.protocol === "file:" ? "./" : "/static/"}">`);</script>
 </head>
 <body>
   <div class="app-frame" id="app-frame">
     <aside class="sidebar">
       <div class="company-kicker">THETECHGUY TOOL</div>
-      <img class="brand-lockup" src="/static/assets/lumi-brand-transparent.png" alt="Lumi Download Manager">
+      <img class="brand-lockup" src="lumi-approved-brand.svg" alt="Lumi Download Manager">
       <nav class="nav-list" id="nav-list" aria-label="Main navigation">
         <button class="nav-item active" data-view="overview"><span class="nav-icon" data-icon="home"></span><span>Overview</span></button>
         <button class="nav-item" data-view="downloads"><span class="nav-icon" data-icon="download"></span><span>All Downloads</span></button>
@@ -66,7 +68,15 @@
   <aside class="floating-panel" id="floating-panel" hidden></aside>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
-  <script src="/static/lumi-approved-ui.js"></script>
-  <script src="/static/lumi-approved-integration.js"></script>
+  <script src="lumi-payload-01.js"></script>
+  <script src="lumi-payload-02.js"></script>
+  <script src="lumi-payload-03.js"></script>
+  <script src="lumi-payload-04.js"></script>
+  <script src="lumi-payload-05.js"></script>
+  <script src="lumi-payload-06.js"></script>
+  <script src="lumi-payload-07.js"></script>
+  <script src="lumi-payload-08.js"></script>
+  <script src="lumi-payload-09.js"></script>
+  <script src="lumi-approved-loader.js"></script>
 </body>
 </html>
