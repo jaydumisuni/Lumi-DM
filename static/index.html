@@ -82,6 +82,20 @@
   <script src="lumi-payload-09a.js"></script>
   <script src="lumi-payload-09b.js"></script>
   <script src="lumi-approved-loader.js"></script>
-  <script src="lumi-release-gate-hotfix.js"></script>
+  <script>
+    (() => {
+      let loaded = false;
+      const loadReleaseGate = () => {
+        if (loaded) return;
+        loaded = true;
+        const script = document.createElement("script");
+        script.src = "lumi-release-gate-hotfix.js";
+        script.onerror = () => { document.body.dataset.lumiUiError = "Release-gate controls failed to load"; };
+        document.body.appendChild(script);
+      };
+      if (globalThis.__LUMI_APPROVED_READY__) loadReleaseGate();
+      else window.addEventListener("lumi-approved-ready", loadReleaseGate, { once: true });
+    })();
+  </script>
 </body>
 </html>
