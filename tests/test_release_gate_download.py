@@ -17,6 +17,12 @@ SHA=hashlib.sha256(DATA).hexdigest()
 CHUNK=64*1024
 DELAY=.004
 
+class QuietRangeServer(ThreadingHTTPServer):
+    def handle_error(self,request,client_address):
+        error=sys.exc_info()[1]
+        if isinstance(error,(BrokenPipeError,ConnectionResetError)): return
+        super().handle_error(request,client_address)
+
 class RangeHandler(BaseHTTPRequestHandler):
     protocol_version="HTTP/1.1"
     def log_message(self,*_args): pass
@@ -39,7 +45,7 @@ class RangeHandler(BaseHTTPRequestHandler):
 
 @pytest.fixture(scope="module")
 def range_url():
-    server=ThreadingHTTPServer(("127.0.0.1",0),RangeHandler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    server=QuietRangeServer(("127.0.0.1",0),RangeHandler);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     yield f"http://127.0.0.1:{server.server_port}/release-gate.bin"
     server.shutdown();server.server_close();thread.join(timeout=5)
 
@@ -54,6 +60,21 @@ def lumi(tmp_path_factory):
     client.environ_base["HTTP_X_LUMI_CLIENT"]="release-gate-test"
     response=client.get("/api/security/bootstrap");assert response.status_code==200,response.get_data(as_text=True)
     return client,root
+
+def extension_client(owner):
+    pairing=owner.post("/api/v4/security/pairing",json={"role":"owner","client_name":"Lumi Chrome Extension release gate","expires_in":600})
+    assert pairing.status_code==200,pairing.get_data(as_text=True)
+    code=pairing.get_json()["code"]
+    client=owner.application.test_client()
+    paired=client.post("/api/security/pair",json={"code":code,"client_name":"Lumi Chrome Extension release gate"})
+    assert paired.status_code==200,paired.get_data(as_text=True)
+    token=paired.get_json()["token"]
+    client.environ_base["HTTP_ORIGIN"]="chrome-extension://lumi-release-gate"
+    client.environ_base["HTTP_AUTHORIZATION"]=f"Bearer {token}"
+    client.environ_base["HTTP_X_LUMI_CLIENT"]="browser-extension-chromium"
+    me=client.get("/api/v4/security/me");assert me.status_code==200
+    assert me.get_json()["authenticated"] is True and me.get_json()["can_write"] is True
+    return client
 
 def poll(client,task_id,timeout=35):
     deadline=time.monotonic()+timeout;last=None
@@ -102,3 +123,19 @@ def test_pause_resume_preserves_integrity(lumi,range_url):
     assert paused and paused.get("status")=="paused";assert int(paused.get("downloaded_bytes") or 0)>=before
     assert client.post(f"/api/downloads/{task_id}/resume",json={}).status_code==200
     completed=poll(client,task_id);assert completed["status"]=="completed";assert hashlib.sha256(Path(completed["final_path"]).read_bytes()).hexdigest()==SHA
+
+def test_chromium_pairing_capture_confirm_and_safe_fallback(lumi,range_url):
+    owner,root=lumi;extension=extension_client(owner)
+    clients=owner.get("/api/v4/security/clients").get_json()["clients"]
+    assert any("chrome extension release gate" in str(item.get("client_name") or "").lower() for item in clients)
+    capture={"url":range_url,"filename":"extension-confirmed.bin","browser_download_id":"release-gate-1","type":"auto","target_dir":str(root/"downloads"),"temp_dir":str(root/"temporary"),"connections":32,"request_envelope":{"url":range_url,"browser_profile":"chromium","suggested_filename":"extension-confirmed.bin"}}
+    staged=extension.post("/api/v5/browser/capture",json=capture);assert staged.status_code==200,staged.get_data(as_text=True)
+    staged_data=staged.get_json();handoff_id=staged_data["handoff"]["id"];task_id=staged_data["task"]["id"]
+    assert staged_data["task"]["status"]=="browser_pending" and staged_data["task"]["connections"]==32
+    confirmed=extension.post(f"/api/v5/browser/handoffs/{handoff_id}/confirm",json={"filename":"extension-confirmed.bin","target_dir":str(root/"downloads"),"connections":32,"start_mode":"now","duplicate_policy":"overwrite"})
+    assert confirmed.status_code==200,confirmed.get_data(as_text=True);assert confirmed.get_json()["handoff"]["decision"]=="lumi"
+    completed=poll(extension,task_id);assert completed["status"]=="completed";assert hashlib.sha256(Path(completed["final_path"]).read_bytes()).hexdigest()==SHA
+    fallback=extension.post("/api/v5/browser/capture",json={**capture,"filename":"browser-fallback.bin","browser_download_id":"release-gate-2"});assert fallback.status_code==200
+    fallback_data=fallback.get_json();fallback_id=fallback_data["handoff"]["id"];fallback_task=fallback_data["task"]["id"]
+    resumed=extension.post(f"/api/v5/browser/handoffs/{fallback_id}/browser",json={});assert resumed.status_code==200;assert resumed.get_json()["decision"]=="browser"
+    assert extension.get(f"/api/downloads/{fallback_task}").status_code==404
