@@ -41,4 +41,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
       - name: Real segmented download integrity persistence and resume proof
-        run: pytest -q tests/test_release_gate_download.py -vv
+        run: pytest -q -s tests/test_release_gate_download.py -vv
