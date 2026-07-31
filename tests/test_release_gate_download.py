@@ -50,6 +50,8 @@ def lumi(tmp_path_factory):
     for name in list(sys.modules):
         if name=="server" or name.startswith("core."):sys.modules.pop(name,None)
     module=importlib.import_module("server");client=module.app.test_client()
+    client.environ_base["HTTP_ORIGIN"]="http://localhost"
+    client.environ_base["HTTP_X_LUMI_CLIENT"]="release-gate-test"
     response=client.get("/api/security/bootstrap");assert response.status_code==200,response.get_data(as_text=True)
     return client,root
 
