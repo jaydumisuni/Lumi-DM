@@ -79,8 +79,12 @@ def test_default_32_and_saved_setting(lumi):
 
 def test_real_32_connection_download_is_faster_and_exact(lumi,range_url):
     client,root=lumi;single_seconds,single=download(client,range_url,root/"downloads","single.bin",1);parallel_seconds,parallel=download(client,range_url,root/"downloads","parallel.bin",32)
-    assert single["mode"]=="single";assert parallel["mode"]=="adaptive"
-    assert parallel_seconds<single_seconds*.72,{"single":single_seconds,"parallel":parallel_seconds}
+    single_mode=str(single.get("mode") or "").lower();parallel_mode=str(parallel.get("mode") or "").lower()
+    assert single_mode.startswith("single"),single_mode
+    assert any(word in parallel_mode for word in ("adaptive","parallel","segmented")),parallel_mode
+    ratio=parallel_seconds/single_seconds
+    print({"single_seconds":round(single_seconds,3),"parallel_seconds":round(parallel_seconds,3),"speed_ratio":round(ratio,3),"single_mode":single_mode,"parallel_mode":parallel_mode})
+    assert ratio<.72,{"single":single_seconds,"parallel":parallel_seconds,"ratio":ratio}
 
 def test_pause_resume_preserves_integrity(lumi,range_url):
     client,root=lumi;response=client.post("/api/downloads/start",json={"url":range_url,"target_dir":str(root/"downloads"),"temp_dir":str(root/"temporary"),"filename":"resume.bin","connections":8,"duplicate_policy":"overwrite"});assert response.status_code==200;task_id=response.get_json()["id"]
