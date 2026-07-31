@@ -1,0 +1,44 @@
+name: Lumi release gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ui-electron-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: JavaScript syntax
+        run: |
+          node --check static/lumi-release-gate-hotfix.js
+          node --check electron/main.js
+          node --check electron/preload-main.js
+          node --check electron/release-gate-contract.js
+          node --check static/browser-extension/chromium/background.js
+          node --check static/browser-extension/chromium/popup.js
+      - name: UI settings speed-test and extension contract
+        run: node tests/lumi-ui-contract.test.js
+
+  real-download-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install runtime and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Real segmented download integrity persistence and resume proof
+        run: pytest -q tests/test_release_gate_download.py -vv
