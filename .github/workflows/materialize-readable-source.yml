@@ -5,13 +5,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/materialize-readable-source.yml
-      - scripts/materialize.part01
-      - scripts/materialize.v2.part02
-      - scripts/materialize.v2.part03
-      - scripts/materialize.p4.01
-      - scripts/materialize.p4.02
-      - scripts/materialize.p4.03
-      - scripts/materialize.p4.04
+      - scripts/finalize-readable-*.part
   workflow_dispatch:
 
 permissions:
@@ -32,14 +26,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Recover readable production sources
+      - name: Reconstruct reviewed source finalizer
         shell: bash
         run: |
-          head -c 2800 scripts/materialize.v2.part03 > /tmp/materialize.part03
-          cat scripts/materialize.p4.01 scripts/materialize.p4.02 scripts/materialize.p4.03 scripts/materialize.p4.04 > /tmp/materialize.part04
-          wc -c scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04
-          sha256sum scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04
-          cat scripts/materialize.part01 scripts/materialize.v2.part02 /tmp/materialize.part03 /tmp/materialize.part04 > /tmp/materialize.py.gz.b64
+          set -euo pipefail
+          cat scripts/finalize-readable-*.part > /tmp/materialize.py.gz.b64
           python - <<'PY'
           import base64, gzip
           from pathlib import Path
@@ -48,22 +39,29 @@ jobs:
           Path("/tmp/materialize.py").write_bytes(gzip.decompress(base64.b64decode(encoded)))
           PY
           python /tmp/materialize.py .
-          rm -f scripts/materialize.py.gz.b64 scripts/materialize.part0{1,2,3,4,5} scripts/materialize.v2.part0{2,3,4} scripts/materialize.p4.0{1,2,3,4} scripts/ping.tmp
-      - name: Validate materialized sources
+      - name: Validate readable production sources
         shell: bash
         run: |
-          node --check static/lumi-approved-ui.js
-          node --check static/lumi-approved-integration.js
+          set -euo pipefail
           node --check electron/main.js
           node --check electron/preload-main.js
+          node --check static/lumi-approved-ui.js
+          node --check static/lumi-approved-integration.js
           node tests/lumi-ui-contract.test.js
-          python -m py_compile server.py core/v2/runtime.py tests/test_release_gate_download.py
+          node tests/lumi-windows-lifecycle.test.js
+          node tests/sergeant-20-for-2.test.js
+          python -m py_compile server.py core/v2/runtime.py tests/test_release_gate_download.py tests/windows_public_internet_smoke.py tests/visual_regression.py
+          test ! -e electron/main-payload-01.js
+          test ! -e static/lumi-payload-01.js
+          test ! -e static/lumi-approved-loader.js
+          test ! -e static/lumi-release-gate-hotfix.js
       - name: Commit readable production source
         shell: bash
         run: |
+          set -euo pipefail
           git config user.name "THETECHGUY Release Gate"
           git config user.email "actions@users.noreply.github.com"
           git add -A
           git diff --cached --check
-          git commit -m "Materialize readable Lumi production sources"
+          git commit -m "Materialize reviewed Lumi production sources"
           git push origin HEAD:ui/approved-replica-integration-20260730
