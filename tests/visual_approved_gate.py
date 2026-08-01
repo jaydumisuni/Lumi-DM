@@ -56,9 +56,6 @@ REFERENCE_DHASH = {
     "15_About_Lumi": "2665d0e4da322bc983c9a36527c5a3618c998cf38cf38ea34b67ce930692816a",
 }
 
-# Baseline distances between the approved mockups and the approved HTML renderer
-# ranged from 41 to 94 bits. A 15-bit screen allowance covers browser/font
-# rasterization variance while preserving a strict 80-bit average ceiling.
 MAX_DISTANCE = {
     "01_Overview": 57,
     "02_All_Downloads": 76,
@@ -94,17 +91,14 @@ def hamming(left: str, right: str) -> int:
 
 
 def standalone_html() -> str:
-    """Inline the frozen readable visual shell without starting backend traffic."""
+    """Inline CSS and image assets while leaving JavaScript for Playwright injection."""
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     css = (STATIC / "lumi-approved-ui.css").read_text(encoding="utf-8")
-    ui = (STATIC / "lumi-approved-ui.js").read_text(encoding="utf-8")
     logo = base64.b64encode((STATIC / "lumi-approved-brand.svg").read_bytes()).decode("ascii")
     html = re.sub(r"<script>document\.write\([\s\S]*?</script>", "", html, count=1)
     html = html.replace('<link rel="stylesheet" href="lumi-approved-ui.css">', f"<style>{css}</style>")
     html = html.replace('src="lumi-approved-brand.svg"', f'src="data:image/svg+xml;base64,{logo}"')
-    html = re.sub(r'<script src="lumi-approved-ui\.js"></script>', f"<script>{ui}</script>", html)
-    html = re.sub(r'<script src="lumi-approved-integration\.js"></script>', "", html)
-    html = re.sub(r'<script src="lumi-release-gate-hotfix\.js"></script>', "", html)
+    html = re.sub(r'<script src="(?:lumi-approved-ui|lumi-approved-integration|lumi-release-gate-hotfix)\.js"></script>', "", html)
     return html
 
 
@@ -112,6 +106,7 @@ def set_screen(page, view: str, state: str) -> None:
     page.evaluate(
         """([view, state]) => {
           const replica = window.LumiReplica;
+          if (!replica || !replica.state) throw new Error('Approved renderer unavailable');
           replica.state.view = view;
           replica.state.theme = 'dark';
           replica.render();
@@ -134,34 +129,40 @@ def set_screen(page, view: str, state: str) -> None:
 
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
+    (OUTPUT / "gate-started.txt").write_text("visual gate started\n", encoding="utf-8")
     errors: list[str] = []
     rows: list[dict[str, object]] = []
-    with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(headless=True)
-        page = browser.new_page(viewport=VIEWPORT, device_scale_factor=1)
-        page.on("pageerror", lambda error: errors.append(str(error)))
-        page.set_content(standalone_html(), wait_until="load", timeout=30_000)
-        page.wait_for_timeout(250)
-        for label, key, view, state in SCREENS:
-            set_screen(page, view, state)
-            page.wait_for_timeout(100)
-            capture = OUTPUT / f"{key}.png"
-            page.screenshot(path=str(capture))
-            actual = dhash(capture)
-            distance = hamming(REFERENCE_DHASH[key], actual)
-            rows.append(
-                {
-                    "screen": label,
-                    "reference_dhash": REFERENCE_DHASH[key],
-                    "capture_dhash": actual,
-                    "distance": distance,
-                    "maximum": MAX_DISTANCE[key],
-                    "passed": distance <= MAX_DISTANCE[key],
-                }
-            )
-        browser.close()
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(headless=True)
+            page = browser.new_page(viewport=VIEWPORT, device_scale_factor=1)
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.set_content(standalone_html(), wait_until="load", timeout=30_000)
+            page.add_script_tag(content=(STATIC / "lumi-approved-ui.js").read_text(encoding="utf-8"))
+            page.wait_for_function("() => Boolean(window.LumiReplica && window.LumiReplica.state)", timeout=10_000)
+            page.wait_for_timeout(250)
+            for label, key, view, state in SCREENS:
+                set_screen(page, view, state)
+                page.wait_for_timeout(100)
+                capture = OUTPUT / f"{key}.png"
+                page.screenshot(path=str(capture))
+                actual = dhash(capture)
+                distance = hamming(REFERENCE_DHASH[key], actual)
+                rows.append(
+                    {
+                        "screen": label,
+                        "reference_dhash": REFERENCE_DHASH[key],
+                        "capture_dhash": actual,
+                        "distance": distance,
+                        "maximum": MAX_DISTANCE[key],
+                        "passed": distance <= MAX_DISTANCE[key],
+                    }
+                )
+            browser.close()
+    except Exception as error:
+        errors.append(f"visual gate exception: {error}")
 
-    average = sum(int(row["distance"]) for row in rows) / len(rows)
+    average = sum(int(row["distance"]) for row in rows) / len(rows) if rows else 256.0
     report = {
         "viewport": VIEWPORT,
         "method": "256-bit dHash against fifteen owner-approved mockups",
@@ -173,6 +174,7 @@ def main() -> None:
     (OUTPUT / "visual-report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
     assert not errors, errors
+    assert len(rows) == 15, f"expected 15 captures, got {len(rows)}"
     assert all(bool(row["passed"]) for row in rows), "one or more approved screens drifted"
     assert average <= 80, f"average visual distance {average:.2f} exceeded 80"
 
