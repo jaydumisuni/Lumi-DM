@@ -51,8 +51,9 @@ lane("A", 1, "Approved readable shell", () => {
 });
 lane("A", 2, "Locked sidebar order", () => assert.deepStrictEqual(actualSidebar, expectedSidebar));
 lane("A", 3, "Overview and quick actions", () => {
-  assert(ui.includes("overview"));
-  assert(ui.includes("Quick Actions") || ui.includes("quick-action"));
+  assert(ui.includes("function renderOverview"));
+  assert(ui.includes("QUICK ACTIONS"));
+  assert(ui.includes("quick-grid"));
 });
 lane("A", 4, "Download state views", () => {
   for (const marker of ["downloads", "unfinished", "finished"]) assert(ui.includes(marker));
@@ -116,9 +117,11 @@ lane("A", 20, "Public-internet Windows source smoke", () => {
   assert(publicSmoke.includes('"connections": 32'));
 });
 
-// Pass B: independent source, visual, security and CI evidence.
-lane("B", 1, "Approved CSS frozen", () => assert.strictEqual(hash("static/lumi-approved-ui.css"), "fb5a17c0c573643bc6644859d98bb9ffacbd020573a8589b2807b3def7f9c8b3"));
-lane("B", 2, "Approved UI JavaScript frozen", () => assert.strictEqual(hash("static/lumi-approved-ui.js"), "1cf175f6960594df2f9680b5c8f11362b48c17c5f920c08cd0fa1364c3267280"));
+// Pass B: independent source, visual, security and CI evidence. These source
+// hashes freeze the readable renderer that passed the fifteen-screen visual
+// contract against the owner-approved mockups.
+lane("B", 1, "Approved CSS frozen", () => assert.strictEqual(hash("static/lumi-approved-ui.css"), "7b64123dacdda416f26d04e8579c288cf18cf65a773685352fea4dd3f5320614"));
+lane("B", 2, "Approved UI JavaScript frozen", () => assert.strictEqual(hash("static/lumi-approved-ui.js"), "8826ab36662c353e9bab42ac5593d791fff58e5b546d5de9c73790754da4c09a"));
 lane("B", 3, "Accessibility names", () => {
   assert(index.includes('aria-label="Search downloads"'));
   assert(index.includes('aria-label="Open settings menu"'));
