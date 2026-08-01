@@ -18,6 +18,8 @@ jobs:
           node-version: 20
       - name: JavaScript syntax
         run: |
+          node --check static/lumi-approved-ui.js
+          node --check static/lumi-approved-integration.js
           node --check static/lumi-release-gate-hotfix.js
           node --check electron/main.js
           node --check electron/preload-main.js
@@ -26,6 +28,30 @@ jobs:
           node --check static/browser-extension/chromium/popup.js
       - name: UI settings speed-test and extension contract
         run: node tests/lumi-ui-contract.test.js
+
+  approved-visual-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install visual comparison dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pillow playwright
+          python -m playwright install --with-deps chromium
+      - name: Compare fifteen screens with approved mockups
+        run: python tests/visual_approved_gate.py
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-approved-visual-evidence
+          path: artifacts/visual
+          if-no-files-found: error
 
   windows-lifecycle-contract:
     runs-on: windows-latest
@@ -51,4 +77,51 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
       - name: Real segmented download integrity persistence and resume proof
-        run: pytest -q -s tests/test_release_gate_download.py -vv
+        run: pytest -q -s tests/test_release_gate_download.py tests/test_settings_restart.py -vv
+
+  windows-public-internet-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Lumi runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Download public Cloudflare payload through Lumi with 32 connections
+        run: python tests/windows_public_internet_smoke.py
+
+  sergeant-20-for-2:
+    name: Sergeant 20-for-2
+    if: always()
+    needs:
+      - ui-electron-contract
+      - approved-visual-contract
+      - windows-lifecycle-contract
+      - real-download-engine
+      - windows-public-internet-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Require every independent evidence lane
+        env:
+          UI_RESULT: ${{ needs.ui-electron-contract.result }}
+          VISUAL_RESULT: ${{ needs.approved-visual-contract.result }}
+          WINDOWS_RESULT: ${{ needs.windows-lifecycle-contract.result }}
+          ENGINE_RESULT: ${{ needs.real-download-engine.result }}
+          INTERNET_RESULT: ${{ needs.windows-public-internet-smoke.result }}
+        run: |
+          test "$UI_RESULT" = success
+          test "$VISUAL_RESULT" = success
+          test "$WINDOWS_RESULT" = success
+          test "$ENGINE_RESULT" = success
+          test "$INTERNET_RESULT" = success
+      - name: Execute both twenty-lane Sergeant passes
+        run: node tests/sergeant-20-for-2.test.js
