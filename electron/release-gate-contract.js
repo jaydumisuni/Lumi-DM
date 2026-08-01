@@ -1,15 +1,15 @@
 "use strict";
 
-const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
+const { app, ipcMain, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
-const LOGIN_ARGS = ["--hidden", "--login-startup"];
 const BLOCKED_EXTENSIONS = new Set([
-  ".app", ".bat", ".cmd", ".com", ".cpl", ".exe", ".gadget", ".hta",
-  ".inf", ".ins", ".isp", ".jar", ".js", ".jse", ".lnk", ".msc",
-  ".msi", ".msp", ".mst", ".pif", ".ps1", ".reg", ".scr", ".sct",
-  ".sh", ".url", ".vb", ".vbe", ".vbs", ".ws", ".wsc", ".wsf", ".wsh",
+  ".app", ".appx", ".bat", ".chm", ".cmd", ".com", ".cpl", ".desktop",
+  ".exe", ".gadget", ".hta", ".inf", ".ins", ".isp", ".jar", ".js",
+  ".jse", ".lnk", ".msc", ".msi", ".msix", ".msp", ".mst", ".pif",
+  ".ps1", ".pyw", ".reg", ".scr", ".sct", ".sh", ".url", ".vb",
+  ".vbe", ".vbs", ".ws", ".wsc", ".wsf", ".wsh",
 ]);
 
 function desktopPath() {
@@ -22,47 +22,6 @@ function readDesktop() {
   } catch (_error) {
     return {};
   }
-}
-
-function writeDesktop(value) {
-  const next = { ...readDesktop(), ...(value || {}) };
-  fs.mkdirSync(path.dirname(desktopPath()), { recursive: true });
-  const temporary = `${desktopPath()}.tmp`;
-  fs.writeFileSync(temporary, JSON.stringify(next, null, 2));
-  fs.renameSync(temporary, desktopPath());
-  return next;
-}
-
-function getStartup() {
-  if (process.platform === "win32") {
-    const value = app.getLoginItemSettings({ path: process.execPath, args: LOGIN_ARGS });
-    return Boolean(value.openAtLogin && value.enabled !== false);
-  }
-  return Boolean(app.getLoginItemSettings().openAtLogin);
-}
-
-function setStartup(enabled) {
-  if (process.platform === "win32") {
-    app.setLoginItemSettings({
-      path: process.execPath,
-      args: LOGIN_ARGS,
-      openAtLogin: Boolean(enabled),
-    });
-    return;
-  }
-  app.setLoginItemSettings({
-    openAtLogin: Boolean(enabled),
-    openAsHidden: true,
-    args: ["--hidden"],
-  });
-}
-
-function displays() {
-  const primary = screen.getPrimaryDisplay();
-  return screen.getAllDisplays().map((display, index) => ({
-    id: String(display.id),
-    label: `${display.id === primary.id ? "Primary" : `Display ${index + 1}`} · ${display.workArea.width}×${display.workArea.height}`,
-  }));
 }
 
 function extensionSource() {
@@ -85,7 +44,8 @@ function allowedRoots() {
   ];
   return [app.getPath("downloads"), app.getPath("documents"), app.getPath("userData"), ...configured]
     .filter(value => typeof value === "string" && value.trim())
-    .map(value => path.resolve(value));
+    .filter(value => fs.existsSync(value))
+    .map(value => fs.realpathSync(path.resolve(value)));
 }
 
 function isInsideRoot(target, root) {
@@ -101,16 +61,14 @@ function secureOpenTarget(value) {
   if (!fs.existsSync(resolved)) throw new Error("The selected Lumi path does not exist");
   const target = fs.realpathSync(resolved);
   const stat = fs.statSync(target);
-
-  // Opening a directory only reveals it in the platform file manager; it does not
-  // execute a file. Files require both an approved root and a non-executable type.
-  if (stat.isDirectory()) return target;
-  if (!stat.isFile()) throw new Error("Lumi can open only regular files or folders");
+  if (!stat.isFile() && !stat.isDirectory()) {
+    throw new Error("Lumi can open only regular files or folders");
+  }
   if (!allowedRoots().some(root => isInsideRoot(target, root))) {
-    throw new Error("The selected file is outside Lumi's approved folders");
+    throw new Error("The selected item is outside Lumi's approved folders");
   }
   if (BLOCKED_EXTENSIONS.has(path.extname(target).toLowerCase())) {
-    throw new Error("Lumi does not launch executable or script files");
+    throw new Error("Lumi does not launch executable, script, shortcut, or active-content files");
   }
   return target;
 }
@@ -121,20 +79,6 @@ function extensionDestination() {
 }
 
 app.whenReady().then(() => {
-  for (const name of [
-    "ttg-open-path",
-    "ttg-open-external",
-    "ttg-prepare-browser-extension",
-    "v5-desktop-settings-get",
-    "v5-desktop-settings-save",
-  ]) {
-    try {
-      ipcMain.removeHandler(name);
-    } catch (_error) {
-      // Handler was not registered by the base runtime.
-    }
-  }
-
   ipcMain.handle("ttg-open-path", async (_event, value) => {
     const target = secureOpenTarget(value);
     const error = await shell.openPath(target);
@@ -160,23 +104,5 @@ app.whenReady().then(() => {
     const error = await shell.openPath(destination);
     if (error) throw new Error(error);
     return { ok: true, path: destination, browsers: ["chrome", "edge"] };
-  });
-
-  ipcMain.handle("v5-desktop-settings-get", () => ({
-    ...readDesktop(),
-    startAtLogin: getStartup(),
-    displays: displays(),
-  }));
-
-  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
-    if (value && Object.prototype.hasOwnProperty.call(value, "startAtLogin")) {
-      setStartup(value.startAtLogin);
-    }
-    const { startAtLogin: _ignored, ...desktop } = value || {};
-    const next = writeDesktop(desktop);
-    for (const window of BrowserWindow.getAllWindows()) {
-      if (!window.isDestroyed()) window.webContents.send("v5-settings-changed", next);
-    }
-    return { ...next, startAtLogin: getStartup(), displays: displays() };
   });
 });

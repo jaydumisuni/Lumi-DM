@@ -2,10 +2,11 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
-function finiteNumber(...values) {
+function positiveNumber(...values) {
   for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
     const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
   }
   return 0;
 }
@@ -20,16 +21,18 @@ function normalizedCapacity(value) {
     || result.state === "error"
     || Boolean(outer.error || result.error)
   );
-  const downloadMbps = finiteNumber(result.download_mbps, result.mbps);
-  const uploadMbps = finiteNumber(result.upload_mbps);
-  const capacityBytesPerSecond = finiteNumber(
+  const downloadMbps = positiveNumber(result.download_mbps, result.mbps);
+  const uploadMbps = positiveNumber(result.upload_mbps);
+  const capacityBytesPerSecond = positiveNumber(
     result.capacity_bytes_per_sec,
     result.download_bytes_per_sec,
-    downloadMbps > 0 ? downloadMbps * 125000 : 0,
+    positiveNumber(result.capacity_bps, result.bps, result.download_bps) / 8,
+    downloadMbps * 125000,
   );
-  const uploadBytesPerSecond = finiteNumber(
+  const uploadBytesPerSecond = positiveNumber(
     result.upload_bytes_per_sec,
-    uploadMbps > 0 ? uploadMbps * 125000 : 0,
+    positiveNumber(result.upload_bps) / 8,
+    uploadMbps * 125000,
   );
   const error = failed
     ? String(outer.error || result.error || outer.message || result.message || "Connection test failed")
@@ -40,11 +43,11 @@ function normalizedCapacity(value) {
     ok: !failed,
     state: failed ? "error" : (result.state || outer.state || (capacityBytesPerSecond ? "complete" : "idle")),
     error,
-    capacity_bytes_per_sec: capacityBytesPerSecond,
-    upload_bytes_per_sec: uploadBytesPerSecond,
-    capacity_bps: capacityBytesPerSecond * 8,
-    upload_bps: uploadBytesPerSecond * 8,
-    ping_ms: finiteNumber(result.ping_ms, result.latency_ms),
+    capacity_bytes_per_sec: failed ? 0 : capacityBytesPerSecond,
+    upload_bytes_per_sec: failed ? 0 : uploadBytesPerSecond,
+    capacity_bps: failed ? 0 : capacityBytesPerSecond * 8,
+    upload_bps: failed ? 0 : uploadBytesPerSecond * 8,
+    ping_ms: failed ? 0 : positiveNumber(result.ping_ms, result.latency_ms),
   };
 }
 

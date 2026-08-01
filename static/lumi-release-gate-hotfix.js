@@ -46,8 +46,9 @@
 
   function finiteNumber(...values) {
     for (const value of values) {
+      if (value === null || value === undefined || value === "") continue;
       const parsed = Number(value);
-      if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
     }
     return 0;
   }
@@ -66,9 +67,13 @@
     if (window.LumiProductionIntegration?.api) {
       return window.LumiProductionIntegration.api(method, path, body);
     }
+    const signal = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+      ? AbortSignal.timeout(30_000)
+      : undefined;
     return fetch(path, {
       method,
       credentials: "same-origin",
+      ...(signal ? { signal } : {}),
       headers: body === null ? {} : { "Content-Type": "application/json" },
       ...(body === null ? {} : { body: JSON.stringify(body) }),
     }).then(async response => {
@@ -211,11 +216,13 @@
     let pairingPanel = $("[data-release-pairing-panel]", content);
     if (pairing) {
       if (!pairingPanel) {
+        const host = content.querySelector(".page");
+        if (!host) return;
         pairingPanel = document.createElement("section");
         pairingPanel.className = "panel";
         pairingPanel.dataset.releasePairingPanel = "";
         pairingPanel.style.marginTop = "16px";
-        content.querySelector(".page")?.appendChild(pairingPanel);
+        host.appendChild(pairingPanel);
       }
       renderPairingPanel(pairingPanel);
     } else if (pairingPanel) {
@@ -276,6 +283,7 @@
       );
       const ping = finiteNumber(result?.ping_ms, result?.latency_ms);
       state.speedResult = { bps: bytesPerSecond, uploadBps: uploadBytesPerSecond, ping };
+      state.netstats ||= { rx_bps: 0, tx_bps: 0, capacity_bps: 0, available: false };
       state.netstats.capacity_bps = bytesPerSecond;
       toast("Speed test complete", "good");
     } catch (error) {
@@ -305,7 +313,8 @@
     };
     window.switchView = replica.switchView;
     replica.state.approvedPrefs = prefs;
-    if (!replica.state.settings?.default_connections) replica.state.settings.default_connections = 32;
+    replica.state.settings ||= {};
+    if (!replica.state.settings.default_connections) replica.state.settings.default_connections = 32;
     window.openSpeedTest = renderSpeedPanel;
     window.runSpeedTest = runGuardedSpeedTest;
     replica.render();
@@ -425,10 +434,13 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       try {
+        if (!window.electronApp?.prepareBrowserExtension) {
+          throw new Error("Browser extension preparation is available only in the Lumi desktop app");
+        }
         await window.electronApp.prepareBrowserExtension();
         toast(`${packageButton.dataset.releaseExtensionPackage === "edge" ? "Edge" : "Chrome"} extension package opened`);
       } catch (error) {
-        toast(error.message, "bad");
+        toast(error.message || "Browser extension package could not be prepared", "bad");
       }
       return;
     }
@@ -449,7 +461,7 @@
         patchExtension();
         toast("One-time pairing code generated");
       } catch (error) {
-        toast(error.message, "bad");
+        toast(error.message || "Pairing code could not be generated", "bad");
       }
     }
   }, true);

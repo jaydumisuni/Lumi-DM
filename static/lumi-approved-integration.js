@@ -17,6 +17,15 @@
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   }[character]));
   const byteUnits = ["B", "KB", "MB", "GB", "TB"];
+  const DEFAULT_CONNECTIONS = 32;
+  const positiveNumber = (...values) => {
+    for (const value of values) {
+      if (value === null || value === undefined || value === "") continue;
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+    return 0;
+  };
   const unfinished = new Set([
     "staged", "queued", "resolving", "running", "downloading", "pausing",
     "paused", "needs_link", "verifying", "post_processing", "failed",
@@ -425,7 +434,7 @@
     const settings = state.settings || {};
     const defaultDir = settings.default_dir || "";
     const concurrent = Number(settings.max_concurrent || 3);
-    const connections = Number(settings.default_connections || 16);
+    const connections = Number(settings.default_connections || DEFAULT_CONNECTIONS);
     return `<div class="page">${pageHead("settings")}${emptyOffline()}
       <div class="settings-grid">
         <section class="settings-card"><h3>⚙ General</h3>${settingRow("Launch Lumi on system startup", switchHTML(Boolean(state.desktopSettings?.startAtLogin)))}${settingRow("Start minimized to system tray", switchHTML(true))}${settingRow("When closing the window", '<select id="close-behaviour"><option>Minimize to tray</option></select>')}${settingRow("Language", '<select id="language-select"><option>English</option></select>')}${settingRow("Check for updates", '<select id="update-frequency"><option>Daily</option></select>')}${settingRow("Default download folder", `<div class="inline-field"><input id="default-download-folder" type="text" value="${escapeHtml(defaultDir)}"><button class="btn small" data-pick-default-folder>Browse</button></div>`)}</section>
@@ -468,7 +477,7 @@
     if (previewRuntime()) { replica.render(); toast("Settings saved", "good"); return; }
     const defaultDir = $("#default-download-folder")?.value.trim() || state.settings.default_dir || "";
     const maximum = Number($("#max-concurrent")?.value || state.settings.max_concurrent || 3);
-    const connections = Number($("#default-connections")?.value || state.settings.default_connections || 16);
+    const connections = Number($("#default-connections")?.value || state.settings.default_connections || DEFAULT_CONNECTIONS);
     try {
       await Promise.all([
         api("POST", "/api/settings/default-dir", { dir: defaultDir }),
@@ -497,11 +506,26 @@
       } else {
         result = await api("GET", "/api/speedtest");
       }
-      const bps = Number(result?.capacity_bps || result?.bps || result?.download_bps || 0);
-      const uploadBps = Number(result?.upload_bps || state.netstats.tx_bps || 0);
-      const ping = Number(result?.ping_ms || result?.latency_ms || 0);
-      state.speedResult = { bps, uploadBps, ping };
-      if (bps) state.netstats.capacity_bps = bps;
+      if (result?.ok === false || result?.state === "error" || result?.error) {
+        throw new Error(result.error || result.message || "Connection speed test failed");
+      }
+      const bytesPerSecond = positiveNumber(
+        result?.capacity_bytes_per_sec,
+        result?.download_bytes_per_sec,
+        positiveNumber(result?.capacity_bps, result?.bps, result?.download_bps) / 8,
+        positiveNumber(result?.download_mbps, result?.mbps) * 125000,
+      );
+      if (bytesPerSecond <= 0) throw new Error("Connection speed test returned no usable download result");
+      const uploadBytesPerSecond = positiveNumber(
+        result?.upload_bytes_per_sec,
+        positiveNumber(result?.upload_bps) / 8,
+        positiveNumber(result?.upload_mbps) * 125000,
+        state.netstats?.tx_bps,
+      );
+      const ping = positiveNumber(result?.ping_ms, result?.latency_ms);
+      state.speedResult = { bps: bytesPerSecond, uploadBps: uploadBytesPerSecond, ping };
+      state.netstats ||= { rx_bps: 0, tx_bps: 0, capacity_bps: 0, available: false };
+      state.netstats.capacity_bps = bytesPerSecond;
       updateStorageChrome();
       toast("Speed test complete", "good");
     } catch (error) {
@@ -860,7 +884,16 @@
       window.electronApp.onWindowState?.(updateMaximizeButton);
     }
     window.electronApp?.onConnectionCapacity?.(value => {
-      if (value?.capacity_bps) { state.netstats.capacity_bps = Number(value.capacity_bps); updateStorageChrome(); }
+      if (value?.ok === false || value?.state === "error" || value?.error) return;
+      const bytesPerSecond = positiveNumber(
+        value?.capacity_bytes_per_sec,
+        value?.download_bytes_per_sec,
+        positiveNumber(value?.capacity_bps, value?.bps, value?.download_bps) / 8,
+      );
+      if (!bytesPerSecond) return;
+      state.netstats ||= { rx_bps: 0, tx_bps: 0, capacity_bps: 0, available: false };
+      state.netstats.capacity_bps = bytesPerSecond;
+      updateStorageChrome();
     });
     window.electronApp?.onServerState?.(value => {
       if (value?.ready === false || value?.online === false) {
@@ -869,7 +902,16 @@
       }
     });
     clearInterval(state.livePollTimer);
-    state.livePollTimer = setInterval(() => { void refreshLive({ full: false, renderAfter: ["overview", "downloads", "unfinished", "finished", "queues"].includes(state.view) }); }, 2200);
+    state.livePollTimer = setInterval(() => {
+      const editor = document.activeElement;
+      const editingContent = Boolean(
+        editor
+        && editor.closest?.("#content")
+        && ["INPUT", "TEXTAREA", "SELECT"].includes(editor.tagName),
+      );
+      const liveView = ["overview", "downloads", "unfinished", "finished", "queues"].includes(state.view);
+      void refreshLive({ full: false, renderAfter: liveView && !editingContent });
+    }, 2200);
   });
 
   window.LumiProductionIntegration = {

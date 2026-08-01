@@ -89,6 +89,8 @@ def range_url():
 def lumi(tmp_path_factory):
     """Start Lumi's real Flask application with isolated persistent directories."""
     root = tmp_path_factory.mktemp("lumi-release-gate")
+    keys = ("LUMIDM_DATA_DIR", "LUMIDM_DOWNLOAD_DIR", "LUMIDM_TEMP_DIR")
+    previous = {key: os.environ.get(key) for key in keys}
     os.environ.update(
         LUMIDM_DATA_DIR=str(root / "data"),
         LUMIDM_DOWNLOAD_DIR=str(root / "downloads"),
@@ -104,7 +106,19 @@ def lumi(tmp_path_factory):
     client.environ_base["HTTP_X_LUMI_CLIENT"] = "release-gate-test"
     response = client.get("/api/security/bootstrap")
     assert response.status_code == 200, response.get_data(as_text=True)
-    return client, root
+    try:
+        yield client, root
+    finally:
+        runtime = sys.modules.get("core.v2.runtime")
+        current = getattr(runtime, "_RUNTIME", None) if runtime else None
+        if current is not None:
+            current.close()
+            runtime._RUNTIME = None
+        for key, original in previous.items():
+            if original is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = original
 
 
 def extension_client(owner):

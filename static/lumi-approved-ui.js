@@ -4,6 +4,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtGB = mb => mb >= 1024 ? `${(mb/1024).toFixed(mb%1024 ? 1 : 0)} GB` : `${mb.toFixed ? mb.toFixed(1) : mb} MB`;
+const DEFAULT_CONNECTIONS = 32;
 
 const ICON_PATHS={
  home:'<path d="M3 10.8 12 3l9 7.8"/><path d="M5.4 9.8V21h5v-6h3.2v6h5V9.8"/>',
@@ -104,7 +105,7 @@ const state = {
   speedTestRunning: false,
   extension: {chrome:"Connected",edge:"Installed",firefox:"Not Installed"},
   productionReady:false,
-  settings:{default_dir:"",default_connections:16,max_concurrent:3},
+  settings:{default_dir:"",default_connections:DEFAULT_CONNECTIONS,max_concurrent:3},
   overview:{},
 };
 
@@ -286,7 +287,7 @@ function renderSettings(){
   return `<div class="page">${pageHead("settings")}
     <div class="settings-grid">
       <section class="settings-card"><h3>⚙ General</h3>${settingRow("Launch Lumi on system startup",switchHTML(true))}${settingRow("Start minimized to system tray",switchHTML(true))}${settingRow("When closing the window",'<select><option>Minimize to tray</option></select>')}${settingRow("Language",'<select><option>English</option></select>')}${settingRow("Check for updates",'<select><option>Daily</option></select>')}${settingRow("Default download folder",'<input type="text" value="D:\\Downloads">')}</section>
-      <section class="settings-card"><h3>⇩ Downloads</h3>${settingRow("Default download category",'<select><option>Uncategorized</option></select>')}${settingRow("Default download queue",'<select><option>Default Queue</option></select>')}${settingRow("Max concurrent downloads",'<input type="number" value="3">')}${settingRow("Max connections per download",'<input type="number" value="16">')}${settingRow("If file exists",'<select><option>Ask what to do</option></select>')}<label class="setting-row full"><span><input type="checkbox" checked> Automatically start downloads</span></label><label class="setting-row full"><span><input type="checkbox"> Add downloads to top of queue</span></label><label class="setting-row full"><span><input type="checkbox" checked> Enable smart file name ⓘ</span></label></section>
+      <section class="settings-card"><h3>⇩ Downloads</h3>${settingRow("Default download category",'<select><option>Uncategorized</option></select>')}${settingRow("Default download queue",'<select><option>Default Queue</option></select>')}${settingRow("Max concurrent downloads",'<input type="number" value="3">')}${settingRow("Max connections per download",'<input type="number" value="32">')}${settingRow("If file exists",'<select><option>Ask what to do</option></select>')}<label class="setting-row full"><span><input type="checkbox" checked> Automatically start downloads</span></label><label class="setting-row full"><span><input type="checkbox"> Add downloads to top of queue</span></label><label class="setting-row full"><span><input type="checkbox" checked> Enable smart file name ⓘ</span></label></section>
       <section class="settings-card"><h3 style="color:#00a7ff">⌁ Network</h3><div style="font-size:13px;margin-bottom:8px">Connection type</div><label class="setting-row full"><span><input type="radio" name="connection" checked> Auto-detect (Recommended)</span></label><label class="setting-row full"><span><input type="radio" name="connection"> Direct connection</span></label><label class="setting-row full"><span><input type="radio" name="connection"> Manual proxy</span></label><hr style="border:0;border-top:1px solid rgba(108,126,160,.2)">${settingRow("Global download speed limit",switchHTML(true))}${settingRow("Maximum download speed",'<input type="number" value="0">')}${settingRow("Maximum upload speed",'<input type="number" value="0">')}${settingRow("Rate limit mode",'<select><option>Per download</option></select>')}<button class="btn" data-test-network style="margin:10px auto 0;display:flex">▥ &nbsp;Test Network</button></section>
       <section class="settings-card"><h3>♧ Notifications</h3>${settingRow("Show desktop notifications",switchHTML(true))}${settingRow("Play sound on download complete",switchHTML(true))}${settingRow("Notify on download errors",switchHTML(true))}${settingRow("Notify on queue completion",switchHTML(false))}<hr style="border:0;border-top:1px solid rgba(108,126,160,.2)">${settingRow("Sound",'<select><option>Chime</option></select>')}${settingRow("Notification timeout",'<select><option>5 seconds</option></select>')}</section>
       <section class="settings-card"><h3>◉ Appearance</h3>${settingRow("Theme",`<select id="theme-select"><option value="dark" ${state.theme==='dark'?'selected':''}>Lumi Dark (Default)</option><option value="light" ${state.theme==='light'?'selected':''}>Lumi Light Glass</option></select>`)}<div class="setting-row"><span>Accent color</span><div class="color-dots"><i class="active" style="background:#9122ff"></i><i style="background:#147cff"></i><i style="background:#00b7d7"></i><i style="background:#00c94f"></i><i style="background:#ff7c0d"></i><i style="background:#f33b74"></i><i style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)"></i></div></div>${settingRow("UI density",'<select><option>Comfortable</option></select>')}${settingRow("Use system title bar",switchHTML(true))}${settingRow("Acrylic / Transparency",'<select><option>Medium</option></select>')}</section>
@@ -375,7 +376,7 @@ async function confirmNewDownload(){
   const url=$("#new-url")?.value.trim();if(!url){toast("Enter a download URL","bad");return}
   const category=$("#new-category")?.value||"Uncategorized";
   if(!isPreviewRuntime()&&state.productionReady){
-    try{await productionApi("POST","/api/downloads/start",{url,target_dir:state.settings.default_dir||"",filename:"",queue_id:"default",category_id:category,connections:Number(state.settings.default_connections||16),duplicate_policy:"reuse",overwrite:false,start_paused:false});await maybeLoadProductionData();closeModal();switchView("downloads");toast("Download added to Lumi","good");return}catch(error){toast(error.message,"bad");return}
+    try{await productionApi("POST","/api/downloads/start",{url,target_dir:state.settings.default_dir||"",filename:"",queue_id:"default",category_id:category,connections:Number(state.settings.default_connections||DEFAULT_CONNECTIONS),duplicate_policy:"reuse",overwrite:false,start_paused:false});await maybeLoadProductionData();closeModal();switchView("downloads");toast("Download added to Lumi","good");return}catch(error){toast(error.message,"bad");return}
   }
   state.tasks.unshift({id:`t${Date.now()}`,name:url.split('/').pop()||"New download",category,source:"Added link",downloaded:0,total:1,progress:0,speed:"—",eta:"Queued",status:"queued",icon:"zip",priority:"Normal"});closeModal();switchView("downloads");toast("Download added to Lumi","good");
 }
@@ -450,7 +451,12 @@ function handleClick(event){
 }
 function runSpeedTest(){
   state.speedTestRunning=true;openSpeedTest();
-  let step=0;const timer=setInterval(()=>{step++;$("#speed-status").innerHTML="● &nbsp;Testing";$("#speed-download").textContent=`${Math.min(82.4,15+step*13.2).toFixed(1)} Mbps`;$("#speed-upload").textContent=`${Math.min(18.6,2+step*3.3).toFixed(1)} Mbps`;$("#speed-ping").textContent=`${Math.max(12,44-step*6)} ms`;if(step>=5){clearInterval(timer);state.speedTestRunning=false;$("#speed-status").innerHTML="● &nbsp;Complete";$("#speed-download").textContent="82.4 Mbps";$("#speed-upload").textContent="18.6 Mbps";$("#speed-ping").textContent="12 ms";const b=$("[data-start-speed-test]");if(b)b.textContent="↻  Test Again";toast("Speed test complete","good")}},350);
+  let step=0;const timer=setInterval(()=>{
+    const status=$("#speed-status"),download=$("#speed-download"),upload=$("#speed-upload"),ping=$("#speed-ping");
+    if(!status||!download||!upload||!ping){clearInterval(timer);state.speedTestRunning=false;return}
+    step++;status.textContent="●  Testing";download.textContent=`${Math.min(82.4,15+step*13.2).toFixed(1)} Mbps`;upload.textContent=`${Math.min(18.6,2+step*3.3).toFixed(1)} Mbps`;ping.textContent=`${Math.max(12,44-step*6)} ms`;
+    if(step>=5){clearInterval(timer);state.speedTestRunning=false;status.textContent="●  Complete";download.textContent="82.4 Mbps";upload.textContent="18.6 Mbps";ping.textContent="12 ms";const button=$("[data-start-speed-test]");if(button)button.textContent="↻  Test Again";toast("Speed test complete","good")}
+  },350);
 }
 
 function handleInput(event){
@@ -463,7 +469,7 @@ async function init(){
   document.addEventListener("click",handleClick);
   document.addEventListener("input",handleInput);
   $("#overlay").addEventListener("click",closeModal);
-  $("#drive-select").addEventListener("change",e=>{const map={"Drive D:":["248.6 GB","48%"],"Drive C:":["126.9 GB","72%"],"Drive E:":["812.4 GB","19%"]};const [left,pct]=map[e.target.value];$("#storage-left").textContent=left;$("#storage-percent").textContent=pct;toast(`${e.target.value} selected`,`good`)});
+  $("#drive-select").addEventListener("change",e=>{const map={"Drive D:":["248.6 GB","48%"],"Drive C:":["126.9 GB","72%"],"Drive E:":["812.4 GB","19%"]};const selected=map[e.target.value];if(!selected){toast(`${e.target.options[e.target.selectedIndex]?.text||"Storage drive"} selected`,`good`);return}const [left,pct]=selected;$("#storage-left").textContent=left;$("#storage-percent").textContent=pct;toast(`${e.target.value} selected`,`good`)});
   const params=new URLSearchParams(location.search);
   if(params.get("theme")==="light") state.theme="light";
   if(params.get("view")&&meta[params.get("view")]) state.view=params.get("view");

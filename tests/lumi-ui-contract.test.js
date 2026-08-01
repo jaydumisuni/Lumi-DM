@@ -2,32 +2,32 @@
 
 const assert = require("assert");
 const fs = require("fs");
+const path = require("path");
 const vm = require("vm");
 
-const hotfix = fs.readFileSync("static/lumi-release-gate-hotfix.js", "utf8");
-const ui = fs.readFileSync("static/lumi-approved-ui.js", "utf8");
-const integration = fs.readFileSync("static/lumi-approved-integration.js", "utf8");
-const preload = fs.readFileSync("electron/preload-main.js", "utf8");
-const contract = fs.readFileSync("electron/release-gate-contract.js", "utf8");
-const main = fs.readFileSync("electron/main.js", "utf8");
-const server = fs.readFileSync("server.py", "utf8");
-const runtime = fs.readFileSync("core/v2/runtime.py", "utf8");
-const index = fs.readFileSync("static/index.html", "utf8");
+const root = path.resolve(__dirname, "..");
+const read = file => fs.readFileSync(path.join(root, file), "utf8");
+const exists = file => fs.existsSync(path.join(root, file));
+const hotfix = read("static/lumi-release-gate-hotfix.js");
+const ui = read("static/lumi-approved-ui.js");
+const integration = read("static/lumi-approved-integration.js");
+const preload = read("electron/preload-main.js");
+const contract = read("electron/release-gate-contract.js");
+const main = read("electron/main.js");
+const server = read("server.py");
+const runtime = read("core/v2/runtime.py");
+const index = read("static/index.html");
 
 for (const file of [
   "static/lumi-approved-ui.css",
   "static/lumi-approved-ui.js",
   "static/lumi-approved-integration.js",
-]) {
-  assert(fs.existsSync(file), `${file} must be readable and committed`);
-}
+]) assert(exists(file), `${file} must be readable and committed`);
 for (const removed of [
   "static/lumi-approved-loader.js",
   "static/lumi-payload-01.js",
   "electron/main-payload-01.js",
-]) {
-  assert(!fs.existsSync(removed), `${removed} must remain removed`);
-}
+]) assert(!exists(removed), `${removed} must remain removed`);
 
 assert(index.includes('aria-label="Search downloads"'));
 assert(index.includes('aria-label="Open settings menu"'));
@@ -41,29 +41,17 @@ assert(!server.includes("set_default_connections"));
 assert(runtime.includes('get_setting("default_connections", 32)'));
 
 for (const marker of [
-  "data-test-network",
-  "data-start-speed-test",
-  "data-export-settings",
-  "data-import-settings",
-  "data-reset-settings",
-  "/api/v4/security/pairing",
-  "/api/v4/security/clients",
-  "pairingSecondsRemaining",
-  "schedulePairingExpiry",
-  "Mozilla Firefox\", \"Unavailable",
-]) {
-  assert(hotfix.includes(marker), marker);
-}
+  "data-test-network", "data-start-speed-test", "data-export-settings",
+  "data-import-settings", "data-reset-settings", "/api/v4/security/pairing",
+  "/api/v4/security/clients", "pairingSecondsRemaining", "schedulePairingExpiry",
+]) assert(hotfix.includes(marker), marker);
+assert(hotfix.includes("Mozilla Firefox"));
+assert(hotfix.includes("Unavailable"));
 for (const marker of [
-  "BLOCKED_EXTENSIONS",
-  "secureOpenTarget",
-  "The selected file is outside Lumi's approved folders",
-  "Lumi does not launch executable or script files",
-  "extensionDestination",
-  "errorOnExist: true",
-]) {
-  assert(contract.includes(marker), marker);
-}
+  "BLOCKED_EXTENSIONS", "secureOpenTarget", "The selected item is outside Lumi's approved folders",
+  "Lumi does not launch executable, script, shortcut, or active-content files",
+  "extensionDestination", "errorOnExist: true",
+]) assert(contract.includes(marker), marker);
 assert(ui.includes("window.LumiReplica"));
 assert(integration.includes("window.LumiProductionIntegration"));
 
@@ -78,26 +66,18 @@ const electron = {
   },
   ipcRenderer: {
     invoke: async () => invokeResult,
-    send() {},
-    on() {},
-    removeListener() {},
+    send() {}, on() {}, removeListener() {},
   },
 };
 vm.runInNewContext(preload, {
-  require(id) {
-    assert.strictEqual(id, "electron");
-    return electron;
-  },
+  require(id) { assert.strictEqual(id, "electron"); return electron; },
   console,
-}, { filename: "electron/preload-main.js" });
+}, { filename: path.join(root, "electron", "preload-main.js") });
 assert(exposed, "preload bridge must be exposed");
 assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
 
 (async () => {
-  invokeResult = {
-    state: "complete",
-    result: { download_mbps: 80, upload_mbps: 20, latency_ms: 12.4 },
-  };
+  invokeResult = { state: "complete", result: { download_mbps: 80, upload_mbps: 20, latency_ms: 12.4 } };
   const success = await exposed.getConnectionCapacity();
   assert.strictEqual(success.ok, true);
   assert.strictEqual(success.capacity_bytes_per_sec, 10_000_000);
@@ -106,7 +86,16 @@ assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
   assert.strictEqual(success.upload_bps, 20_000_000);
   assert.strictEqual(success.ping_ms, 12.4);
 
-  invokeResult = { ok: false, state: "error", error: "timeout" };
+  invokeResult = { state: "complete", result: { capacity_bytes_per_sec: null, capacity_bps: 80_000_000 } };
+  const bitRateFallback = await exposed.getConnectionCapacity();
+  assert.strictEqual(bitRateFallback.capacity_bytes_per_sec, 10_000_000);
+  assert.strictEqual(bitRateFallback.capacity_bps, 80_000_000);
+
+  invokeResult = { state: "complete", result: { download_bytes_per_sec: 2_000_000, download_bps: 1 } };
+  const byteRatePrecedence = await exposed.getConnectionCapacity();
+  assert.strictEqual(byteRatePrecedence.capacity_bytes_per_sec, 2_000_000);
+
+  invokeResult = { ok: false, state: "error", error: "timeout", result: { download_mbps: 80 } };
   const failure = await exposed.runConnectionCapacityTest();
   assert.strictEqual(failure.ok, false);
   assert.strictEqual(failure.state, "error");
@@ -120,7 +109,4 @@ assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
   assert.strictEqual(invalid.capacity_bps, 0);
 
   console.log("Lumi readable UI, settings, speed and extension contract: PASS");
-})().catch(error => {
-  console.error(error);
-  process.exit(1);
-});
+})().catch(error => { console.error(error); process.exit(1); });

@@ -24,7 +24,6 @@ def _new_application(data_dir: Path):
         if name == "server" or name.startswith("core."):
             sys.modules.pop(name, None)
 
-    os.environ["LUMIDM_DATA_DIR"] = str(data_dir)
     module = importlib.import_module("server")
     client = module.app.test_client()
     client.environ_base["HTTP_ORIGIN"] = "http://localhost"
@@ -34,9 +33,10 @@ def _new_application(data_dir: Path):
     return client
 
 
-def test_default_connections_survive_restart(tmp_path):
+def test_default_connections_survive_restart(tmp_path, monkeypatch):
     """Save 12, restart the application, then observe 12 from the reopened store."""
     data_dir = tmp_path / "data"
+    monkeypatch.setenv("LUMIDM_DATA_DIR", str(data_dir))
     first = _new_application(data_dir)
     assert first.get("/api/settings").get_json()["default_connections"] == 32
     saved = first.post("/api/settings/connections", json={"value": 12})

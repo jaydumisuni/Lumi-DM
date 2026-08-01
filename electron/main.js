@@ -154,6 +154,36 @@ function writeDesktopPrefs(value) {
   return next;
 }
 
+const DESKTOP_DIRECTORY_KEYS = [
+  "defaultDir", "default_dir", "downloadDir", "download_dir",
+  "targetDir", "target_dir", "tempDir", "temp_dir",
+];
+
+function isInsideRoot(target, root) {
+  const relative = path.relative(root, target);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function validateDesktopDirectories(value) {
+  const next = { ...(value || {}) };
+  const home = fs.realpathSync(app.getPath("home"));
+  for (const key of DESKTOP_DIRECTORY_KEYS) {
+    if (!Object.prototype.hasOwnProperty.call(next, key)) continue;
+    const requested = String(next[key] || "").trim();
+    if (!requested) {
+      next[key] = "";
+      continue;
+    }
+    const resolved = path.resolve(requested);
+    if (!fs.existsSync(resolved)) throw new Error(`${key} must reference an existing folder`);
+    const target = fs.realpathSync(resolved);
+    if (!fs.statSync(target).isDirectory()) throw new Error(`${key} must reference a folder`);
+    if (!isInsideRoot(target, home)) throw new Error(`${key} must stay inside the user home folder`);
+    next[key] = target;
+  }
+  return next;
+}
+
 function displayFor(settings) {
   if (String(settings.displayId) === "primary") return screen.getPrimaryDisplay();
   return screen.getAllDisplays().find(display => String(display.id) === String(settings.displayId))
@@ -607,12 +637,18 @@ function registerIpc() {
 
   ipcMain.handle("v5-desktop-settings-get", () => ({
     ...readDesktopPrefs(),
+    startAtLogin: getStartupEnabled(),
     displays: displaysForUi(),
   }));
 
   ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
     const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-    const next = writeDesktopPrefs(value);
+    const requested = value && typeof value === "object" ? value : {};
+    if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
+      setStartupEnabled(Boolean(requested.startAtLogin));
+    }
+    const { startAtLogin: _ignored, ...desktop } = requested;
+    const next = writeDesktopPrefs(validateDesktopDirectories(desktop));
     widgetExpanded = false;
     if (next.visible === false || mainWindowIsVisible()) {
       hideWidget();
@@ -621,7 +657,7 @@ function registerIpc() {
       widgetWindow?.showInactive();
     }
     widgetWindow?.webContents.send("v5-settings-changed", next);
-    return { ...next, displays: displaysForUi() };
+    return { ...next, startAtLogin: getStartupEnabled(), displays: displaysForUi() };
   });
 
   ipcMain.on("v5-widget-show", showWidget);

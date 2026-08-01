@@ -285,7 +285,7 @@ async function runScenario(argv) {
   hiddenMain.close();
   assert(!hiddenMain.visible, "restored app closes back to tray");
 
-  console.log("Lumi readable Windows lifecycle contract: 32/32 PASS");
+  console.log("Lumi readable Windows lifecycle and identity contract: 27/27 PASS");
 })().catch(error => {
   console.error(error);
   process.exit(1);
