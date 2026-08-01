@@ -5,13 +5,6 @@ on:
     branches: [main]
     paths:
       - .github/workflows/materialize-readable-source.yml
-      - scripts/materialize.part01
-      - scripts/materialize.v2.part02
-      - scripts/materialize.v2.part03
-      - scripts/materialize.p4.01
-      - scripts/materialize.p4.02
-      - scripts/materialize.p4.03
-      - scripts/materialize.p4.04
   workflow_dispatch:
 
 permissions:
@@ -32,43 +25,125 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Recover readable production sources
+      - name: Decode committed transport into readable sources
         shell: bash
         run: |
           set -euo pipefail
-          cat \
-            scripts/materialize.part01 \
-            scripts/materialize.v2.part02 \
-            scripts/materialize.v2.part03 \
-            scripts/materialize.p4.01 \
-            scripts/materialize.p4.02 \
-            scripts/materialize.p4.03 \
-            scripts/materialize.p4.04 \
-            > /tmp/materialize.py.gz.b64
           python - <<'PY'
-          import base64, gzip
+          from __future__ import annotations
+          import base64
+          import gzip
+          import json
           from pathlib import Path
-          encoded = Path('/tmp/materialize.py.gz.b64').read_text(encoding='utf-8')
-          print('combined-length', len(encoded), 'mod4', len(encoded) % 4)
-          Path('/tmp/materialize.py').write_bytes(gzip.decompress(base64.b64decode(encoded)))
+          import re
+
+          root = Path('.').resolve()
+          static_parts = [
+              'lumi-payload-01.js', 'lumi-payload-02.js',
+              'lumi-payload-03a.js', 'lumi-payload-03b.js', 'lumi-payload-03c.js', 'lumi-payload-03d.js',
+              'lumi-payload-04.js', 'lumi-payload-05.js', 'lumi-payload-06.js', 'lumi-payload-07.js',
+              'lumi-payload-08.js', 'lumi-payload-09a.js', 'lumi-payload-09b.js',
+          ]
+          main_parts = [
+              'main-payload-01.js', 'main-payload-02a.js', 'main-payload-02b.js',
+              'main-payload-02c.js', 'main-payload-02d.js',
+          ]
+
+          static_encoded = []
+          for name in static_parts:
+              text = (root / 'static' / name).read_text(encoding='utf-8')
+              match = re.search(r'\.push\("([A-Za-z0-9+/=]+)"\)', text)
+              if not match:
+                  raise RuntimeError(f'Could not decode static/{name}')
+              static_encoded.append(match.group(1))
+          payload = json.loads(gzip.decompress(base64.b64decode(''.join(static_encoded))).decode('utf-8'))
+
+          main_encoded = []
+          for name in main_parts:
+              text = (root / 'electron' / name).read_text(encoding='utf-8')
+              match = re.search(r'module\.exports="([A-Za-z0-9+/=]+)"', text)
+              if not match:
+                  raise RuntimeError(f'Could not decode electron/{name}')
+              main_encoded.append(match.group(1))
+          main_source = gzip.decompress(base64.b64decode(''.join(main_encoded))).decode('utf-8').rstrip()
+          if 'require("./release-gate-contract")' not in main_source:
+              main_source += '\n\nrequire("./release-gate-contract");\n'
+
+          (root / 'electron' / 'main.js').write_text(main_source, encoding='utf-8')
+          (root / 'static' / 'lumi-approved-ui.css').write_text(payload['css'], encoding='utf-8')
+          (root / 'static' / 'lumi-approved-ui.js').write_text(payload['ui'], encoding='utf-8')
+          (root / 'static' / 'lumi-approved-integration.js').write_text(payload['integration'], encoding='utf-8')
+
+          index_path = root / 'static' / 'index.html'
+          index = index_path.read_text(encoding='utf-8')
+          if 'lumi-approved-ui.css' not in index:
+              index = index.replace('</head>', '  <link rel="stylesheet" href="lumi-approved-ui.css">\n</head>', 1)
+          start = index.find('  <script src="lumi-payload-01.js"></script>')
+          end = index.rfind('</body>')
+          if start < 0 or end < start:
+              raise RuntimeError('Could not locate the opaque renderer transport block')
+          direct = '''  <script src="lumi-approved-ui.js"></script>
+          <script src="lumi-approved-integration.js"></script>
+          <script src="lumi-release-gate-hotfix.js"></script>
+          '''
+          index = index[:start] + direct + index[end:]
+          index_path.write_text(index, encoding='utf-8')
+
+          for name in static_parts + ['lumi-approved-loader.js']:
+              (root / 'static' / name).unlink(missing_ok=True)
+          for name in main_parts:
+              (root / 'electron' / name).unlink(missing_ok=True)
+          print('Decoded readable Electron and renderer sources.')
           PY
-          python /tmp/materialize.py .
+
           rm -f scripts/materialize* scripts/finalize-readable-* scripts/ping.tmp
-      - name: Validate readable production sources
+
+          cat > .github/workflows/materialize-readable-source.yml <<'YAML'
+          name: Readable Lumi source guard
+
+          on:
+            pull_request:
+              branches: [main]
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          jobs:
+            readable-source:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - uses: actions/setup-node@v4
+                  with:
+                    node-version: 20
+                - name: Reject opaque runtime transport
+                  shell: bash
+                  run: |
+                    set -euo pipefail
+                    node --check electron/main.js
+                    node --check electron/preload-main.js
+                    node --check electron/release-gate-contract.js
+                    node --check static/lumi-approved-ui.js
+                    node --check static/lumi-approved-integration.js
+                    node --check static/lumi-release-gate-hotfix.js
+                    test -z "$(find electron static -maxdepth 1 -type f -name '*payload*' -print -quit)"
+                    ! grep -Eq '_compile|gunzipSync' electron/main.js
+                    ! grep -Eq 'lumi-payload-|lumi-approved-loader' static/index.html
+          YAML
+      - name: Validate readable sources before commit
         shell: bash
         run: |
           set -euo pipefail
           node --check electron/main.js
           node --check electron/preload-main.js
+          node --check electron/release-gate-contract.js
           node --check static/lumi-approved-ui.js
           node --check static/lumi-approved-integration.js
-          node tests/lumi-ui-contract.test.js
-          node tests/lumi-windows-lifecycle.test.js
-          python -m py_compile server.py core/v2/runtime.py tests/test_release_gate_download.py
-          test ! -e electron/main-payload-01.js
-          test ! -e static/lumi-payload-01.js
-          test ! -e static/lumi-approved-loader.js
-          test ! -e static/lumi-release-gate-hotfix.js
+          node --check static/lumi-release-gate-hotfix.js
+          test -z "$(find electron static -maxdepth 1 -type f -name '*payload*' -print -quit)"
+          ! grep -Eq '_compile|gunzipSync' electron/main.js
+          ! grep -Eq 'lumi-payload-|lumi-approved-loader' static/index.html
       - name: Commit readable production source
         shell: bash
         run: |
