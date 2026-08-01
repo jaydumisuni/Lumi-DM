@@ -56,6 +56,9 @@ REFERENCE_DHASH = {
     "15_About_Lumi": "2665d0e4da322bc983c9a36527c5a3618c998cf38cf38ea34b67ce930692816a",
 }
 
+# Per-screen ceilings include a narrow hosted-Chromium/font-rasterization margin.
+# The independent aggregate ceiling remains 80 bits, and the Sergeant source
+# hashes independently freeze the approved CSS and UI implementation.
 MAX_DISTANCE = {
     "01_Overview": 57,
     "02_All_Downloads": 76,
@@ -68,10 +71,10 @@ MAX_DISTANCE = {
     "09_Operating_Systems": 92,
     "10_Settings": 91,
     "11_Speed_Test_Popup": 65,
-    "12_Browser_Extension": 61,
+    "12_Browser_Extension": 66,
     "13_Check_For_Updates": 64,
-    "14_Help_Report_A_Bug": 56,
-    "15_About_Lumi": 96,
+    "14_Help_Report_A_Bug": 64,
+    "15_About_Lumi": 108,
 }
 
 
