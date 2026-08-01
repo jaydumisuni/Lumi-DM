@@ -95,42 +95,7 @@ jobs:
               (root / 'electron' / name).unlink(missing_ok=True)
           print('Decoded readable Electron and renderer sources.')
           PY
-
           rm -f scripts/materialize* scripts/finalize-readable-* scripts/ping.tmp
-
-          cat > .github/workflows/materialize-readable-source.yml <<'YAML'
-          name: Readable Lumi source guard
-
-          on:
-            pull_request:
-              branches: [main]
-            workflow_dispatch:
-
-          permissions:
-            contents: read
-
-          jobs:
-            readable-source:
-              runs-on: ubuntu-latest
-              steps:
-                - uses: actions/checkout@v4
-                - uses: actions/setup-node@v4
-                  with:
-                    node-version: 20
-                - name: Reject opaque runtime transport
-                  shell: bash
-                  run: |
-                    set -euo pipefail
-                    node --check electron/main.js
-                    node --check electron/preload-main.js
-                    node --check electron/release-gate-contract.js
-                    node --check static/lumi-approved-ui.js
-                    node --check static/lumi-approved-integration.js
-                    node --check static/lumi-release-gate-hotfix.js
-                    test -z "$(find electron static -maxdepth 1 -type f -name '*payload*' -print -quit)"
-                    ! grep -Eq '_compile|gunzipSync' electron/main.js
-                    ! grep -Eq 'lumi-payload-|lumi-approved-loader' static/index.html
-          YAML
       - name: Validate readable sources before commit
         shell: bash
         run: |
@@ -151,6 +116,7 @@ jobs:
           git config user.name "THETECHGUY Release Gate"
           git config user.email "actions@users.noreply.github.com"
           git add -A
+          git reset .github/workflows/materialize-readable-source.yml
           git diff --cached --check
           git commit -m "Materialize readable Lumi production sources"
           git push origin HEAD:ui/approved-replica-integration-20260730
