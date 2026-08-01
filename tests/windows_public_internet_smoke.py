@@ -15,10 +15,14 @@ if str(REPO_ROOT) not in sys.path:
 
 PUBLIC_URL = "https://speed.cloudflare.com/__down?bytes=8388608"
 EXPECTED_BYTES = 8 * 1024 * 1024
+# Cloudflare's speed endpoint intentionally serves a zero-filled deterministic
+# payload. The fixed digest proves the public response was received completely
+# rather than merely checking that a file of the requested size exists.
+EXPECTED_SHA256 = "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74"
 
 
 def main() -> None:
-    """Download eight public megabytes through Lumi and prove final file integrity."""
+    """Download eight public megabytes through Lumi and prove exact integrity."""
     root = Path(os.environ.get("RUNNER_TEMP", ".")) / "lumi-public-internet-smoke"
     os.environ.update(
         LUMIDM_DATA_DIR=str(root / "data"),
@@ -63,8 +67,7 @@ def main() -> None:
     assert final_path.exists()
     assert final_path.stat().st_size == EXPECTED_BYTES
     digest = hashlib.sha256(final_path.read_bytes()).hexdigest()
-    assert len(digest) == 64
-    assert len(set(final_path.read_bytes()[:4096])) > 1, "public payload must contain real data"
+    assert digest == EXPECTED_SHA256, {"expected": EXPECTED_SHA256, "actual": digest}
     elapsed = time.monotonic() - started_at
     throughput_mbps = EXPECTED_BYTES * 8 / elapsed / 1_000_000
     print(
