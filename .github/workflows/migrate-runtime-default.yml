@@ -1,0 +1,46 @@
+name: Migrate Lumi runtime default
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/migrate-runtime-default.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.head_ref == 'ui/approved-replica-integration-20260730' || github.ref_name == 'ui/approved-replica-integration-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/approved-replica-integration-20260730
+          fetch-depth: 0
+      - name: Set the authoritative fresh-profile default
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('core/v2/runtime.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'self.store.get_setting("default_connections", 8)'
+          new = 'self.store.get_setting("default_connections", 32)'
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected exactly one runtime default, found {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          python -m py_compile core/v2/runtime.py server.py
+      - name: Commit runtime migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "THETECHGUY Release Gate"
+          git config user.email "actions@users.noreply.github.com"
+          git add core/v2/runtime.py
+          git diff --cached --check
+          git commit -m "Make 32 connections the runtime default"
+          git push origin HEAD:ui/approved-replica-integration-20260730
