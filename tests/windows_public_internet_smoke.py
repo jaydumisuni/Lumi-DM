@@ -15,10 +15,10 @@ if str(REPO_ROOT) not in sys.path:
 
 PUBLIC_URL = "https://speed.cloudflare.com/__down?bytes=8388608"
 EXPECTED_BYTES = 8 * 1024 * 1024
-# Cloudflare's speed endpoint intentionally serves a zero-filled deterministic
-# payload. The fixed digest proves the public response was received completely
-# rather than merely checking that a file of the requested size exists.
-EXPECTED_SHA256 = "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74"
+# Cloudflare's speed endpoint serves a deterministic ASCII-zero payload for
+# this request. The fixed digest proves the public response was received fully,
+# rather than accepting any file that merely has the requested byte count.
+EXPECTED_SHA256 = "f38469a7ac373e721e1591bbf5755647f669ddc76042d713b1047435368eae7b"
 
 
 def main() -> None:
@@ -66,8 +66,10 @@ def main() -> None:
     final_path = Path(result["final_path"])
     assert final_path.exists()
     assert final_path.stat().st_size == EXPECTED_BYTES
-    digest = hashlib.sha256(final_path.read_bytes()).hexdigest()
+    payload = final_path.read_bytes()
+    digest = hashlib.sha256(payload).hexdigest()
     assert digest == EXPECTED_SHA256, {"expected": EXPECTED_SHA256, "actual": digest}
+    assert payload[:4096] == b"0" * 4096, "Cloudflare payload prefix changed unexpectedly"
     elapsed = time.monotonic() - started_at
     throughput_mbps = EXPECTED_BYTES * 8 / elapsed / 1_000_000
     print(
