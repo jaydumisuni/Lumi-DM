@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -26,7 +28,7 @@ jobs:
           node --check static/lumi-approved-ui.js
           node --check static/lumi-approved-integration.js
           node --check static/lumi-release-gate-hotfix.js
-          test -z "$(find electron static -maxdepth 1 -type f -name '*payload*' -print -quit)"
+          test -z "$(find electron static -type f -name '*payload*' -print -quit)"
           ! grep -Eq '_compile|gunzipSync' electron/main.js
           ! grep -Eq 'lumi-payload-|lumi-approved-loader' static/index.html
           grep -Fq 'lumi-approved-ui.css' static/index.html
