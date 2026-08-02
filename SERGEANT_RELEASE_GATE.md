@@ -2,6 +2,19 @@
 
 This branch is not eligible for merge until all twenty lanes pass two independent review passes. The workflow publishes the exact required aggregate check name **Sergeant 20-for-2**.
 
+## Review order and learning rule
+
+Sergeant is the primary reviewer and must always run first.
+
+1. Run the complete **Sergeant 20-for-2** gate on the exact candidate head.
+2. Correct every Sergeant failure and rerun until the aggregate check is green.
+3. Only then request CodeRabbit on that same green head.
+4. Validate every CodeRabbit finding against the source and evidence.
+5. Convert every valid new finding into a permanent Sergeant assertion, regression test, or documented lane before resolving it.
+6. Rerun Sergeant after any corrective commit, then request CodeRabbit again on the new final head.
+
+CodeRabbit is therefore a secondary external reviewer and a source of new regression knowledge. Sergeant remains the release authority and accumulates valid findings so external-review dependence can reduce over time without reducing proof quality.
+
 ## Twenty lanes
 
 1. Approved readable shell and frozen glass theme.
@@ -65,7 +78,8 @@ The aggregate job runs `tests/sergeant-20-for-2.test.js`, which executes twenty 
 
 Merge and Builder packaging are blocked until:
 
-1. **Sergeant 20-for-2** is green;
-2. **Readable Lumi source guard** is green;
-3. CodeRabbit has reviewed the final head with no unresolved findings;
-4. all inline review threads are resolved.
+1. **Sergeant 20-for-2** is green on the final head;
+2. **Readable Lumi source guard** is green on the final head;
+3. CodeRabbit has reviewed that same Sergeant-green final head with no unresolved findings;
+4. every valid CodeRabbit finding has been absorbed into Sergeant evidence;
+5. all inline review threads are resolved.
