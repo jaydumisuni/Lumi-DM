@@ -106,7 +106,7 @@ lane("A", 14, "Readable Electron runtime", () => {
 });
 lane("A", 15, "Tray and widget lifecycle", () => {
   assert(lifecycleEvidence.includes("PASS"));
-  assert(widget.includes("electronApp"));
+  assert(widget.includes("window.lumiWidget"));
 });
 lane("A", 16, "Canonical Lumi identity", () => {
   assert(main.includes("favicon-256.png"));
@@ -141,7 +141,8 @@ lane("B", 6, "Backend serves repository renderer", () => {
 });
 lane("B", 7, "Electron opens the real backend UI", () => {
   assert(main.includes("await mainWindow.loadURL(API_ORIGIN)"));
-  assert(main.includes('path.join(staticDirectory(), "index.html")'));
+  assert(main.includes('path.join(process.resourcesPath, "static", "index.html")'));
+  assert(main.includes('path.resolve(__dirname, "..", "static", "index.html")'));
 });
 lane("B", 8, "Readable-source workflow", () => {
   assert(readableWorkflow.includes("Reject opaque runtime transport"));
