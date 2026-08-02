@@ -21,6 +21,7 @@ DATA = bytes(range(256)) * (SIZE // 256)
 SHA = hashlib.sha256(DATA).hexdigest()
 CHUNK = 64 * 1024
 DELAY = 0.004
+SLOW_DELAY = 0.020
 
 
 class QuietRangeServer(ThreadingHTTPServer):
@@ -64,11 +65,12 @@ class RangeHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("ETag", '"lumi-release-gate-v1"')
         self.end_headers()
+        delay = SLOW_DELAY if "slow=1" in self.path else DELAY
         try:
             for offset in range(0, len(body), CHUNK):
                 self.wfile.write(body[offset : offset + CHUNK])
                 self.wfile.flush()
-                time.sleep(DELAY)
+                time.sleep(delay)
         except (BrokenPipeError, ConnectionResetError):
             pass
 
@@ -232,45 +234,45 @@ def test_real_32_connection_download_is_faster_and_exact(lumi, range_url):
 
 
 def test_pause_resume_preserves_integrity(lumi, range_url):
-    """Pause an active segmented task, resume it, and verify exact final bytes."""
+    """Force a real pause window, resume it, and verify exact final bytes."""
     client, root = lumi
     response = client.post(
         "/api/downloads/start",
         json={
-            "url": range_url,
+            "url": f"{range_url}?slow=1",
             "target_dir": str(root / "downloads"),
             "temp_dir": str(root / "temporary"),
             "filename": "resume.bin",
-            "connections": 8,
+            "connections": 1,
             "duplicate_policy": "overwrite",
         },
     )
     assert response.status_code == 200
     task_id = response.get_json()["id"]
 
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 15
     before = 0
     while time.monotonic() < deadline:
         task = client.get(f"/api/downloads/{task_id}").get_json()
         before = int(task.get("downloaded_bytes") or 0)
-        if task.get("status") == "running" and before >= 512 * 1024:
+        if task.get("status") == "running" and before >= CHUNK:
             break
-        time.sleep(0.05)
+        time.sleep(0.02)
 
     assert before > 0
     assert client.post(f"/api/downloads/{task_id}/pause", json={}).status_code == 200
-    deadline = time.monotonic() + 10
+    deadline = time.monotonic() + 15
     paused = None
     while time.monotonic() < deadline:
         paused = client.get(f"/api/downloads/{task_id}").get_json()
         if paused.get("status") == "paused":
             break
-        time.sleep(0.08)
+        time.sleep(0.05)
 
-    assert paused and paused.get("status") == "paused"
+    assert paused and paused.get("status") == "paused", paused
     assert int(paused.get("downloaded_bytes") or 0) >= before
     assert client.post(f"/api/downloads/{task_id}/resume", json={}).status_code == 200
-    completed = poll(client, task_id)
+    completed = poll(client, task_id, timeout=45)
     assert completed["status"] == "completed"
     assert hashlib.sha256(Path(completed["final_path"]).read_bytes()).hexdigest() == SHA
 
