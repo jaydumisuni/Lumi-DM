@@ -6,9 +6,35 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  materialize-approved-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Materialize exact owner-approved renderer when staged
+        run: python scripts/materialize-exact-approved-ui.py
+      - name: Commit literal approved replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A static scripts/exact-approved-ui
+          if git diff --cached --quiet; then
+            echo "No materialization changes required"
+            exit 0
+          fi
+          git commit -m "Replace Lumi renderer with exact approved UI bytes"
+          git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
+
   ui-electron-contract:
     runs-on: ubuntu-latest
     steps:
