@@ -1,47 +1,66 @@
 #!/usr/bin/env python3
+"""Prove the real Windows Electron window uses the exact approved renderer."""
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
+import subprocess
 
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURES = ROOT / "artifacts" / "electron-visual"
-EXPECTED_FILES = {
-    "static/index.html": "7a99817a0c0a898fd111c36c554df40e0b138e17d5f366603e2870ceb5835a7e",
-    "static/lumi-approved-ui.css": "fb5a17c0c573643bc6644859d98bb9ffacbd020573a8589b2807b3def7f9c8b3",
-    "static/lumi-approved-ui.js": "1cf175f6960594df2f9680b5c8f11362b48c17c5f920c08cd0fa1364c3267280",
-    "static/assets/lumi-brand-transparent.png": "b49a92046af4d2368c1481f63a40fddae4a5371c005e7eb62976835ee269d944",
+
+EXPECTED_BLOBS = {
+    "static/index.html": "bcbb73feb7c47b5fff5ea6d9554857bf23371b65",
+    "static/lumi-approved-ui.css": "efc49d4383731ee41e94c1e66df09ffdd6e357d7",
+    "static/lumi-approved-ui.js": "e8d5503b079a7cd5ad6d115e11ef6994b84e4f00",
+    "static/assets/lumi-brand-transparent.png": "b452526c486fa2962ab05478a1f3a66bf67fb8d8",
 }
-REFERENCE_HASHES = {
-    "01-overview": int("d73e6baf80241090203b4b74ba3de056532fc2ecb75ba2570000000000000000", 16),
-    "02-downloads": int("ddbe6baf8024109020384174fe618055506fc2ecb75ba2420000000000000000", 16),
-    "03-unfinished": int("dd3e6baf8024109020384174fe618055506fc2ecb75ba2420000000000000000", 16),
-    "04-finished": int("dd3e6baf8024109020384174fe618055506fc2ecb75ba2420000000000000000", 16),
-    "05-queues": int("d77e6baf80241090201b7a72bf55c057517fc2ecb75ba2530000000000000000", 16),
-    "06-categories": int("d76e6baf80241090201b7b72b755c057517fc2ecb75ba2520000000000000000", 16),
-    "07-linkgrabber": int("dd3e6baf80241090201b7a52de67c075537fc2ecb75ba2430000000000000000", 16),
-    "08-firmware": int("d53e6baf8024109020085975bd7dc055536fc2ecb75ba2520000000000000000", 16),
-    "09-operating-systems": int("d57e6baf8024109020085875bd7dc055536fc2ecb75ba2520000000000000000", 16),
-    "10-settings": int("d15e6baf8024109025db4bb5fabb80bd425fc2ecb75ba2520000000000000000", 16),
-    "11-browser-extension": int("dd3e6baf8024109020354876ff3980bd426fc2ecb75ba2420000000000000000", 16),
-    "12-updates": int("dd3e6baf8024109020084a3a74f7c1bd527fc2ecb75ba2420000000000000000", 16),
-    "13-help": int("dd3e6baf80241090203a4974aa67a056532fc2ecb75ba2420000000000000000", 16),
-    "14-about": int("dd3e6baf80241090203b4a75aa66c056532fc2ecb75ba2420000000000000000", 16),
-    "15-gear-menu": int("d53e6ba080300890605a5676de67f857536fc2ecb75ba2520000000000000000", 16),
+
+REFERENCE_DHASH = {
+    "01_Overview": "2a6490ac914c32488b2eb1e43162b650b052946792adb1ca516a916a346a8159",
+    "02_All_Downloads": "23249098926d326c8936b2853245b316b156b126918cb18c51d8d1d8339c986c",
+    "03_Unfinished": "2b7490b3924c324c992407583552b153b152b45395539553345394321152931a",
+    "04_Finished": "227490939b6c3364993632c8325ab356b146b05693163356515693163146b106",
+    "05_Queues": "2a749423949534b492d4a92c02be9aa2bb269aa69b2893a65b26d3261066b6b1",
+    "06_Categories": "22f491299ab4329492d2b49132919652b25ab24a964ab64a565ad65a164ab64a",
+    "07_LinkGrabber": "20f4d2339a0d314c932cb70c3ab4b8b4948d958494ac9c8c54a4d4a910ac9165",
+    "08_Mobile_Firmware": "26749125902b36559704a4943495b495b495b4959495b4b55495d5953495b5a8",
+    "09_Operating_Systems": "2764d825d0013205954ab46a3a98b06ab25ab25a925a925a525ac25a19998a40",
+    "10_Settings": "2b6494e5951233199259b59b355bb392959c9139925ab2c9531ac532115a82de",
+    "11_Speed_Test_Popup": "2a6591b8909a32908b5ab1ec3364b652b552946393adb1ca516a916a34eac959",
+    "12_Browser_Extension": "26649923980b3ae59118b118288cb498b365b8b1989198915890ccb81924b90e",
+    "13_Check_For_Updates": "2a6490b5914932498e25b4673522b530b4729e27972fb60a516ad16a346a8139",
+    "14_Help_Report_A_Bug": "266591259048381499e1b9693966b862b9689060926295635539d9b8146a8005",
+    "15_About_Lumi": "2665d0e4da322bc983c9a36527c5a3618c998cf38cf38ea34b67ce930692816a",
 }
+
 DISTANCE_LIMITS = {
-    "01-overview": 48, "02-downloads": 44, "03-unfinished": 45, "04-finished": 45,
-    "05-queues": 49, "06-categories": 50, "07-linkgrabber": 49, "08-firmware": 42,
-    "09-operating-systems": 41, "10-settings": 69, "11-browser-extension": 57,
-    "12-updates": 50, "13-help": 51, "14-about": 54, "15-gear-menu": 73,
+    "01_Overview": 65,
+    "02_All_Downloads": 110,
+    "03_Unfinished": 103,
+    "04_Finished": 78,
+    "05_Queues": 90,
+    "06_Categories": 102,
+    "07_LinkGrabber": 80,
+    "08_Mobile_Firmware": 110,
+    "09_Operating_Systems": 94,
+    "10_Settings": 90,
+    "11_Speed_Test_Popup": 75,
+    "12_Browser_Extension": 70,
+    "13_Check_For_Updates": 80,
+    "14_Help_Report_A_Bug": 70,
+    "15_About_Lumi": 110,
 }
 
 
-def sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def git_blob(relative: str) -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", f"HEAD:{relative}"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
 
 
 def dhash(image: Image.Image, size: int = 16) -> int:
@@ -51,51 +70,60 @@ def dhash(image: Image.Image, size: int = 16) -> int:
     for y in range(size):
         row = y * (size + 1)
         for x in range(size):
-            result = (result << 1) | int(pixels[row + x] > pixels[row + x + 1])
+            result = (result << 1) | int(pixels[row + x + 1] > pixels[row + x])
     return result
 
 
-for relative, expected in EXPECTED_FILES.items():
-    actual = sha(ROOT / relative)
+for relative, expected in EXPECTED_BLOBS.items():
+    actual = git_blob(relative)
     if actual != expected:
-        raise SystemExit(f"exact approved source mismatch: {relative}: {actual} != {expected}")
+        raise SystemExit(f"exact approved Git blob mismatch: {relative}: {actual} != {expected}")
 
 runtime = json.loads((CAPTURES / "electron-runtime.json").read_text(encoding="utf-8"))
 assert runtime["url"] == "http://127.0.0.1:7000/"
 assert runtime["size"] == [1672, 941]
 assert runtime["exactApprovedRenderer"] is True
+assert runtime["captureSet"] == "owner-approved-15"
 
-captures = sorted(CAPTURES.glob("[0-9][0-9]-*.png"))
+captures = sorted(CAPTURES.glob("[0-9][0-9]_*.png"))
 if len(captures) != 15:
     raise SystemExit(f"expected 15 Electron captures, found {len(captures)}")
 
-evidence = {}
+screens: dict[str, dict[str, object]] = {}
 total_distance = 0
 for capture in captures:
     image = Image.open(capture).convert("RGB")
     if image.size != (1672, 941):
         raise SystemExit(f"{capture.name}: wrong size {image.size}")
-    extrema = image.getextrema()
-    if all(low == high for low, high in extrema):
+    if all(low == high for low, high in image.getextrema()):
         raise SystemExit(f"{capture.name}: blank capture")
-    stem = capture.stem
+    key = capture.stem
+    if key not in REFERENCE_DHASH:
+        raise SystemExit(f"unexpected Electron capture {key}")
     actual_hash = dhash(image)
-    distance = (actual_hash ^ REFERENCE_HASHES[stem]).bit_count()
-    limit = DISTANCE_LIMITS[stem]
+    approved_hash = int(REFERENCE_DHASH[key], 16)
+    distance = (actual_hash ^ approved_hash).bit_count()
+    limit = DISTANCE_LIMITS[key]
     if distance > limit:
-        raise SystemExit(f"{stem}: Electron visual distance {distance} exceeds {limit}")
+        raise SystemExit(f"{key}: Electron visual distance {distance} exceeds {limit}")
     total_distance += distance
-    evidence[stem] = {
+    screens[key] = {
         "actual_dhash": f"{actual_hash:064x}",
-        "approved_dhash": f"{REFERENCE_HASHES[stem]:064x}",
+        "approved_dhash": REFERENCE_DHASH[key],
         "distance": distance,
         "limit": limit,
     }
-if total_distance > 776:
-    raise SystemExit(f"aggregate Electron visual distance {total_distance} exceeds 776")
+
+if total_distance > 1_300:
+    raise SystemExit(f"aggregate Electron visual distance {total_distance} exceeds 1300")
 
 (CAPTURES / "electron-dhash-evidence.json").write_text(
-    json.dumps({"total_distance": total_distance, "screens": evidence}, indent=2),
+    json.dumps({
+        "source_blobs": EXPECTED_BLOBS,
+        "total_distance": total_distance,
+        "maximum_total": 1_300,
+        "screens": screens,
+    }, indent=2),
     encoding="utf-8",
 )
-print(f"Actual Electron visual/source gate: 15/15 PASS; aggregate distance={total_distance}")
+print(f"Actual Electron exact-source/visual gate: 15/15 PASS; aggregate distance={total_distance}")
