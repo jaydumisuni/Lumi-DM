@@ -1,0 +1,128 @@
+name: TTG Builder Linux Lumi Probe
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-lumi-build-routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact Lumi source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Lumi contract and create Linux build evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import platform
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path.cwd().resolve()
+          contract_path = root / "techguy-build.json"
+          contract = json.loads(contract_path.read_text(encoding="utf-8"))
+
+          entry = root / str(contract.get("entryFile") or "")
+          if not entry.is_file():
+              raise SystemExit(f"Configured Lumi entry file is missing: {entry}")
+
+          targets = [str(value) for value in contract.get("targets") or []]
+          if not targets:
+              raise SystemExit("Lumi declares no build targets.")
+
+          output = root / "test-output" / "ttg-builder-linux-probe"
+          build_config = root / "build_config"
+          output.mkdir(parents=True, exist_ok=True)
+          build_config.mkdir(parents=True, exist_ok=True)
+
+          commit = subprocess.check_output(
+              ["git", "rev-parse", "HEAD"], text=True
+          ).strip()
+
+          source_zip = output / f"Lumi-DM-source-{commit[:12]}.zip"
+          subprocess.run(
+              ["git", "archive", "--format=zip", f"--output={source_zip}", "HEAD"],
+              check=True,
+          )
+
+          digest = hashlib.sha256(source_zip.read_bytes()).hexdigest()
+          selected = "windows-exe" if "windows-exe" in targets else targets[0]
+
+          host_request = {
+              "schemaVersion": 3,
+              "generatedAt": datetime.now(timezone.utc).isoformat(),
+              "projectPath": str(root),
+              "rootId": "electron:electron",
+              "rootKind": "electron",
+              "rootPath": "electron",
+              "entryFile": str(contract["entryFile"]),
+              "targetId": selected,
+              "requiredHost": "windows",
+              "requiredTools": ["python", "node", "npm", "powershell"],
+              "state": "waiting-for-host-agent",
+              "modelRequired": False,
+              "command": [
+                  "ttg-builder",
+                  "build",
+                  str(root),
+                  "--target",
+                  selected,
+                  "--root-id",
+                  "electron:electron",
+              ],
+          }
+          host_request_path = build_config / "thetechguy.host-agent-request.json"
+          host_request_path.write_text(
+              json.dumps(host_request, indent=2) + "\n", encoding="utf-8"
+          )
+
+          report = {
+              "schemaVersion": 1,
+              "verdict": "HOST_REQUIRED",
+              "host": platform.system().lower(),
+              "sourceCommit": commit,
+              "appName": contract.get("appName"),
+              "appVersion": contract.get("appVersion"),
+              "entryFile": str(contract.get("entryFile")),
+              "entryExists": entry.is_file(),
+              "declaredTargets": targets,
+              "selectedTarget": selected,
+              "requiredHost": "windows",
+              "sourceArtifact": str(source_zip),
+              "sourceArtifactBytes": source_zip.stat().st_size,
+              "sourceArtifactSha256": digest,
+              "hostRequest": str(host_request_path),
+              "note": (
+                  "Lumi currently declares Windows-only release targets. "
+                  "A Linux host must route the native build to Windows rather "
+                  "than fabricate a Linux package."
+              ),
+          }
+          report_path = output / "lumi-linux-builder-probe.json"
+          report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Upload Lumi build-routing evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-linux-builder-probe
+          path: |
+            test-output/ttg-builder-linux-probe/**
+            build_config/thetechguy.host-agent-request.json
+          if-no-files-found: error
+          retention-days: 7
