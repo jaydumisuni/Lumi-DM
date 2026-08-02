@@ -14,21 +14,16 @@ const output = path.join(root, 'artifacts', 'electron-visual');
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 
-const screens = [
-  ['01-overview', 'overview'],
-  ['02-downloads', 'downloads'],
-  ['03-unfinished', 'unfinished'],
-  ['04-finished', 'finished'],
-  ['05-queues', 'queues'],
-  ['06-categories', 'categories'],
-  ['07-linkgrabber', 'grabber'],
-  ['08-firmware', 'firmware'],
-  ['09-operating-systems', 'operating-systems'],
-  ['10-settings', 'settings'],
-  ['11-browser-extension', 'browser-extension'],
-  ['12-updates', 'updates'],
-  ['13-help', 'help'],
-  ['14-about', 'about'],
+const ordinaryScreens = [
+  ['02_All_Downloads', 'downloads'],
+  ['03_Unfinished', 'unfinished'],
+  ['04_Finished', 'finished'],
+  ['05_Queues', 'queues'],
+  ['06_Categories', 'categories'],
+  ['07_LinkGrabber', 'grabber'],
+  ['08_Mobile_Firmware', 'firmware'],
+  ['09_Operating_Systems', 'operating-systems'],
+  ['10_Settings', 'settings'],
 ];
 
 const isolated = path.join(output, 'runtime-data');
@@ -45,6 +40,35 @@ const app = await electron.launch({
   },
   timeout: 120_000,
 });
+
+async function resetTransient(page) {
+  await page.evaluate(() => {
+    const gear = document.getElementById('gear-menu');
+    const floating = document.getElementById('floating-panel');
+    const modal = document.getElementById('modal');
+    const overlay = document.getElementById('overlay');
+    if (gear) gear.hidden = true;
+    if (floating) floating.hidden = true;
+    if (modal) modal.hidden = true;
+    if (overlay) overlay.hidden = true;
+    document.getElementById('gear-button')?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+async function view(page, target) {
+  await resetTransient(page);
+  await page.evaluate((next) => {
+    window.LumiReplica.switchView(next);
+    window.LumiReplica.state.search = '';
+    window.LumiReplica.state.theme = 'dark';
+    window.LumiReplica.render();
+  }, target);
+  await page.waitForTimeout(250);
+}
+
+async function capture(page, name) {
+  await page.screenshot({ path: path.join(output, `${name}.png`), animations: 'disabled' });
+}
 
 try {
   const page = await app.firstWindow({ timeout: 120_000 });
@@ -71,33 +95,51 @@ try {
   assert.equal(actual.skipTaskbar, false);
 
   await page.waitForTimeout(800);
-  for (const [name, view] of screens) {
-    await page.evaluate((target) => {
-      window.LumiReplica.switchView(target);
-      window.LumiReplica.state.search = '';
-      window.LumiReplica.render();
-    }, view);
-    await page.waitForTimeout(250);
-    await page.screenshot({ path: path.join(output, `${name}.png`), animations: 'disabled' });
-  }
 
+  await view(page, 'overview');
   await page.evaluate(() => {
-    window.LumiReplica.switchView('overview');
-    const button = document.querySelector('#gear-button');
-    if (!button) throw new Error('gear button missing');
-    button.click();
+    const menu = document.getElementById('gear-menu');
+    const button = document.getElementById('gear-button');
+    if (!menu || !button) throw new Error('gear controls missing');
+    menu.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
   });
   await page.waitForTimeout(250);
-  await page.screenshot({ path: path.join(output, '15-gear-menu.png'), animations: 'disabled' });
+  await capture(page, '01_Overview');
+
+  for (const [name, target] of ordinaryScreens) {
+    await view(page, target);
+    await capture(page, name);
+  }
+
+  await view(page, 'overview');
+  await page.evaluate(() => window.LumiReplica.openSpeedTest());
+  await page.waitForTimeout(250);
+  await capture(page, '11_Speed_Test_Popup');
+
+  await view(page, 'browser-extension');
+  await capture(page, '12_Browser_Extension');
+
+  await view(page, 'overview');
+  await page.evaluate(() => window.LumiReplica.openUpdateDialog());
+  await page.waitForTimeout(250);
+  await capture(page, '13_Check_For_Updates');
+
+  await view(page, 'help');
+  await capture(page, '14_Help_Report_A_Bug');
+
+  await view(page, 'about');
+  await capture(page, '15_About_Lumi');
 
   fs.writeFileSync(path.join(output, 'electron-runtime.json'), JSON.stringify({
     ...actual,
     renderer: 'static/index.html',
     exactApprovedRenderer: true,
+    captureSet: 'owner-approved-15',
     capturedBy: 'Playwright Electron application running electron/main.js',
   }, null, 2));
 } finally {
   await app.close();
 }
 
-console.log('Actual Electron approved-UI capture: 15/15 PASS');
+console.log('Actual Electron owner-approved capture set: 15/15 PASS');
