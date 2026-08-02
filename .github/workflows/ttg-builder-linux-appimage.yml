@@ -1,0 +1,149 @@
+name: TTG Builder Lumi Linux AppImage
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-linux-appimage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: "1"
+
+    steps:
+      - name: Checkout exact Lumi source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build native Linux Lumi server sidecar
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt "pyinstaller>=6.8,<7" imageio-ffmpeg
+          python -m PyInstaller \
+            --noconfirm \
+            --clean \
+            --onefile \
+            --name LUMIDM-server \
+            --distpath build/linux-server \
+            --workpath build/pyinstaller-work \
+            --specpath build/pyinstaller-spec \
+            --collect-all yt_dlp \
+            --collect-all cryptography \
+            --collect-all psutil \
+            --collect-all imageio_ffmpeg \
+            --collect-submodules core \
+            server.py
+          test -x build/linux-server/LUMIDM-server
+          build/linux-server/LUMIDM-server --help >/dev/null
+
+      - name: Generate Builder-owned Electron workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > package.json <<'JSON'
+          {
+            "name": "lumi-dm",
+            "version": "1.0.0",
+            "private": true,
+            "main": "electron/main.js",
+            "scripts": {
+              "dist:linux": "electron-builder --linux AppImage --x64"
+            },
+            "devDependencies": {
+              "electron": "29.4.6",
+              "electron-builder": "24.13.3"
+            },
+            "build": {
+              "appId": "com.lumi.dm",
+              "productName": "Lumi DM",
+              "asar": true,
+              "directories": {
+                "output": "test-output/linux-appimage"
+              },
+              "files": [
+                "electron/**/*"
+              ],
+              "extraResources": [
+                { "from": "static", "to": "static" },
+                { "from": "assets", "to": "assets" },
+                { "from": "Resouces", "to": "Resouces" },
+                { "from": "browser-extension", "to": "browser-extension" },
+                { "from": "build/linux-server/LUMIDM-server", "to": "server/LUMIDM-server" }
+              ],
+              "linux": {
+                "target": ["AppImage"],
+                "category": "Network",
+                "icon": "static/favicon-512.png",
+                "artifactName": "Lumi-DM-${version}-${arch}.${ext}"
+              }
+            }
+          }
+          JSON
+          npm install --no-audit --no-fund
+
+      - name: Package Lumi AppImage
+        shell: bash
+        env:
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/builder_cache/electron-builder
+          ELECTRON_CACHE: ${{ github.workspace }}/builder_cache/electron
+        run: |
+          set -euo pipefail
+          npm run dist:linux
+          APPIMAGE=$(find test-output/linux-appimage -maxdepth 1 -type f -name '*.AppImage' -print -quit)
+          test -n "$APPIMAGE"
+          chmod +x "$APPIMAGE"
+          "$APPIMAGE" --appimage-extract >/dev/null
+          test -x squashfs-root/usr/lib/lumi-dm/resources/server/LUMIDM-server \
+            || test -x squashfs-root/resources/server/LUMIDM-server
+          SHA=$(sha256sum "$APPIMAGE" | awk '{print $1}')
+          SIZE=$(stat -c '%s' "$APPIMAGE")
+          python - "$APPIMAGE" "$SHA" "$SIZE" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          artifact, sha256, size = sys.argv[1:]
+          report = {
+              "schemaVersion": 1,
+              "verdict": "PASS",
+              "status": "experimental-test-branch-only",
+              "platform": "linux",
+              "target": "AppImage",
+              "artifact": artifact,
+              "artifactBytes": int(size),
+              "artifactSha256": sha256,
+              "serverSidecar": "LUMIDM-server",
+              "productionContractChanged": False,
+              "releasePublished": False
+          }
+          output = Path("test-output/linux-appimage/lumi-linux-build-report.json")
+          output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Upload experimental Lumi AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-dm-linux-appimage-experimental
+          path: |
+            test-output/linux-appimage/*.AppImage
+            test-output/linux-appimage/lumi-linux-build-report.json
+          if-no-files-found: error
+          retention-days: 7
