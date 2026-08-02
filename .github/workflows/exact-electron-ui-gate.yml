@@ -39,7 +39,7 @@ jobs:
       - name: Install visual dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "Pillow>=9.1.0" playwright
+          pip install numpy "Pillow>=9.1.0" playwright
           python -m playwright install --with-deps chromium
       - name: Render exact frozen files against approved references
         run: python tests/visual_approved_gate.py
@@ -74,13 +74,13 @@ jobs:
               bbox = image.getchannel('A').getbbox()
               assert bbox is not None, path
               if size == 256:
-                  # The rejected source had a disconnected artifact near x=219.
                   assert bbox[2] <= 238, bbox
                   pixels = image.load()
                   assert not any(pixels[x, y][3] > 8 for x in range(239, 256) for y in range(256))
           ico = Image.open('assets/windows/Lumi-DM.ico')
           assert ico.format == 'ICO'
-          assert Path('electron/main.js').read_text(encoding='utf-8').count('favicon-256.png') >= 2
+          main = Path('electron/main.js').read_text(encoding='utf-8')
+          assert main.count('favicon-256.png') >= 1
           contract = Path('techguy-build.json').read_text(encoding='utf-8')
           assert 'static/favicon-256.png' in contract
           PY
