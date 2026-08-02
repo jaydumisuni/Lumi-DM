@@ -1,59 +1,75 @@
 "use strict";
 
 const assert = require("assert");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
-const read = file => fs.readFileSync(path.join(root, file), "utf8");
-const exists = file => fs.existsSync(path.join(root, file));
-const hotfix = read("static/lumi-release-gate-hotfix.js");
-const ui = read("static/lumi-approved-ui.js");
-const integration = read("static/lumi-approved-integration.js");
-const preload = read("electron/preload-main.js");
-const contract = read("electron/release-gate-contract.js");
-const main = read("electron/main.js");
-const server = read("server.py");
-const runtime = read("core/v2/runtime.py");
-const index = read("static/index.html");
+const file = relative => path.join(root, relative);
+const read = relative => fs.readFileSync(file(relative), "utf8");
+const exists = relative => fs.existsSync(file(relative));
+const sha256 = relative => crypto.createHash("sha256").update(fs.readFileSync(file(relative))).digest("hex");
 
-for (const file of [
-  "static/lumi-approved-ui.css",
-  "static/lumi-approved-ui.js",
-  "static/lumi-approved-integration.js",
-]) assert(exists(file), `${file} must be readable and committed`);
+const exactApproved = Object.freeze({
+  "static/index.html": "7a99817a0c0a898fd111c36c554df40e0b138e17d5f366603e2870ceb5835a7e",
+  "static/lumi-approved-ui.css": "fb5a17c0c573643bc6644859d98bb9ffacbd020573a8589b2807b3def7f9c8b3",
+  "static/lumi-approved-ui.js": "1cf175f6960594df2f9680b5c8f11362b48c17c5f920c08cd0fa1364c3267280",
+  "static/assets/lumi-brand-transparent.png": "b49a92046af4d2368c1481f63a40fddae4a5371c005e7eb62976835ee269d944",
+});
+
+for (const [relative, expected] of Object.entries(exactApproved)) {
+  assert(exists(relative), `${relative} must exist`);
+  assert.strictEqual(sha256(relative), expected, `${relative} must remain byte-for-byte owner approved`);
+}
+
 for (const removed of [
+  "static/lumi-approved-brand.svg",
+  "static/lumi-approved-integration.js",
+  "static/lumi-release-gate-hotfix.js",
   "static/lumi-approved-loader.js",
   "static/lumi-payload-01.js",
   "electron/main-payload-01.js",
 ]) assert(!exists(removed), `${removed} must remain removed`);
 
-assert(index.includes('aria-label="Search downloads"'));
-assert(index.includes('aria-label="Open settings menu"'));
-assert(index.includes('src="lumi-approved-ui.js"'));
-assert(index.includes('src="lumi-approved-integration.js"'));
+const index = read("static/index.html");
+const ui = read("static/lumi-approved-ui.js");
+const preload = read("electron/preload-main.js");
+const contract = read("electron/release-gate-contract.js");
+const main = read("electron/main.js");
+const server = read("core/v2/server_app.py");
+const runtime = read("core/v2/runtime.py");
+
+assert(index.includes('href="/static/lumi-approved-ui.css"'));
+assert(index.includes('src="/static/assets/lumi-brand-transparent.png"'));
+assert(index.includes('src="/static/lumi-approved-ui.js"'));
+assert(!index.includes("lumi-approved-integration.js"));
+assert(!index.includes("lumi-release-gate-hotfix.js"));
 assert(!index.includes("lumi-payload-"));
-assert(!main.includes("_compile"));
+assert(ui.includes("window.LumiReplica"));
+assert(ui.includes("function renderOverview"));
+assert(ui.includes("function openSpeedTest"));
+assert(ui.includes("function openUpdateDialog"));
+
+assert(!main.includes("Module._compile"));
 assert(!main.includes("gunzipSync"));
 assert(main.includes('require("./release-gate-contract")'));
-assert(!server.includes("set_default_connections"));
+assert(main.includes('path.join(process.resourcesPath, "static", "favicon-256.png")'));
+assert(main.includes("await mainWindow.loadURL(API_ORIGIN)"));
+assert(server.includes('@app.get("/")'));
+assert(server.includes('send_from_directory(STATIC_DIR, "index.html")'));
+assert(server.includes('@app.get("/static/<path:filename>")'));
 assert(runtime.includes('get_setting("default_connections", 32)'));
 
 for (const marker of [
-  "data-test-network", "data-start-speed-test", "data-export-settings",
-  "data-import-settings", "data-reset-settings", "/api/v4/security/pairing",
-  "/api/v4/security/clients", "pairingSecondsRemaining", "schedulePairingExpiry",
-]) assert(hotfix.includes(marker), marker);
-assert(hotfix.includes("Mozilla Firefox"));
-assert(hotfix.includes("Unavailable"));
-for (const marker of [
-  "BLOCKED_EXTENSIONS", "secureOpenTarget", "The selected item is outside Lumi's approved folders",
+  "BLOCKED_EXTENSIONS",
+  "secureOpenTarget",
+  "The selected item is outside Lumi's approved folders",
   "Lumi does not launch executable, script, shortcut, or active-content files",
-  "extensionDestination", "errorOnExist: true",
+  "extensionDestination",
+  "errorOnExist: true",
 ]) assert(contract.includes(marker), marker);
-assert(ui.includes("window.LumiReplica"));
-assert(integration.includes("window.LumiProductionIntegration"));
 
 let exposed = null;
 let invokeResult = null;
@@ -66,13 +82,18 @@ const electron = {
   },
   ipcRenderer: {
     invoke: async () => invokeResult,
-    send() {}, on() {}, removeListener() {},
+    send() {},
+    on() {},
+    removeListener() {},
   },
 };
 vm.runInNewContext(preload, {
-  require(id) { assert.strictEqual(id, "electron"); return electron; },
+  require(id) {
+    assert.strictEqual(id, "electron");
+    return electron;
+  },
   console,
-}, { filename: path.join(root, "electron", "preload-main.js") });
+}, { filename: file("electron/preload-main.js") });
 assert(exposed, "preload bridge must be exposed");
 assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
 
@@ -108,5 +129,8 @@ assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
   assert.strictEqual(Number.isNaN(invalid.capacity_bps), false);
   assert.strictEqual(invalid.capacity_bps, 0);
 
-  console.log("Lumi readable UI, settings, speed and extension contract: PASS");
-})().catch(error => { console.error(error); process.exit(1); });
+  console.log("Exact approved Lumi UI, Electron, speed and security contract: PASS");
+})().catch(error => {
+  console.error(error);
+  process.exit(1);
+});
