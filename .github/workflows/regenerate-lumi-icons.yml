@@ -39,18 +39,21 @@ jobs:
           if [ -f scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY ]; then
             python - <<'PY'
           from pathlib import Path
+          import re
+
           path = Path("electron/main.js")
           text = path.read_text(encoding="utf-8")
-          old = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
-            const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-            const requested = value && typeof value === "object" ? value : {};
-            if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
-              setStartupEnabled(Boolean(requested.startAtLogin));
-            }
-            const { startAtLogin: _ignored, ...desktop } = requested;
-            const next = writeDesktopPrefs(validateDesktopDirectories(desktop));
-          '''
-          new = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
+          pattern = re.compile(
+              r'(?ms)^  ipcMain\.handle\("v5-desktop-settings-save", \(_event, value\) => \{\n'
+              r'    const wasVisible = .*?;\n'
+              r'    const requested = .*?;\n'
+              r'    if \(Object\.prototype\.hasOwnProperty\.call\(requested, "startAtLogin"\)\) \{\n'
+              r'      setStartupEnabled\(Boolean\(requested\.startAtLogin\)\);\n'
+              r'    \}\n'
+              r'    const \{ startAtLogin: _ignored, \.\.\.desktop \} = requested;\n'
+              r'    const next = writeDesktopPrefs\(validateDesktopDirectories\(desktop\)\);\n'
+          )
+          replacement = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
             const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
             const requested = value && typeof value === "object" ? value : {};
             const { startAtLogin: requestedStartup, ...desktop } = requested;
@@ -60,9 +63,10 @@ jobs:
             }
             const next = writeDesktopPrefs(validated);
           '''
-          if old not in text:
-              raise SystemExit("Expected desktop settings block not found")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f"Expected one desktop settings block, replaced {count}")
+          path.write_text(updated, encoding="utf-8")
           PY
             rm -f scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY
             rm -f .github/workflows/patch-main-atomic-settings.yml
