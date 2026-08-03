@@ -7,6 +7,7 @@ const read = path => fs.readFileSync(path, "utf8");
 const exists = path => fs.existsSync(path);
 
 const index = read("static/index.html");
+const finish = read("static/lumi-owner-finish.js");
 const runtime = read("static/lumi-runtime-controls.js");
 const preload = read("electron/preload-main.js");
 const popup = read("browser-extension/popup-runtime-fix.js");
@@ -23,8 +24,11 @@ const iconGenerator = read("scripts/generate_lumi_icon_family.py");
 const findings = [
   ["approved renderer remains frozen", () => {
     assert(!index.includes("lumi-runtime-controls.js"));
+    assert(!index.includes("lumi-owner-finish.js"));
+    assert(preload.includes("data-lumi-owner-finish"));
     assert(preload.includes("data-lumi-owner-runtime"));
-    assert(preload.includes("/static/lumi-runtime-controls.js"));
+    assert(preload.includes('inject("lumi-owner-finish.js"'));
+    assert(preload.includes('inject("lumi-runtime-controls.js"'));
   }],
   ["live speed is task speed, not adapter traffic", () => {
     assert(runtime.includes("speed_bytes_per_sec"));
@@ -37,7 +41,8 @@ const findings = [
     assert(speed.includes("return jsonify(failed), 503"));
   }],
   ["resolving is presented as downloading", () => {
-    assert(runtime.includes('publicStatus'));
+    assert(finish.includes("normalizeVisibleStatus"));
+    assert(finish.includes('task.status = "downloading"'));
     assert(widget.includes('["running","downloading","resolving","verifying","post_processing","pausing"]'));
   }],
   ["same-PC extension authentication is automatic", () => {
@@ -53,7 +58,13 @@ const findings = [
   ["duplicate choice appears only after collision", () => {
     assert(!confirm.includes('name="duplicate_policy"'));
     assert(confirm.includes("DUPLICATE_FILE|"));
+    assert(finish.includes("showDuplicateChoice"));
     assert(browserApi.includes("if destination.exists() and not policy"));
+  }],
+  ["direct video links use Lumi media engine", () => {
+    assert(finish.includes('api("/api/downloads/video"'));
+    assert(finish.includes("youtube\\.com"));
+    assert(finish.includes("bestvideo+bestaudio/best"));
   }],
   ["widget close and cancel controls exist", () => {
     assert(widget.includes('id="close-widget"'));
