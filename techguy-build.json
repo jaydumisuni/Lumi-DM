@@ -9,7 +9,12 @@
   "entryFile": "electron/main.js",
   "logo": "Resouces/my_logo.png",
   "iconSource": "Resouces/my_logo.png",
-  "icon": "build_config/generated-branding/app-icon.ico",
+  "icon": "assets/windows/Lumi-DM.ico",
+  "icons": {
+    "windows": "assets/windows/Lumi-DM.ico",
+    "macos": "assets/macos/Lumi-DM.icns",
+    "linux": "assets/linux/Lumi-DM.png"
+  },
   "description": "Fast multi-source download manager with browser capture, media, torrents, firmware, operating-system images and technician workflows.",
   "repository": "jaydumisuni/Lumi-DM",
   "distribution": {
