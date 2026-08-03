@@ -10,6 +10,8 @@ const index = read("static/index.html");
 const finish = read("static/lumi-owner-finish.js");
 const runtime = read("static/lumi-runtime-controls.js");
 const preload = read("electron/preload-main.js");
+const main = read("electron/main.js");
+const openPolicy = read("electron/release-gate-contract.js");
 const popup = read("browser-extension/popup-runtime-fix.js");
 const security = read("browser-extension/security-shim.js");
 const confirm = read("electron/confirm.html");
@@ -60,6 +62,7 @@ const findings = [
     assert(confirm.includes("DUPLICATE_FILE|"));
     assert(finish.includes("showDuplicateChoice"));
     assert(browserApi.includes("if destination.exists() and not policy"));
+    assert(browserApi.includes('duplicate_policy="rename"'));
   }],
   ["direct video links use Lumi media engine", () => {
     assert(finish.includes('api("/api/downloads/video"'));
@@ -75,6 +78,21 @@ const findings = [
     assert(runtime.includes("data-runtime-select"));
     assert(runtime.includes("delete_file"));
     assert(runtime.includes("Remove from Lumi and keep downloaded files"));
+  }],
+  ["desktop settings validate before startup mutation", () => {
+    const validateAt = main.indexOf("const validated = validateDesktopDirectories(desktop)");
+    const startupAt = main.indexOf("setStartupEnabled(Boolean(requestedStartup))", validateAt);
+    const writeAt = main.indexOf("writeDesktopPrefs(validated)", validateAt);
+    assert(validateAt >= 0);
+    assert(startupAt > validateAt);
+    assert(writeAt > startupAt);
+  }],
+  ["downloaded files are revealed, never executed", () => {
+    assert(openPolicy.includes("shell.showItemInFolder(target)"));
+    assert(openPolicy.includes("if (isFile)"));
+    assert(openPolicy.includes("BLOCKED_EXTENSIONS"));
+    assert(openPolicy.includes('".command"'));
+    assert(openPolicy.includes('".py"'));
   }],
   ["updates use the tools site and immutable release assets", () => {
     assert(updater.includes('const TOOLS_PAGE = "https://tools.thetechguyds.com/"'));
