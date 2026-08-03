@@ -41,6 +41,8 @@ jobs:
           node --check electron/update-manager.js
           node --check browser-extension/security-shim.js
           node --check browser-extension/popup-runtime-fix.js
+          node --check tests/chromium_extension_integration.mjs
+          node --check tests/electron_lifecycle_integration.mjs
           node --check static/browser-extension/chromium/background.js
           node --check static/browser-extension/chromium/popup.js
       - name: UI speed extension security and owner contracts
@@ -48,6 +50,23 @@ jobs:
           node tests/lumi-ui-contract.test.js
           node tests/security-contract.test.js
           node tests/sergeant-owner-findings.test.js
+
+  chromium-extension-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install real Chromium extension runtime
+        run: |
+          npm install --no-save playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Auto-auth pause confirmed takeover and failure fallback
+        run: xvfb-run -a node tests/chromium_extension_integration.mjs
 
   approved-visual-contract:
     runs-on: ubuntu-latest
@@ -86,6 +105,32 @@ jobs:
           node-version: 24
       - name: Windows tray widget taskbar startup and identity contract
         run: node tests/lumi-windows-lifecycle.test.js
+
+  windows-electron-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install actual Lumi Electron runtime
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install --no-save electron@29 playwright@1.54.2
+      - name: Actual startup taskbar close-to-tray and widget isolation
+        shell: pwsh
+        env:
+          LUMIDM_PYTHON: python
+        run: node tests/electron_lifecycle_integration.mjs
 
   real-download-engine:
     runs-on: ubuntu-latest
@@ -129,8 +174,10 @@ jobs:
     needs:
       - exact-approved-source
       - ui-electron-contract
+      - chromium-extension-runtime
       - approved-visual-contract
       - windows-lifecycle-contract
+      - windows-electron-runtime
       - real-download-engine
       - windows-public-internet-smoke
     runs-on: ubuntu-latest
@@ -145,15 +192,19 @@ jobs:
         env:
           SOURCE_RESULT: ${{ needs.exact-approved-source.result }}
           UI_RESULT: ${{ needs.ui-electron-contract.result }}
+          EXTENSION_RESULT: ${{ needs.chromium-extension-runtime.result }}
           VISUAL_RESULT: ${{ needs.approved-visual-contract.result }}
           WINDOWS_RESULT: ${{ needs.windows-lifecycle-contract.result }}
+          WINDOWS_ELECTRON_RESULT: ${{ needs.windows-electron-runtime.result }}
           ENGINE_RESULT: ${{ needs.real-download-engine.result }}
           INTERNET_RESULT: ${{ needs.windows-public-internet-smoke.result }}
         run: |
           test "$SOURCE_RESULT" = success
           test "$UI_RESULT" = success
+          test "$EXTENSION_RESULT" = success
           test "$VISUAL_RESULT" = success
           test "$WINDOWS_RESULT" = success
+          test "$WINDOWS_ELECTRON_RESULT" = success
           test "$ENGINE_RESULT" = success
           test "$INTERNET_RESULT" = success
       - name: Execute both twenty-lane Sergeant passes
