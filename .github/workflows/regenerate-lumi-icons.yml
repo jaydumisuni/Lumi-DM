@@ -5,14 +5,14 @@ on:
     branches:
       - ui/approved-replica-integration-20260730
     paths:
-      - "Resouces/my_logo.png"
+      - "static/assets/lumi-brand-transparent.png"
       - "scripts/generate_lumi_icon_family.py"
       - ".github/workflows/regenerate-lumi-icons.yml"
   pull_request:
     branches:
       - main
     paths:
-      - "Resouces/my_logo.png"
+      - "static/assets/lumi-brand-transparent.png"
       - "scripts/generate_lumi_icon_family.py"
       - ".github/workflows/regenerate-lumi-icons.yml"
   workflow_dispatch:
@@ -36,24 +36,26 @@ jobs:
         run: python -m pip install --disable-pip-version-check "Pillow>=10,<12"
       - name: Remove stale icons and generate the complete family
         run: python scripts/generate_lumi_icon_family.py
-      - name: Verify no legacy hooded icon path remains
+      - name: Verify one approved identity across app extension and installer
         shell: bash
         run: |
           test -f assets/windows/Lumi-DM.ico
           test -f static/favicon-256.png
           test -f browser-extension/icons/icon128.png
           test -f build_config/lumi-icon-family.json
-          ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon)\.(ico|icns|png)$'
+          test ! -e Resouces/my_logo.png
+          grep -q 'static/assets/lumi-brand-transparent.png' build_config/lumi-icon-family.json
+          ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon|my_logo)\.(ico|icns|png)$'
       - name: Commit generated binary identity assets
         shell: bash
         run: |
           if git diff --quiet && git diff --cached --quiet; then
-            echo "Icon family already matches Resouces/my_logo.png"
+            echo "Icon family already matches the approved Lumi lockup"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A assets resources static browser-extension/icons
           git add -f build_config/lumi-icon-family.json
-          git commit -m "Regenerate all Lumi icons from canonical my_logo"
+          git commit -m "Regenerate all Lumi icons from approved lockup"
           git push origin HEAD:ui/approved-replica-integration-20260730
