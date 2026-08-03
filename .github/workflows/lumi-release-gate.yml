@@ -33,6 +33,7 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check static/lumi-approved-ui.js
+          node --check static/lumi-owner-finish.js
           node --check static/lumi-runtime-controls.js
           node --check electron/main.js
           node --check electron/preload-main.js
