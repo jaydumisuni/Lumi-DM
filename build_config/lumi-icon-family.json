@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "source": "Resouces/my_logo.png",
+  "sourceDimensions": [
+    631,
+    1077
+  ],
+  "sourceSha256": "6201010c970fee53ba3bf3649eeda407e7fba333d18a920f685329589042f7ce",
+  "removedObsoleteIcons": [
+    "static/favicon-128.png",
+    "static/favicon-16.png",
+    "static/favicon-192.png",
+    "static/favicon-24.png",
+    "static/favicon-256.png",
+    "static/favicon-32.png",
+    "static/favicon-48.png",
+    "static/favicon-512.png",
+    "static/favicon-64.png",
+    "static/favicon-96.png"
+  ],
+  "generated": [
+    {
+      "path": "static/favicon-16.png",
+      "size": 16,
+      "bytes": 547,
+      "sha256": "5258127bf80b2d63d56bbd7da800bf7365fa5b7f84bc57606a46a0db02ae4399"
+    },
+    {
+      "path": "static/favicon-24.png",
+      "size": 24,
+      "bytes": 1050,
+      "sha256": "2d56ae025dc08127d217b256d56dd686eb2407669452e3f321e18ee5df4c7270"
+    },
+    {
+      "path": "static/favicon-32.png",
+      "size": 32,
+      "bytes": 1539,
+      "sha256": "96c32cb7759c151ad68b3df657c4cc121ed58ea40b75f66d7fa0bb52f07a74ab"
+    },
+    {
+      "path": "static/favicon-48.png",
+      "size": 48,
+      "bytes": 2884,
+      "sha256": "245dac3b6f9bc1a9794404c6c69b43af67f87200aa965119e3cc2bc18137c026"
+    },
+    {
+      "path": "static/favicon-64.png",
+      "size": 64,
+      "bytes": 4471,
+      "sha256": "074d76f654e3969eb8f86661b09cce53416cb7377e1c2f272538b31a7844f477"
+    },
+    {
+      "path": "static/favicon-96.png",
+      "size": 96,
+      "bytes": 8760,
+      "sha256": "c957a4c777139617107c7b26e4a7df4ad734dcfe9eb75814717fe91064cb1d24"
+    },
+    {
+      "path": "static/favicon-128.png",
+      "size": 128,
+      "bytes": 14058,
+      "sha256": "5e866f53702484fe1cabe1b281c1e9578bd5d76ddbbc54fe4f2613bea8124458"
+    },
+    {
+      "path": "static/favicon-192.png",
+      "size": 192,
+      "bytes": 26549,
+      "sha256": "224db442a05648a23b1643e0495abb47bd70852cf99e3ea5db633b4554952f69"
+    },
+    {
+      "path": "static/favicon-256.png",
+      "size": 256,
+      "bytes": 42539,
+      "sha256": "381a2ff65359e56de3bb06307e8655c30680134b9f566e354f90fd7ee6c1ab61"
+    },
+    {
+      "path": "static/favicon-512.png",
+      "size": 512,
+      "bytes": 139618,
+      "sha256": "75d0f7ce84f8077c7a041c6ef6b32d3eeb2244a904da856040d6efca40263039"
+    },
+    {
+      "path": "browser-extension/icons/icon16.png",
+      "size": 16,
+      "bytes": 547,
+      "sha256": "5258127bf80b2d63d56bbd7da800bf7365fa5b7f84bc57606a46a0db02ae4399"
+    },
+    {
+      "path": "browser-extension/icons/icon32.png",
+      "size": 32,
+      "bytes": 1539,
+      "sha256": "96c32cb7759c151ad68b3df657c4cc121ed58ea40b75f66d7fa0bb52f07a74ab"
+    },
+    {
+      "path": "browser-extension/icons/icon48.png",
+      "size": 48,
+      "bytes": 2884,
+      "sha256": "245dac3b6f9bc1a9794404c6c69b43af67f87200aa965119e3cc2bc18137c026"
+    },
+    {
+      "path": "browser-extension/icons/icon128.png",
+      "size": 128,
+      "bytes": 14058,
+      "sha256": "5e866f53702484fe1cabe1b281c1e9578bd5d76ddbbc54fe4f2613bea8124458"
+    },
+    {
+      "path": "assets/windows/Lumi-DM.ico",
+      "type": "ico",
+      "bytes": 78859,
+      "sha256": "2ea3bc80d8923f1d791134fcc6f73288298f960a3bd4e9e312c213c491f3707c"
+    },
+    {
+      "path": "assets/windows/app-icon.ico",
+      "type": "ico",
+      "bytes": 78859,
+      "sha256": "2ea3bc80d8923f1d791134fcc6f73288298f960a3bd4e9e312c213c491f3707c"
+    },
+    {
+      "path": "resources/app-icon.ico",
+      "type": "ico",
+      "bytes": 78859,
+      "sha256": "2ea3bc80d8923f1d791134fcc6f73288298f960a3bd4e9e312c213c491f3707c"
+    },
+    {
+      "path": "static/favicon.ico",
+      "type": "ico",
+      "bytes": 78859,
+      "sha256": "2ea3bc80d8923f1d791134fcc6f73288298f960a3bd4e9e312c213c491f3707c"
+    },
+    {
+      "path": "assets/macos/Lumi-DM.icns",
+      "type": "icns",
+      "bytes": 839853,
+      "sha256": "fae65cba285a49f53d5d9098aa6d26fe3357818600e1f4edcce14ccebb47836c"
+    },
+    {
+      "path": "assets/macos/app-icon.icns",
+      "type": "icns",
+      "bytes": 839853,
+      "sha256": "fae65cba285a49f53d5d9098aa6d26fe3357818600e1f4edcce14ccebb47836c"
+    },
+    {
+      "path": "resources/app-icon.icns",
+      "type": "icns",
+      "bytes": 839853,
+      "sha256": "fae65cba285a49f53d5d9098aa6d26fe3357818600e1f4edcce14ccebb47836c"
+    },
+    {
+      "path": "assets/linux/Lumi-DM.png",
+      "size": 512,
+      "bytes": 139618,
+      "sha256": "75d0f7ce84f8077c7a041c6ef6b32d3eeb2244a904da856040d6efca40263039"
+    },
+    {
+      "path": "assets/linux/app-icon.png",
+      "size": 512,
+      "bytes": 139618,
+      "sha256": "75d0f7ce84f8077c7a041c6ef6b32d3eeb2244a904da856040d6efca40263039"
+    },
+    {
+      "path": "resources/app-icon.png",
+      "size": 512,
+      "bytes": 139618,
+      "sha256": "75d0f7ce84f8077c7a041c6ef6b32d3eeb2244a904da856040d6efca40263039"
+    }
+  ]
+}
