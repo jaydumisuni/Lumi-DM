@@ -2,6 +2,28 @@
 
 const { contextBridge, ipcRenderer } = require("electron");
 
+function installOwnerRuntime() {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  const params = new URLSearchParams(window.location.search || "");
+  if (params.has("preview")) return;
+  const install = () => {
+    const gear = document.getElementById("gear-button");
+    if (gear && !gear.getAttribute("aria-label")) gear.setAttribute("aria-label", "Lumi controls");
+    if (document.querySelector("script[data-lumi-owner-runtime]")) return;
+    const script = document.createElement("script");
+    script.dataset.lumiOwnerRuntime = "true";
+    script.src = window.location.protocol === "file:"
+      ? "lumi-runtime-controls.js"
+      : "/static/lumi-runtime-controls.js";
+    script.addEventListener("error", () => console.error("Lumi owner runtime failed to load"), { once: true });
+    document.head.appendChild(script);
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
+  else install();
+}
+
+installOwnerRuntime();
+
 function positiveNumber(...values) {
   for (const value of values) {
     if (value === null || value === undefined || value === "") continue;
