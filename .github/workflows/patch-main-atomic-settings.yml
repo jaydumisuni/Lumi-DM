@@ -1,0 +1,61 @@
+name: Patch Lumi atomic desktop settings
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate desktop folders before changing startup
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("electron/main.js")
+          text = path.read_text(encoding="utf-8")
+          old = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
+    const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
+    const requested = value && typeof value === "object" ? value : {};
+    if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
+      setStartupEnabled(Boolean(requested.startAtLogin));
+    }
+    const { startAtLogin: _ignored, ...desktop } = requested;
+    const next = writeDesktopPrefs(validateDesktopDirectories(desktop));
+'''
+          new = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
+    const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
+    const requested = value && typeof value === "object" ? value : {};
+    const { startAtLogin: requestedStartup, ...desktop } = requested;
+    const validated = validateDesktopDirectories(desktop);
+    if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
+      setStartupEnabled(Boolean(requestedStartup));
+    }
+    const next = writeDesktopPrefs(validated);
+'''
+          if old not in text:
+              raise SystemExit("Expected desktop settings block not found")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          node --check electron/main.js
+          rm scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY
+          rm .github/workflows/patch-main-atomic-settings.yml
+      - name: Commit atomic settings correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add electron/main.js scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY .github/workflows/patch-main-atomic-settings.yml
+          git commit -m "Validate desktop paths before startup changes"
+          git push origin HEAD:ui/approved-replica-integration-20260730
