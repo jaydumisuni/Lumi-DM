@@ -6,20 +6,37 @@ function installOwnerRuntime() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   const params = new URLSearchParams(window.location.search || "");
   if (params.has("preview")) return;
-  const install = () => {
+
+  const sourceFor = name => window.location.protocol === "file:"
+    ? name
+    : `/static/${name}`;
+
+  const inject = (name, marker) => new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[${marker}]`);
+    if (existing) return resolve();
+    const script = document.createElement("script");
+    script.setAttribute(marker, "true");
+    script.src = sourceFor(name);
+    script.addEventListener("load", resolve, { once: true });
+    script.addEventListener("error", () => reject(new Error(`${name} failed to load`)), { once: true });
+    document.head.appendChild(script);
+  });
+
+  const install = async () => {
     const gear = document.getElementById("gear-button");
     if (gear && !gear.getAttribute("aria-label")) gear.setAttribute("aria-label", "Lumi controls");
-    if (document.querySelector("script[data-lumi-owner-runtime]")) return;
-    const script = document.createElement("script");
-    script.dataset.lumiOwnerRuntime = "true";
-    script.src = window.location.protocol === "file:"
-      ? "lumi-runtime-controls.js"
-      : "/static/lumi-runtime-controls.js";
-    script.addEventListener("error", () => console.error("Lumi owner runtime failed to load"), { once: true });
-    document.head.appendChild(script);
+    try {
+      // Owner-finish registers its capture handlers first. The broader runtime
+      // follows and supplies selection, speed, update and persistence surfaces.
+      await inject("lumi-owner-finish.js", "data-lumi-owner-finish");
+      await inject("lumi-runtime-controls.js", "data-lumi-owner-runtime");
+    } catch (error) {
+      console.error("Lumi owner runtime failed to load", error);
+    }
   };
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
-  else install();
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => void install(), { once: true });
+  else void install();
 }
 
 installOwnerRuntime();
