@@ -5,11 +5,13 @@ const fs = require("fs");
 const path = require("path");
 
 const BLOCKED_EXTENSIONS = new Set([
-  ".app", ".appx", ".bat", ".chm", ".cmd", ".com", ".cpl", ".desktop",
-  ".exe", ".gadget", ".hta", ".inf", ".ins", ".isp", ".jar", ".js",
-  ".jse", ".lnk", ".msc", ".msi", ".msix", ".msp", ".mst", ".pif",
-  ".ps1", ".pyw", ".reg", ".scr", ".sct", ".sh", ".url", ".vb",
-  ".vbe", ".vbs", ".ws", ".wsc", ".wsf", ".wsh",
+  ".app", ".appx", ".application", ".bat", ".chm", ".cmd", ".com", ".command",
+  ".cpl", ".desktop", ".exe", ".gadget", ".hta", ".inf", ".ins", ".isp",
+  ".jar", ".jnlp", ".js", ".jse", ".lnk", ".lua", ".msc", ".msi",
+  ".msix", ".msp", ".mst", ".msu", ".php", ".pif", ".pl", ".ps1",
+  ".py", ".pyc", ".pyw", ".rb", ".reg", ".scf", ".scr", ".sct", ".sh",
+  ".terminal", ".url", ".vb", ".vbe", ".vbs", ".workflow", ".ws", ".wsc",
+  ".wsf", ".wsh",
 ]);
 
 function desktopPath() {
@@ -70,7 +72,7 @@ function secureOpenTarget(value) {
   if (BLOCKED_EXTENSIONS.has(path.extname(target).toLowerCase())) {
     throw new Error("Lumi does not launch executable, script, shortcut, or active-content files");
   }
-  return target;
+  return { target, isFile: stat.isFile() };
 }
 
 function extensionDestination() {
@@ -80,10 +82,14 @@ function extensionDestination() {
 
 app.whenReady().then(() => {
   ipcMain.handle("ttg-open-path", async (_event, value) => {
-    const target = secureOpenTarget(value);
+    const { target, isFile } = secureOpenTarget(value);
+    if (isFile) {
+      shell.showItemInFolder(target);
+      return { ok: true, path: target, revealed: true };
+    }
     const error = await shell.openPath(target);
     if (error) throw new Error(error);
-    return { ok: true, path: target };
+    return { ok: true, path: target, revealed: false };
   });
 
   ipcMain.handle("ttg-open-external", async (_event, value) => {
