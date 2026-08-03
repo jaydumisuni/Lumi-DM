@@ -7,13 +7,16 @@
   "appVersion": "1.0.0",
   "projectType": "multi-platform-source",
   "entryFile": "electron/main.js",
-  "logo": "Resouces/my_logo.png",
-  "iconSource": "Resouces/my_logo.png",
+  "logo": "static/assets/lumi-brand-transparent.png",
+  "iconSource": "static/assets/lumi-brand-transparent.png",
+  "runtimeIcon": "static/favicon-256.png",
   "icon": "assets/windows/Lumi-DM.ico",
   "icons": {
+    "runtime": "static/favicon-256.png",
     "windows": "assets/windows/Lumi-DM.ico",
     "macos": "assets/macos/Lumi-DM.icns",
-    "linux": "assets/linux/Lumi-DM.png"
+    "linux": "assets/linux/Lumi-DM.png",
+    "browserExtension": "browser-extension/icons/icon128.png"
   },
   "description": "Fast multi-source download manager with browser capture, media, torrents, firmware, operating-system images and technician workflows.",
   "repository": "jaydumisuni/Lumi-DM",
