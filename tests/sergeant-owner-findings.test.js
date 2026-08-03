@@ -10,6 +10,8 @@ const index = read("static/index.html");
 const finish = read("static/lumi-owner-finish.js");
 const runtime = read("static/lumi-runtime-controls.js");
 const preload = read("electron/preload-main.js");
+const widgetPreload = read("electron/preload-widget.js");
+const widgetIdentity = read("electron/widget-identity-preload.js");
 const main = read("electron/main.js");
 const openPolicy = read("electron/release-gate-contract.js");
 const popup = read("browser-extension/popup-runtime-fix.js");
@@ -22,6 +24,8 @@ const localExtension = read("core/v4/local_extension.py");
 const browserApi = read("core/v5/browser_api.py");
 const build = read("techguy-build.json");
 const iconGenerator = read("scripts/generate_lumi_icon_family.py");
+const downloadTest = read("tests/test_release_gate_download.py");
+const restartTest = read("tests/test_settings_restart.py");
 
 const findings = [
   ["approved renderer remains frozen", () => {
@@ -74,10 +78,20 @@ const findings = [
     assert(widget.includes('id="primary-cancel"'));
     assert(widget.includes('bridge.action("cancel"'));
   }],
+  ["packaged widget uses the canonical Lumi identity", () => {
+    assert(widgetPreload.includes('require("./widget-identity-preload")'));
+    assert(widgetIdentity.includes('path.join(process.resourcesPath || "", "static", "favicon-256.png")'));
+    assert(widgetIdentity.includes("pathToFileURL(icon).href"));
+  }],
   ["main download list supports selection and deletion", () => {
     assert(runtime.includes("data-runtime-select"));
     assert(runtime.includes("delete_file"));
     assert(runtime.includes("Remove from Lumi and keep downloaded files"));
+  }],
+  ["responsive corrections preserve the frozen renderer", () => {
+    assert(runtime.includes("lumi-owner-responsive-runtime"));
+    assert(runtime.includes("@media(max-width:1200px){.overview-grid"));
+    assert(runtime.includes("@media(max-width:850px){.app-frame"));
   }],
   ["desktop settings validate before startup mutation", () => {
     const validateAt = main.indexOf("const validated = validateDesktopDirectories(desktop)");
@@ -93,6 +107,12 @@ const findings = [
     assert(openPolicy.includes("BLOCKED_EXTENSIONS"));
     assert(openPolicy.includes('".command"'));
     assert(openPolicy.includes('".py"'));
+  }],
+  ["tests release runtime resources cleanly", () => {
+    assert(downloadTest.includes('if name == "server" or name.startswith("core.")'));
+    assert(restartTest.includes('if name == "server" or name.startswith("core.")'));
+    assert(downloadTest.includes("if ratio >= 0.9"));
+    assert(downloadTest.includes("assert ratio < 0.9"));
   }],
   ["updates use the tools site and immutable release assets", () => {
     assert(updater.includes('const TOOLS_PAGE = "https://tools.thetechguyds.com/"'));
