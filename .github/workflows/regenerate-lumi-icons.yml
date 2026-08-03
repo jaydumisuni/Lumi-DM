@@ -1,0 +1,51 @@
+name: Regenerate Lumi Icons
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - "Resouces/my_logo.png"
+      - "scripts/generate_lumi_icon_family.py"
+      - ".github/workflows/regenerate-lumi-icons.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/approved-replica-integration-20260730
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install image tooling
+        run: python -m pip install --disable-pip-version-check "Pillow>=10,<12"
+      - name: Remove stale icons and generate the complete family
+        run: python scripts/generate_lumi_icon_family.py
+      - name: Verify no legacy hooded icon path remains
+        shell: bash
+        run: |
+          test -f assets/windows/Lumi-DM.ico
+          test -f static/favicon-256.png
+          test -f browser-extension/icons/icon128.png
+          test -f build_config/lumi-icon-family.json
+          ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon)\.(ico|icns|png)$'
+      - name: Commit generated binary identity assets
+        shell: bash
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "Icon family already matches Resouces/my_logo.png"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A assets resources static browser-extension/icons build_config/lumi-icon-family.json
+          git commit -m "Regenerate all Lumi icons from canonical my_logo"
+          git push origin HEAD:ui/approved-replica-integration-20260730
