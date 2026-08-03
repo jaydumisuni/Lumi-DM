@@ -642,13 +642,14 @@ function registerIpc() {
   }));
 
   ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
-    const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-    const requested = value && typeof value === "object" ? value : {};
-    if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
-      setStartupEnabled(Boolean(requested.startAtLogin));
-    }
-    const { startAtLogin: _ignored, ...desktop } = requested;
-    const next = writeDesktopPrefs(validateDesktopDirectories(desktop));
+  const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
+  const requested = value && typeof value === "object" ? value : {};
+  const { startAtLogin: requestedStartup, ...desktop } = requested;
+  const validated = validateDesktopDirectories(desktop);
+  if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
+    setStartupEnabled(Boolean(requestedStartup));
+  }
+  const next = writeDesktopPrefs(validated);
     widgetExpanded = false;
     if (next.visible === false || mainWindowIsVisible()) {
       hideWidget();
