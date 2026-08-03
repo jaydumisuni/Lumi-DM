@@ -112,9 +112,10 @@ def _stage_task(data: dict[str, Any]):
             priority=int(data.get("priority") or 0),
             start_paused=True,
             request_envelope=secured,
-            # A collision is presented only after the user picks the final name
-            # and folder. It is never exposed as a permanent advanced option.
-            duplicate_policy="reject",
+            # Browser capture is provisional. Use a harmless unique staging path
+            # so the popup can ask about a real collision only after the user has
+            # confirmed the final filename and folder.
+            duplicate_policy="rename",
         )
 
     task.status = _BROWSER_PENDING
