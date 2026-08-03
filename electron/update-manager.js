@@ -7,8 +7,10 @@ const https = require("https");
 const crypto = require("crypto");
 const { spawn } = require("child_process");
 
-const RELEASES_API = "https://api.github.com/repos/jaydumisuni/lumi-dm/releases/latest";
-const RELEASES_PAGE = "https://github.com/jaydumisuni/lumi-dm/releases";
+// tools.thetechguyds.com is the customer-facing source of truth. The installer
+// itself is downloaded from the matching immutable GitHub Release asset.
+const TOOLS_PAGE = "https://tools.thetechguyds.com/";
+const RELEASES_API = "https://api.github.com/repos/jaydumisuni/Lumi-DM/releases/latest";
 
 function parseVersion(value) {
   return String(value || "0.0.0").replace(/^v/i, "").split(/[+-]/)[0].split(".").map(part => Number.parseInt(part, 10) || 0);
@@ -18,7 +20,8 @@ function isNewer(candidate, current) {
   const left = parseVersion(candidate);
   const right = parseVersion(current);
   for (let index = 0; index < Math.max(left.length, right.length, 3); index++) {
-    const a = left[index] || 0, b = right[index] || 0;
+    const a = left[index] || 0;
+    const b = right[index] || 0;
     if (a !== b) return a > b;
   }
   return false;
@@ -28,7 +31,7 @@ function requestBuffer(url, headers = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 8) return reject(new Error("Too many update redirects"));
     const request = https.get(url, {
-      headers: { "User-Agent": "Lumi-DM-Updater/1.0", Accept: "application/vnd.github+json", ...headers },
+      headers: { "User-Agent": "Lumi-DM-Updater/2.0", Accept: "application/vnd.github+json", ...headers },
     }, response => {
       const status = response.statusCode || 0;
       if ([301, 302, 303, 307, 308].includes(status) && response.headers.location) {
@@ -38,7 +41,7 @@ function requestBuffer(url, headers = {}, redirects = 0) {
       if (status < 200 || status >= 300) {
         let text = "";
         response.setEncoding("utf8");
-        response.on("data", chunk => text += chunk);
+        response.on("data", chunk => { text += chunk; });
         response.on("end", () => reject(new Error(`Update request failed (${status}): ${text.slice(0, 180)}`)));
         return;
       }
@@ -54,7 +57,7 @@ function requestBuffer(url, headers = {}, redirects = 0) {
 function downloadFile(url, destination, progress, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 8) return reject(new Error("Too many update redirects"));
-    const request = https.get(url, { headers: { "User-Agent": "Lumi-DM-Updater/1.0", Accept: "application/octet-stream" } }, response => {
+    const request = https.get(url, { headers: { "User-Agent": "Lumi-DM-Updater/2.0", Accept: "application/octet-stream" } }, response => {
       const status = response.statusCode || 0;
       if ([301, 302, 303, 307, 308].includes(status) && response.headers.location) {
         response.resume();
@@ -70,7 +73,7 @@ function downloadFile(url, destination, progress, redirects = 0) {
       const output = fs.createWriteStream(temporary);
       response.on("data", chunk => {
         received += chunk.length;
-        if (progress) progress({ received, total, percent: total ? received * 100 / total : 0 });
+        progress?.({ received, total, percent: total ? received * 100 / total : 0 });
       });
       response.pipe(output);
       output.on("finish", () => output.close(() => {
@@ -100,9 +103,7 @@ function platformAsset(assets) {
 }
 
 async function expectedDigest(asset, assets) {
-  if (typeof asset.digest === "string" && asset.digest.toLowerCase().startsWith("sha256:")) {
-    return asset.digest.slice(7).trim().toLowerCase();
-  }
+  if (typeof asset.digest === "string" && asset.digest.toLowerCase().startsWith("sha256:")) return asset.digest.slice(7).trim().toLowerCase();
   const checksum = (assets || []).find(item => {
     const name = String(item.name || "").toLowerCase();
     return name === `${String(asset.name || "").toLowerCase()}.sha256` || name === "sha256sums.txt" || name === "checksums.txt";
@@ -137,43 +138,46 @@ class UpdateManager {
   async check(manual = false) {
     if (this.checking) return this.lastResult || { available: false, currentVersion: this.currentVersion, message: "Update check already running" };
     this.checking = true;
-    this.onStatus({ state: "checking" });
+    this.onStatus({ state: "checking", source: TOOLS_PAGE });
     try {
       const release = JSON.parse((await requestBuffer(RELEASES_API)).toString("utf8"));
       const version = String(release.tag_name || release.name || "").replace(/^v/i, "");
-      const available = !release.draft && isNewer(version, this.currentVersion);
+      const available = !release.draft && !release.prerelease && isNewer(version, this.currentVersion);
       const asset = available ? platformAsset(release.assets || []) : null;
       this.lastResult = {
         available,
         version,
         currentVersion: this.currentVersion,
-        releaseUrl: release.html_url || RELEASES_PAGE,
+        releaseUrl: TOOLS_PAGE,
+        assetUrl: asset?.browser_download_url || "",
         publishedAt: release.published_at || "",
         message: available
-          ? (asset ? "A newer release is available and will be prepared securely." : "A newer release exists, but no installer matches this platform.")
-          : "No newer GitHub release was found.",
+          ? (asset ? "A newer Lumi release is available." : "A newer release exists, but no installer matches this platform.")
+          : "No update available.",
       };
       this.onStatus({ state: available ? "available" : "current", ...this.lastResult });
       if (available && asset && app.isPackaged && !this.downloadPromise) {
         this.downloadPromise = this.prepare(release, asset).finally(() => { this.downloadPromise = null; });
         void this.downloadPromise;
       } else if (available && manual && !asset) {
-        await shell.openExternal(this.lastResult.releaseUrl);
+        await shell.openExternal(TOOLS_PAGE);
       }
       return this.lastResult;
     } catch (error) {
-      const result = { available: false, currentVersion: this.currentVersion, error: error.message, message: error.message };
+      const result = { available: false, currentVersion: this.currentVersion, releaseUrl: TOOLS_PAGE, error: error.message, message: "Unable to check for updates." };
       this.lastResult = result;
       this.onStatus({ state: "error", ...result });
       if (manual) throw error;
       return result;
-    } finally { this.checking = false; }
+    } finally {
+      this.checking = false;
+    }
   }
 
   async prepare(release, asset) {
     const expected = await expectedDigest(asset, release.assets || []);
     if (!expected) {
-      const result = { state: "verification-required", version: release.tag_name, releaseUrl: release.html_url || RELEASES_PAGE, message: "The release has no SHA-256 digest, so Lumi will not run it automatically." };
+      const result = { state: "verification-required", version: release.tag_name, releaseUrl: TOOLS_PAGE, message: "This release has no SHA-256 digest, so Lumi will not run it automatically." };
       this.onStatus(result);
       return result;
     }
@@ -185,20 +189,20 @@ class UpdateManager {
     const actual = await sha256(destination);
     if (actual !== expected) {
       try { fs.unlinkSync(destination); } catch (_) {}
-      throw new Error("Downloaded update did not match its SHA-256 digest")
+      throw new Error("Downloaded update did not match its SHA-256 digest");
     }
     this.onStatus({ state: "ready", version: release.tag_name, path: destination, verified: true });
     const choice = await dialog.showMessageBox({
       type: "info",
       title: "Lumi update ready",
       message: `Lumi ${String(release.tag_name || "").replace(/^v/i, "")} is ready to install`,
-      detail: "The installer was downloaded from GitHub Releases and its SHA-256 digest was verified.",
-      buttons: ["Install now", "Later", "View release"],
+      detail: "The latest release installer was downloaded and its SHA-256 digest was verified.",
+      buttons: ["Install now", "Later", "Open tools site"],
       defaultId: 0,
       cancelId: 1,
     });
     if (choice.response === 2) {
-      await shell.openExternal(release.html_url || RELEASES_PAGE);
+      await shell.openExternal(TOOLS_PAGE);
       return { state: "ready", path: destination };
     }
     if (choice.response === 0) this.install(destination);
@@ -219,4 +223,4 @@ class UpdateManager {
   }
 }
 
-module.exports = { UpdateManager, isNewer, platformAsset };
+module.exports = { UpdateManager, isNewer, platformAsset, TOOLS_PAGE };
