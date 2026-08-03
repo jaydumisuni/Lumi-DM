@@ -53,6 +53,7 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A assets resources static browser-extension/icons build_config/lumi-icon-family.json
+          git add -A assets resources static browser-extension/icons
+          git add -f build_config/lumi-icon-family.json
           git commit -m "Regenerate all Lumi icons from canonical my_logo"
           git push origin HEAD:ui/approved-replica-integration-20260730
