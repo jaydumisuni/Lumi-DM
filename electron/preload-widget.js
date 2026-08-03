@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require('electron');
+require("./widget-identity-preload");
 
 // These are source assets, not recreated or approximated drawings.
 // Android: official Android brand asset from Google.

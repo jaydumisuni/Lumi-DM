@@ -498,3 +498,14 @@
     setInterval(() => void refreshLive(false), 1000);
   });
 })();
+
+(() => {
+  if (document.getElementById("lumi-owner-responsive-runtime")) return;
+  const style = document.createElement("style");
+  style.id = "lumi-owner-responsive-runtime";
+  style.textContent = `
+    @media(max-width:1200px){.overview-grid{grid-template-columns:minmax(0,1fr)!important}}
+    @media(max-width:850px){.app-frame{grid-template-columns:minmax(0,1fr)!important}.titlebar{padding-left:10px!important}}
+  `;
+  document.head.appendChild(style);
+})();

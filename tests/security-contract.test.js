@@ -83,7 +83,7 @@ async function rejects(promise, pattern) {
   const prepared = await extension({});
   assert(fs.existsSync(path.join(existing, "user.txt")), "existing user folder must remain untouched");
   assert(fs.existsSync(path.join(prepared.path, "manifest.json")), "prepared extension must contain its manifest");
-  console.log("Secure path and extension preparation contract: PASS");
+  console.log("Executable deny-list, safe reveal, and extension preparation contract: PASS");
 
   const widgetHtml = fs.readFileSync(path.join(root, "electron", "widget-approved.html"), "utf8");
   const script = [...widgetHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];

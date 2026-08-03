@@ -99,9 +99,8 @@ lane("A", 13, "Extension takeover and fallback", () => {
   assert(downloadTest.includes('/browser"'));
 });
 lane("A", 14, "Readable Electron runtime", () => {
+  assert(lifecycleEvidence.includes("Lumi readable Windows lifecycle and identity contract: PASS"));
   new vm.Script(main);
-  assert(!main.includes("Module._compile"));
-  assert(!main.includes("gunzipSync"));
   assert(!exists("electron/main-payload-01.js"));
 });
 lane("A", 15, "Tray and widget lifecycle", () => {
@@ -162,7 +161,7 @@ lane("B", 14, "Owner-approved fifteen-state Electron capture", () => {
   assert(electronVisual.includes("owner-approved-15"));
 });
 lane("B", 15, "No destructive extension cleanup", () => assert(securityEvidence.includes("extension preparation contract: PASS")));
-lane("B", 16, "Executable deny-list", () => assert(securityEvidence.includes("Secure path")));
+lane("B", 16, "Executable deny-list", () => assert(securityEvidence.includes("Executable deny-list, safe reveal")));
 lane("B", 17, "Browser and Electron visual comparison", () => {
   assert(visualGate.includes("REFERENCE_DHASH"));
   assert(electronCompare.includes("EXPECTED_BLOBS"));

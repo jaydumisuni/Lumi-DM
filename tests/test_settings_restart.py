@@ -37,12 +37,22 @@ def test_default_connections_survive_restart(tmp_path, monkeypatch):
     """Save 12, restart the application, then observe 12 from the reopened store."""
     data_dir = tmp_path / "data"
     monkeypatch.setenv("LUMIDM_DATA_DIR", str(data_dir))
-    first = _new_application(data_dir)
-    assert first.get("/api/settings").get_json()["default_connections"] == 32
-    saved = first.post("/api/settings/connections", json={"value": 12})
-    assert saved.status_code == 200, saved.get_data(as_text=True)
+    try:
+        first = _new_application(data_dir)
+        assert first.get("/api/settings").get_json()["default_connections"] == 32
+        saved = first.post("/api/settings/connections", json={"value": 12})
+        assert saved.status_code == 200, saved.get_data(as_text=True)
 
-    reopened = _new_application(data_dir)
-    assert reopened.get("/api/settings").get_json()["default_connections"] == 12
-    restored = reopened.post("/api/settings/connections", json={"value": 32})
-    assert restored.status_code == 200, restored.get_data(as_text=True)
+        reopened = _new_application(data_dir)
+        assert reopened.get("/api/settings").get_json()["default_connections"] == 12
+        restored = reopened.post("/api/settings/connections", json={"value": 32})
+        assert restored.status_code == 200, restored.get_data(as_text=True)
+    finally:
+        runtime = sys.modules.get("core.v2.runtime")
+        current = getattr(runtime, "_RUNTIME", None) if runtime else None
+        if current is not None:
+            current.close()
+            runtime._RUNTIME = None
+        for name in list(sys.modules):
+            if name == "server" or name.startswith("core."):
+                sys.modules.pop(name, None)
