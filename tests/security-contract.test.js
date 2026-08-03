@@ -24,6 +24,7 @@ fs.mkdirSync(blockedBundle);
 const handlers = new Map();
 let ready = null;
 const opened = [];
+const revealed = [];
 const electron = {
   app: {
     isPackaged: false,
@@ -35,6 +36,7 @@ const electron = {
   ipcMain: { handle(name, callback) { handlers.set(name, callback); } },
   shell: {
     async openPath(value) { opened.push(value); return ""; },
+    showItemInFolder(value) { revealed.push(value); },
     async openExternal(value) { opened.push(value); },
   },
 };
@@ -66,6 +68,9 @@ async function rejects(promise, pattern) {
   assert(open, "secure open handler registered");
   const safe = await open({}, safeFile);
   assert.strictEqual(safe.path, fs.realpathSync(safeFile));
+  assert.strictEqual(safe.revealed, true, "regular files must be revealed rather than executed");
+  assert.deepStrictEqual(revealed, [fs.realpathSync(safeFile)]);
+  assert.strictEqual(opened.length, 0, "safe regular file was not launched");
   await rejects(open({}, blockedFile), /does not launch/);
   await rejects(open({}, blockedBundle), /does not launch/);
   await rejects(open({}, outside), /outside Lumi's approved folders/);
@@ -101,6 +106,7 @@ async function rejects(promise, pattern) {
     console,
     setTimeout() { return 1; },
     clearTimeout() {},
+    confirm() { return false; },
   }, { filename: "electron/widget-approved.html" });
   assert.strictEqual(node("#primary-meta").textContent, "Widget bridge unavailable");
   assert(widgetHtml.includes("replaceChildren"));
