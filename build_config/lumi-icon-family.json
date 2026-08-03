@@ -7,6 +7,19 @@
   ],
   "sourceSha256": "6201010c970fee53ba3bf3649eeda407e7fba333d18a920f685329589042f7ce",
   "removedObsoleteIcons": [
+    "assets/linux/Lumi-DM.png",
+    "assets/linux/app-icon.png",
+    "assets/macos/Lumi-DM.icns",
+    "assets/macos/app-icon.icns",
+    "assets/windows/Lumi-DM.ico",
+    "assets/windows/app-icon.ico",
+    "browser-extension/icons/icon128.png",
+    "browser-extension/icons/icon16.png",
+    "browser-extension/icons/icon32.png",
+    "browser-extension/icons/icon48.png",
+    "resources/app-icon.icns",
+    "resources/app-icon.ico",
+    "resources/app-icon.png",
     "static/favicon-128.png",
     "static/favicon-16.png",
     "static/favicon-192.png",
@@ -16,7 +29,10 @@
     "static/favicon-48.png",
     "static/favicon-512.png",
     "static/favicon-64.png",
-    "static/favicon-96.png"
+    "static/favicon-96.png",
+    "static/favicon.ico",
+    "static/icon.png",
+    "static/my_logo.png"
   ],
   "generated": [
     {
