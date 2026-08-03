@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from pathlib import Path
 
 from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "Resouces" / "my_logo.png"
+# The owner-approved Lumi lockup is the only identity source. The obsolete
+# Resouces/my_logo.png artwork is deliberately not used by the application,
+# extension, taskbar, tray, installer, or generated platform icons.
+SOURCE = ROOT / "static" / "assets" / "lumi-brand-transparent.png"
 PNG_SIZES = (16, 24, 32, 48, 64, 96, 128, 192, 256, 512, 1024)
 ICO_SIZES = (16, 24, 32, 48, 64, 96, 128, 256)
 
@@ -24,7 +26,7 @@ def remove_file(path: Path) -> None:
 
 
 def clean_obsolete_icons() -> list[str]:
-    """Remove every derived icon; preserve only Resouces/my_logo.png."""
+    """Remove every generated icon before recreating the canonical family."""
     removed: list[str] = []
     patterns = (
         "assets/windows/*.ico",
@@ -56,14 +58,42 @@ def clean_obsolete_icons() -> list[str]:
 
 
 def content_bounds(image: Image.Image) -> tuple[int, int, int, int]:
-    alpha = image.getchannel("A")
-    bounds = alpha.getbbox()
+    bounds = image.getchannel("A").getbbox()
     return bounds or (0, 0, image.width, image.height)
 
 
-def square_icon(source: Image.Image, size: int) -> Image.Image:
-    cropped = source.crop(content_bounds(source))
-    margin = max(1, round(size * 0.055))
+def extract_mark(lockup: Image.Image) -> Image.Image:
+    """Extract the left Lumi emblem from the approved horizontal lockup."""
+    source = lockup.crop(content_bounds(lockup))
+    alpha = source.getchannel("A")
+    width, height = source.size
+    projection = []
+    for x in range(width):
+        projection.append(sum(1 for y in range(height) if alpha.getpixel((x, y)) > 16))
+
+    search_start = max(8, int(height * 0.35))
+    search_end = min(width - 1, int(height * 1.45))
+    gap_start = None
+    cut = min(width, height)
+    for x in range(search_start, search_end):
+        if projection[x] <= 1:
+            if gap_start is None:
+                gap_start = x
+        else:
+            if gap_start is not None and x - gap_start >= max(3, height // 40):
+                cut = gap_start
+                break
+            gap_start = None
+    if gap_start is not None and search_end - gap_start >= max(3, height // 40):
+        cut = gap_start
+
+    mark = source.crop((0, 0, max(1, cut), height))
+    return mark.crop(content_bounds(mark))
+
+
+def square_icon(mark: Image.Image, size: int) -> Image.Image:
+    cropped = mark.crop(content_bounds(mark))
+    margin = max(1, round(size * 0.075))
     available = max(1, size - margin * 2)
     cropped.thumbnail((available, available), Image.Resampling.LANCZOS)
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -78,15 +108,15 @@ def save_png(image: Image.Image, path: Path) -> None:
     image.save(path, "PNG", optimize=True)
 
 
-def save_ico(source: Image.Image, path: Path) -> None:
+def save_ico(mark: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    base = square_icon(source, 256)
+    base = square_icon(mark, 256)
     base.save(path, "ICO", sizes=[(size, size) for size in ICO_SIZES])
 
 
-def save_icns(source: Image.Image, path: Path) -> None:
+def save_icns(mark: Image.Image, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    base = square_icon(source, 1024)
+    base = square_icon(mark, 1024)
     base.save(
         path,
         "ICNS",
@@ -96,22 +126,24 @@ def save_icns(source: Image.Image, path: Path) -> None:
 
 def generate() -> dict[str, object]:
     if not SOURCE.is_file():
-        raise SystemExit(f"Canonical Lumi logo is missing: {SOURCE}")
-    source = Image.open(SOURCE).convert("RGBA")
-    if source.width < 64 or source.height < 64:
-        raise SystemExit(f"Canonical Lumi logo is unexpectedly small: {source.size}")
+        raise SystemExit(f"Approved Lumi identity is missing: {SOURCE}")
+    lockup = Image.open(SOURCE).convert("RGBA")
+    if lockup.width < 64 or lockup.height < 64:
+        raise SystemExit(f"Approved Lumi identity is unexpectedly small: {lockup.size}")
+    mark = extract_mark(lockup)
+    if mark.width < 16 or mark.height < 16:
+        raise SystemExit(f"Could not isolate the approved Lumi emblem: {mark.size}")
 
     removed = clean_obsolete_icons()
     generated: list[dict[str, object]] = []
+    sized: dict[int, Image.Image] = {size: square_icon(mark, size) for size in PNG_SIZES}
 
-    sized: dict[int, Image.Image] = {size: square_icon(source, size) for size in PNG_SIZES}
     static = ROOT / "static"
     for size in (16, 24, 32, 48, 64, 96, 128, 192, 256, 512):
         path = static / f"favicon-{size}.png"
         save_png(sized[size], path)
         generated.append({"path": path.relative_to(ROOT).as_posix(), "size": size})
     save_png(sized[256], static / "icon.png")
-    shutil.copy2(SOURCE, static / "my_logo.png")
 
     extension = ROOT / "browser-extension" / "icons"
     for size in (16, 32, 48, 128):
@@ -126,7 +158,7 @@ def generate() -> dict[str, object]:
         ROOT / "static" / "favicon.ico",
     )
     for path in windows_targets:
-        save_ico(source, path)
+        save_ico(mark, path)
         generated.append({"path": path.relative_to(ROOT).as_posix(), "type": "ico"})
 
     mac_targets = (
@@ -135,7 +167,7 @@ def generate() -> dict[str, object]:
         ROOT / "resources" / "app-icon.icns",
     )
     for path in mac_targets:
-        save_icns(source, path)
+        save_icns(mark, path)
         generated.append({"path": path.relative_to(ROOT).as_posix(), "type": "icns"})
 
     linux_targets = (
@@ -153,9 +185,10 @@ def generate() -> dict[str, object]:
         report_files.append({**item, "bytes": path.stat().st_size, "sha256": sha256(path)})
 
     report = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "source": SOURCE.relative_to(ROOT).as_posix(),
-        "sourceDimensions": [source.width, source.height],
+        "sourceDimensions": [lockup.width, lockup.height],
+        "markDimensions": [mark.width, mark.height],
         "sourceSha256": sha256(SOURCE),
         "removedObsoleteIcons": removed,
         "generated": report_files,
@@ -184,6 +217,9 @@ def verify(report: dict[str, object]) -> None:
         with Image.open(ROOT / "browser-extension" / "icons" / f"icon{size}.png") as image:
             if image.size != (size, size):
                 raise SystemExit(f"Wrong extension icon dimensions for {size}: {image.size}")
+    with Image.open(ROOT / "assets" / "windows" / "Lumi-DM.ico") as image:
+        if image.format != "ICO":
+            raise SystemExit("Windows Lumi icon is not a real ICO file")
 
 
 if __name__ == "__main__":
@@ -191,5 +227,6 @@ if __name__ == "__main__":
     verify(result)
     print(f"LUMI_ICON_SOURCE={result['source']}")
     print(f"LUMI_ICON_SOURCE_SHA256={result['sourceSha256']}")
+    print(f"LUMI_ICON_MARK={result['markDimensions']}")
     print(f"LUMI_ICON_FILES={len(result['generated'])}")
     print("LUMI_ICON_FAMILY_VERIFIED")
