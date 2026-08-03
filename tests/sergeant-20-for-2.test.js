@@ -111,7 +111,7 @@ lane("A", 16, "Canonical Lumi identity", () => {
   assert(main.includes("favicon-256.png"));
   assert(exists("assets/windows/Lumi-DM.ico"));
 });
-lane("A", 17, "Secure path opening", () => assert(securityEvidence.includes("Secure path")));
+lane("A", 17, "Secure path opening", () => assert(securityEvidence.includes("Executable deny-list, safe reveal")));
 lane("A", 18, "Single 32-connection persistence path", () => {
   assert(runtime.includes('get_setting("default_connections", 32)'));
   assert(!read("server.py").includes("set_default_connections"));
