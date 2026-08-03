@@ -8,6 +8,13 @@ on:
       - "Resouces/my_logo.png"
       - "scripts/generate_lumi_icon_family.py"
       - ".github/workflows/regenerate-lumi-icons.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "Resouces/my_logo.png"
+      - "scripts/generate_lumi_icon_family.py"
+      - ".github/workflows/regenerate-lumi-icons.yml"
   workflow_dispatch:
 
 permissions:
