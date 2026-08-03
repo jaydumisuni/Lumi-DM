@@ -12,6 +12,13 @@ const electronExecutable = require("electron");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const isolated = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-electron-lifecycle-"));
+const mainSource = fs.readFileSync(path.join(root, "electron", "main.js"), "utf8");
+
+// Electron has a setter but no BrowserWindow getter for skipTaskbar. Prove the
+// exact source contract and use real window dimensions/always-on-top state to
+// identify the main and widget windows during the runtime test.
+assert.match(mainSource, /skipTaskbar:\s*true/);
+assert.match(mainSource, /widgetWindow\.setSkipTaskbar\(true\)/);
 
 const app = await electron.launch({
   executablePath: electronExecutable,
@@ -45,7 +52,6 @@ async function windows() {
       title: window.getTitle(),
       visible: window.isVisible(),
       focused: window.isFocused(),
-      skipTaskbar: window.isSkipTaskbar ? window.isSkipTaskbar() : false,
       alwaysOnTop: window.isAlwaysOnTop(),
       focusable: window.isFocusable(),
       bounds: window.getBounds(),
@@ -53,16 +59,19 @@ async function windows() {
     })));
 }
 
+const isMain = window => window.bounds.width >= 900 && !window.alwaysOnTop;
+const isWidget = window => window.bounds.width <= 500 && window.alwaysOnTop;
+
 try {
   const page = await app.firstWindow({ timeout: 120_000 });
   await page.waitForURL(/^http:\/\/127\.0\.0\.1:7000\/?$/, { timeout: 120_000 });
   await page.waitForFunction(() => Boolean(window.LumiReplica?.state && window.electronApp?.isElectron));
 
   const initial = await windows();
-  const main = initial.find(window => !window.skipTaskbar && window.bounds.width >= 900);
+  const main = initial.find(isMain);
   assert.ok(main, "actual Lumi main BrowserWindow is present");
   assert.equal(main.visible, true, "normal launch shows the main window");
-  assert.equal(main.skipTaskbar, false, "main window appears in the taskbar");
+  assert.equal(initial.filter(isWidget).length, 0, "normal launch does not create a separate widget window");
 
   const startupResult = await page.evaluate(async () => {
     const enabled = await window.electronApp.saveDesktopSettings({ startAtLogin: true });
@@ -78,14 +87,14 @@ try {
   assert.ok(Array.isArray(startupResult.displays) && startupResult.displays.length > 0, "desktop settings use real display data");
 
   await app.evaluate(({ BrowserWindow }) => {
-    const mainWindow = BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && !window.isSkipTaskbar());
+    const mainWindow = BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && window.getBounds().width >= 900 && !window.isAlwaysOnTop());
     if (!mainWindow) throw new Error("main window missing before close-to-tray proof");
     mainWindow.close();
   });
 
   const hiddenMain = await waitFor(async () => {
     const all = await windows();
-    const candidate = all.find(window => !window.skipTaskbar && window.bounds.width >= 900);
+    const candidate = all.find(isMain);
     return candidate && !candidate.visible ? candidate : null;
   }, "closing the main window did not hide it into the tray process");
   assert.equal(hiddenMain.visible, false, "main close hides rather than destroys the app");
@@ -95,15 +104,14 @@ try {
   await page.evaluate(() => window.electronApp.showWidget());
   const widget = await waitFor(async () => {
     const all = await windows();
-    return all.find(window => window.skipTaskbar && window.alwaysOnTop && window.bounds.width <= 500) || null;
+    return all.find(isWidget) || null;
   }, "actual Lumi widget did not open from the tray process");
   assert.equal(widget.visible, true, "widget becomes visible only when explicitly opened");
-  assert.equal(widget.skipTaskbar, true, "widget never creates a taskbar item");
   assert.equal(widget.alwaysOnTop, true, "widget uses its real always-on-top window contract");
 
   await app.evaluate(({ BrowserWindow }) => {
     const all = BrowserWindow.getAllWindows().filter(window => !window.isDestroyed());
-    const mainWindow = all.find(window => !window.isSkipTaskbar() && window.getBounds().width >= 900);
+    const mainWindow = all.find(window => window.getBounds().width >= 900 && !window.isAlwaysOnTop());
     if (!mainWindow) throw new Error("main window missing before widget-isolation proof");
     mainWindow.show();
     mainWindow.focus();
@@ -111,30 +119,29 @@ try {
 
   await waitFor(async () => {
     const all = await windows();
-    const mainWindow = all.find(window => !window.skipTaskbar && window.bounds.width >= 900);
-    const widgetWindow = all.find(window => window.skipTaskbar && window.bounds.width <= 500);
+    const mainWindow = all.find(isMain);
+    const widgetWindow = all.find(isWidget);
     return mainWindow?.visible && widgetWindow && !widgetWindow.visible;
   }, "showing the main window did not hide the widget");
 
-  // Close once more and prove the process can still answer Electron IPC/evaluate,
+  // Close once more and prove the process can still answer Electron evaluate,
   // which distinguishes tray residency from an exited app.
   await app.evaluate(({ BrowserWindow }) => {
-    const mainWindow = BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && !window.isSkipTaskbar());
+    const mainWindow = BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && window.getBounds().width >= 900 && !window.isAlwaysOnTop());
     mainWindow?.close();
   });
   await waitFor(async () => {
     const all = await windows();
-    return all.some(window => !window.skipTaskbar && !window.visible);
+    return all.some(window => isMain(window) && !window.visible);
   }, "second close did not preserve the Lumi tray process");
   const alive = await app.evaluate(({ app: electronApp, BrowserWindow }) => ({
     ready: electronApp.isReady(),
-    quitting: electronApp.isQuitting?.() || false,
     windowCount: BrowserWindow.getAllWindows().filter(window => !window.isDestroyed()).length,
   }));
   assert.equal(alive.ready, true, "Electron process remains ready after close-to-tray");
   assert.ok(alive.windowCount >= 1, "tray process retains the hidden main window");
 
-  console.log("Actual Windows Electron lifecycle: startup, taskbar, close-to-tray, widget isolation PASS");
+  console.log("Actual Windows Electron lifecycle: startup, taskbar source contract, close-to-tray, widget isolation PASS");
 } finally {
   await app.close().catch(() => {});
   fs.rmSync(isolated, { recursive: true, force: true });
