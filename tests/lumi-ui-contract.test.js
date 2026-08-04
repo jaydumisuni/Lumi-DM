@@ -31,15 +31,22 @@ for (const removed of [
   "static/lumi-approved-loader.js",
   "static/lumi-payload-01.js",
   "electron/main-payload-01.js",
+  "static/browser-extension/chromium",
 ]) assert(!exists(removed), `${removed} must remain removed`);
 
 const index = read("static/index.html");
 const ui = read("static/lumi-approved-ui.js");
 const preload = read("electron/preload-main.js");
 const contract = read("electron/release-gate-contract.js");
+const extensionSource = read("electron/browser-extension-source.js");
+const manifest = JSON.parse(read("browser-extension/manifest.json"));
+const mediaPicker = read("browser-extension/media-quality-picker.js");
+const mediaBridge = read("browser-extension/media-quality-bridge.js");
 const main = read("electron/main.js");
 const server = read("core/v2/server_app.py");
 const runtime = read("core/v2/runtime.py");
+const build = JSON.parse(read("techguy-build.json"));
+const iconReport = JSON.parse(read("build_config/lumi-icon-family.json"));
 
 assert(index.includes('href="/static/lumi-approved-ui.css"'));
 assert(index.includes('src="/static/assets/lumi-brand-transparent.png"'));
@@ -68,8 +75,30 @@ for (const marker of [
   "The selected item is outside Lumi's approved folders",
   "Lumi does not launch executable, script, shortcut, or active-content files",
   "extensionDestination",
-  "errorOnExist: true",
+  "resolveCanonicalExtension",
+  "copyCanonicalExtension",
 ]) assert(contract.includes(marker), marker);
+for (const marker of [
+  "errorOnExist: true",
+  "force: false",
+  "will not delete or overwrite",
+  'path.resolve(__dirname, "..", "browser-extension")',
+]) assert(extensionSource.includes(marker), marker);
+
+assert.strictEqual(manifest.version, "5.1.0");
+assert.deepStrictEqual(manifest.content_scripts[0].js, [
+  "content-core.js", "media-quality-picker.js", "content-safety.js",
+]);
+for (const marker of ["Video + audio", "Audio only", "Subtitles", "Size unknown"]) {
+  assert(mediaPicker.includes(marker), marker);
+}
+assert(mediaBridge.includes("format_id"));
+assert.strictEqual(build.iconSource, "Resouces/download manager logo.png");
+assert.strictEqual(build.icons.source, "Resouces/download manager logo.png");
+assert.strictEqual(iconReport.schemaVersion, 3);
+assert.strictEqual(iconReport.source, "Resouces/download manager logo.png");
+assert(exists("Resouces/download manager logo.png"));
+assert(!exists("Resouces/my_logo.png"));
 
 let exposed = null;
 let invokeResult = null;
@@ -92,6 +121,7 @@ vm.runInNewContext(preload, {
     assert.strictEqual(id, "electron");
     return electron;
   },
+  process: { defaultApp: true },
   console,
 }, { filename: file("electron/preload-main.js") });
 assert(exposed, "preload bridge must be exposed");
@@ -129,7 +159,11 @@ assert.strictEqual(typeof exposed.prepareBrowserExtension, "function");
   assert.strictEqual(Number.isNaN(invalid.capacity_bps), false);
   assert.strictEqual(invalid.capacity_bps, 0);
 
-  console.log("Exact approved Lumi UI, Electron, speed and security contract: PASS");
+  invokeResult = { name: "Lumi DM", version: "1.0.0" };
+  const appInfo = await exposed.getAppInfo();
+  assert.strictEqual(appInfo.isPackaged, false, "development preload proof must not claim packaged execution");
+
+  console.log("Exact approved Lumi UI, canonical extension, identity, Electron, speed and security contract: PASS");
 })().catch(error => {
   console.error(error);
   process.exit(1);
