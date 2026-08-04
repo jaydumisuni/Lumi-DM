@@ -60,6 +60,7 @@ jobs:
               'browser-extension/icons/icon128.png',
           ):
               assert path in generated, path
+          # Extension and application identity must be byte-identical at every shared size.
           for size in (16, 32, 48, 128):
               assert generated[f'static/favicon-{size}.png']['sha256'] == generated[f'browser-extension/icons/icon{size}.png']['sha256']
           print('Canonical Lumi identity report PASS')
