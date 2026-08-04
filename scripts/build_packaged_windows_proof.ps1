@@ -81,7 +81,6 @@ $escapedRoot = $Root.Replace("\", "\\").Replace("'", "\'")
 $escapedServer = $ServerDist.Replace("\", "\\").Replace("'", "\'")
 $escapedOutput = $PackageOutput.Replace("\", "\\").Replace("'", "\'")
 $config = @"
-const path = require('path');
 module.exports = {
   appId: 'com.lumi.dm.proof',
   productName: 'Lumi DM',
@@ -96,9 +95,7 @@ module.exports = {
     { from: '$escapedServer', to: 'server', filter: ['LUMIDM-server.exe'] }
   ],
   win: {
-    target: [{ target: 'dir', arch: ['x64'] }],
-    icon: '$escapedRoot\\assets\\windows\\Lumi-DM.ico',
-    artifactName: 'Lumi-DM-proof-${version}.${ext}'
+    icon: '$escapedRoot\\assets\\windows\\Lumi-DM.ico'
   }
 };
 "@
@@ -107,7 +104,7 @@ Set-Content -LiteralPath (Join-Path $Stage "electron-builder.config.cjs") -Value
 Push-Location $Stage
 try {
   npm install --no-audit --no-fund
-  npx electron-builder --dir --win x64 --config electron-builder.config.cjs
+  npx electron-builder --win --x64 --dir --config electron-builder.config.cjs
 } finally {
   Pop-Location
 }
