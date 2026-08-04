@@ -104,7 +104,13 @@ contextBridge.exposeInMainWorld("electronApp", {
   runConnectionCapacityTest: async () => normalizedCapacity(await ipcRenderer.invoke("v6-capacity-run")),
   windowControl: action => ipcRenderer.invoke("ttg-window-control", action),
   getWindowState: () => ipcRenderer.invoke("ttg-window-state"),
-  getAppInfo: () => ipcRenderer.invoke("ttg-app-info"),
+  getAppInfo: async () => ({
+    ...(await ipcRenderer.invoke("ttg-app-info")),
+    // Electron sets process.defaultApp when launched through the development
+    // runtime. The packaged proof can therefore expose its execution boundary
+    // without trusting renderer markup or a test-only flag.
+    isPackaged: !process.defaultApp,
+  }),
   onWindowState: callback => {
     if (typeof callback !== "function") return () => {};
     const listener = (_event, value) => callback(value || {});
