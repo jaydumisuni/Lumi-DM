@@ -38,6 +38,7 @@ const index = read("static/index.html");
 const ui = read("static/lumi-approved-ui.js");
 const preload = read("electron/preload-main.js");
 const contract = read("electron/release-gate-contract.js");
+const windowContract = read("electron/window-contract.js");
 const extensionSource = read("electron/browser-extension-source.js");
 const manifest = JSON.parse(read("browser-extension/manifest.json"));
 const mediaPicker = read("browser-extension/media-quality-picker.js");
@@ -84,6 +85,14 @@ for (const marker of [
   "will not delete or overwrite",
   'path.resolve(__dirname, "..", "browser-extension")',
 ]) assert(extensionSource.includes(marker), marker);
+for (const prohibited of [
+  "ttg-prepare-browser-extension",
+  "ttg-open-path",
+  "ttg-open-external",
+  "fs.rmSync(destination",
+  'static", "browser-extension", "chromium',
+]) assert(!windowContract.includes(prohibited), `window contract must not own secure IPC: ${prohibited}`);
+assert(windowContract.includes("release-gate-contract.js"));
 
 assert.strictEqual(manifest.version, "5.1.0");
 assert.deepStrictEqual(manifest.content_scripts[0].js, [
