@@ -54,7 +54,7 @@ This checklist is the authority for Lumi DM implementation, proof, Builder hando
 
 - [ ] Builder starts from a clean workspace pinned to the exact reviewed SHA.
 - [ ] Builder packages the literal approved renderer, canonical extension and generated icon family.
-- [ ] The actual unpacked or installed EXE runs with `app.isPackaged === true`.
+- [ ] Actual unpacked or installed EXE runs with `app.isPackaged === true`.
 - [ ] The packaged `LUMIDM-server.exe` sidecar starts and serves the renderer.
 - [ ] The packaged app prepares and runs the exact canonical extension.
 - [ ] EXE, installer, taskbar, tray, window, widget, notification and extension icons are visually inspected.
