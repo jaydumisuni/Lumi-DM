@@ -27,8 +27,9 @@ assert.ok(isFile(executable), `packaged Lumi executable missing: ${executable}`)
 const isolated = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-packaged-proof-"));
 const userData = path.join(isolated, "user-data");
 const userProfile = path.join(isolated, "profile");
+const documents = path.join(userProfile, "Documents");
 fs.mkdirSync(userData, { recursive: true });
-fs.mkdirSync(userProfile, { recursive: true });
+fs.mkdirSync(documents, { recursive: true });
 
 function sha256(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
