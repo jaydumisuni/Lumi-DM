@@ -8,7 +8,7 @@ The owner-approved source image is:
 Resouces/download manager logo.png
 ```
 
-Its Git blob and SHA-256 are the identity authority. `static/assets/lumi-brand-transparent.png` may remain a renderer lockup when required by the approved UI, but it is not an icon-generation source.
+This resource is the sole icon-generation source. Its Git blob and SHA-256 are the identity authority. `static/assets/lumi-brand-transparent.png` may remain a renderer lockup when required by the approved UI, but it is not an icon-generation source.
 
 ## Generated surfaces
 
