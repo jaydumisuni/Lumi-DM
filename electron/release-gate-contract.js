@@ -3,6 +3,10 @@
 const { app, ipcMain, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const {
+  resolveCanonicalExtension,
+  copyCanonicalExtension,
+} = require("./browser-extension-source");
 
 const BLOCKED_EXTENSIONS = new Set([
   ".app", ".appx", ".application", ".bat", ".chm", ".cmd", ".com", ".command",
@@ -27,9 +31,11 @@ function readDesktop() {
 }
 
 function extensionSource() {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, "static", "browser-extension", "chromium")
-    : path.resolve(__dirname, "..", "static", "browser-extension", "chromium");
+  return resolveCanonicalExtension({
+    appPath: app.getAppPath(),
+    resourcesPath: process.resourcesPath,
+    isPackaged: app.isPackaged,
+  });
 }
 
 function allowedRoots() {
@@ -101,14 +107,21 @@ app.whenReady().then(() => {
 
   ipcMain.handle("ttg-prepare-browser-extension", async () => {
     const source = extensionSource();
-    if (!fs.existsSync(path.join(source, "manifest.json"))) {
-      throw new Error("The Lumi Chromium extension package is missing from this build");
-    }
-    const destination = extensionDestination();
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.cpSync(source, destination, { recursive: true, errorOnExist: true });
+    const destination = copyCanonicalExtension(source, extensionDestination());
     const error = await shell.openPath(destination);
     if (error) throw new Error(error);
-    return { ok: true, path: destination, browsers: ["chrome", "edge"] };
+    return {
+      ok: true,
+      path: destination,
+      source,
+      browsers: ["chrome", "edge"],
+      samePcAuthentication: "automatic",
+    };
   });
 });
+
+module.exports = {
+  BLOCKED_EXTENSIONS,
+  extensionSource,
+  secureOpenTarget,
+};
