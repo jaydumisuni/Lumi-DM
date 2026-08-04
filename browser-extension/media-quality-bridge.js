@@ -93,6 +93,14 @@ async function stageMedia(message, sender) {
 async function monitorManualMediaHandoff(handoffId, originalUrl) {
   const deadline = Date.now() + MEDIA_HANDOFF_TIMEOUT_MS;
   let failures = 0;
+  let browserFallbackStarted = false;
+
+  const startBrowserFallback = async () => {
+    if (browserFallbackStarted) return;
+    browserFallbackStarted = true;
+    await chrome.downloads.download({ url: originalUrl, conflictAction: "uniquify" });
+  };
+
   while (Date.now() < deadline) {
     await new Promise(resolve => setTimeout(resolve, 900));
     try {
@@ -100,15 +108,20 @@ async function monitorManualMediaHandoff(handoffId, originalUrl) {
       failures = 0;
       const decision = String(result.decision || "pending");
       if (decision === "pending") continue;
-      if (decision === "browser") {
-        await chrome.downloads.download({ url: originalUrl, conflictAction: "uniquify" });
-      }
+      if (decision === "browser") await startBrowserFallback();
       return;
     } catch {
       failures += 1;
-      if (failures >= 4) return;
+      if (failures >= 4) {
+        await startBrowserFallback();
+        return;
+      }
     }
   }
+
+  // A manual media request has no paused browser-download ID to resume. If the
+  // desktop never decides before expiry, start the original URL in the browser.
+  await startBrowserFallback();
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

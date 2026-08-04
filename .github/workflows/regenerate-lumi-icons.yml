@@ -7,6 +7,7 @@ on:
     paths:
       - "Resouces/download manager logo.png"
       - "scripts/generate_lumi_icon_family.py"
+      - "requirements-icon-toolchain.txt"
       - ".github/workflows/regenerate-lumi-icons.yml"
   workflow_dispatch:
 
@@ -22,11 +23,15 @@ jobs:
         with:
           ref: ui/approved-replica-integration-20260730
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install image tooling
-        run: python -m pip install --disable-pip-version-check "Pillow>=10,<12"
+      - name: Install hash-locked image tooling
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --only-binary=:all: --require-hashes
+          -r requirements-icon-toolchain.txt
       - name: Regenerate the complete identity family
         shell: bash
         run: |
@@ -69,15 +74,41 @@ jobs:
           print('Canonical Lumi identity report PASS')
           PY
           ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon|my_logo)\.(ico|icns|png)$'
-      - name: Commit generated identity
+      - name: Commit only generated identity surfaces
         shell: bash
+        env:
+          PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if git diff --quiet && git diff --cached --quiet; then
+          git add -- \
+            assets/windows/Lumi-DM.ico \
+            assets/windows/app-icon.ico \
+            assets/macos/Lumi-DM.icns \
+            assets/macos/app-icon.icns \
+            assets/linux/Lumi-DM.png \
+            assets/linux/app-icon.png \
+            resources/app-icon.ico \
+            resources/app-icon.icns \
+            resources/app-icon.png \
+            static/favicon-*.png \
+            static/favicon.ico \
+            static/icon.png \
+            browser-extension/icons/icon16.png \
+            browser-extension/icons/icon32.png \
+            browser-extension/icons/icon48.png \
+            browser-extension/icons/icon128.png \
+            build_config/lumi-icon-family.json
+
+          if ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Unexpected files changed during icon generation"
+            git status --short
+            exit 1
+          fi
+          if git diff --cached --quiet; then
             echo "Lumi identity already matches the approved resource"
             exit 0
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
           git commit -m "Regenerate every Lumi icon from the approved resource"
-          git push origin HEAD:ui/approved-replica-integration-20260730
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:ui/approved-replica-integration-20260730

@@ -19,6 +19,7 @@ const manifest = JSON.parse(read("browser-extension/manifest.json"));
 const extensionEngine = read("browser-extension/browser-bridge.js");
 const extensionSecurity = read("browser-extension/security-shim.js");
 const extensionPopup = read("browser-extension/popup.html");
+const contentCore = read("browser-extension/content-core.js");
 const mediaBridge = read("browser-extension/media-quality-bridge.js");
 const mediaPicker = read("browser-extension/media-quality-picker.js");
 const confirm = read("electron/confirm.html");
@@ -30,9 +31,12 @@ const browserApi = read("core/v5/browser_api.py");
 const build = JSON.parse(read("techguy-build.json"));
 const iconGenerator = read("scripts/generate_lumi_icon_family.py");
 const iconWorkflow = read(".github/workflows/regenerate-lumi-icons.yml");
+const iconToolchain = read("requirements-icon-toolchain.txt");
+const releaseWorkflow = read(".github/workflows/lumi-release-gate.yml");
 const packagedBuild = read("scripts/build_packaged_windows_proof.ps1");
 const packagedTest = read("tests/packaged_windows_lifecycle_integration.mjs");
 const chromiumTest = read("tests/chromium_extension_integration.mjs");
+const fallbackTest = read("tests/browser-fallback-contract.test.js");
 const downloadTest = read("tests/test_release_gate_download.py");
 const restartTest = read("tests/test_settings_restart.py");
 
@@ -67,12 +71,15 @@ const findings = [
     assert(extensionPopup.includes("No pairing code required"));
     assert(!extensionPopup.includes("Pairing code"));
   }],
-  ["one mature extension is the production source", () => {
+  ["one mature extension is the complete production source", () => {
     assert.strictEqual(manifest.version, "5.1.0");
     assert.deepStrictEqual(manifest.content_scripts[0].js, [
       "content-core.js", "media-quality-picker.js", "content-safety.js",
     ]);
     assert(extensionSource.includes('path.resolve(__dirname, "..", "browser-extension")'));
+    assert(extensionSource.includes('"notification-guard.js"'));
+    assert(extensionSource.includes('"content-safety.js"'));
+    assert(extensionSource.includes("fs.statSync(candidate).isFile()"));
     assert(openPolicy.includes("resolveCanonicalExtension"));
     assert(openPolicy.includes("copyCanonicalExtension"));
     assert(!exists("static/browser-extension/chromium"));
@@ -80,11 +87,19 @@ const findings = [
     assert(extensionEngine.includes("monitorHandoff"));
     assert(extensionEngine.includes("repairMatches"));
   }],
-  ["extension handoff requires persisted Lumi ownership", () => {
+  ["extension handoff requires persisted ownership and restores browser fallback", () => {
     assert(mediaBridge.includes("Lumi did not persist the media handoff"));
     assert(browserApi.includes("browser_pending"));
     assert(chromiumTest.includes("browser copy was not cancelled after Lumi confirmation"));
     assert(chromiumTest.includes("browser download did not resume after Lumi failure"));
+    assert(contentCore.includes("continueOriginalNavigation"));
+    assert(contentCore.includes("response?.result?.handoff?.id"));
+    assert(mediaBridge.includes("startBrowserFallback"));
+    assert(mediaBridge.includes("failures >= 4"));
+    assert(fallbackTest.includes("replay the original torrent link"));
+    assert(fallbackTest.includes("four consecutive handoff failures"));
+    assert(fallbackTest.includes("expired handoff"));
+    assert(releaseWorkflow.includes("node tests/browser-fallback-contract.test.js"));
   }],
   ["media picker lists exact quality size audio and subtitles", () => {
     for (const marker of [
@@ -162,20 +177,32 @@ const findings = [
     assert(updater.includes("api.github.com/repos/jaydumisuni/Lumi-DM/releases/latest"));
     assert(updater.includes("SHA-256"));
   }],
-  ["one approved resource feeds every Lumi icon", () => {
+  ["icon regeneration is hash locked and commits only expected identity files", () => {
     assert.strictEqual(build.logo, "Resouces/download manager logo.png");
     assert.strictEqual(build.iconSource, "Resouces/download manager logo.png");
     assert.strictEqual(build.icons.source, "Resouces/download manager logo.png");
     assert(iconGenerator.includes('SOURCE = ROOT / "Resouces" / "download manager logo.png"'));
     assert(iconWorkflow.includes("Resouces/download manager logo.png"));
     assert(iconWorkflow.includes("Extension and application identity"));
+    assert(iconWorkflow.includes("persist-credentials: false"));
+    assert(iconWorkflow.includes("--require-hashes"));
+    assert(iconWorkflow.includes("--only-binary=:all:"));
+    assert(iconWorkflow.includes("PUSH_TOKEN"));
+    assert(iconWorkflow.includes("git add --"));
+    assert(!iconWorkflow.includes("git add -A"));
+    assert(iconToolchain.includes("Pillow==12.3.0"));
+    assert(iconToolchain.includes("--hash=sha256:"));
     assert(exists("Resouces/download manager logo.png"));
     assert(!exists("Resouces/my_logo.png"));
   }],
-  ["actual packaged app is a required release proof", () => {
+  ["actual packaged app includes declared torrent and media sidecar dependencies", () => {
     assert(packagedBuild.includes("LUMIDM-server.exe"));
     assert(packagedBuild.includes("electron-builder --win --x64 --dir"));
     assert(packagedBuild.includes("app.asar"));
+    assert(packagedBuild.includes("--collect-all imageio_ffmpeg"));
+    assert(packagedBuild.includes("--hidden-import libtorrent"));
+    assert(releaseWorkflow.includes('"libtorrent==2.0.13"'));
+    assert(releaseWorkflow.includes('"imageio-ffmpeg>=0.5,<1"'));
     assert(packagedTest.includes("electronApp.isPackaged"));
     assert(packagedTest.includes("packaged sidecar"));
     assert(packagedTest.includes("prepared extension differs from the exact packaged extension"));

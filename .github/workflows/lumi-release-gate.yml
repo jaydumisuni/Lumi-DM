@@ -48,6 +48,7 @@ jobs:
           node --check browser-extension/media-quality-picker.js
           node --check browser-extension/popup.js
           node --check browser-extension/popup-runtime-fix.js
+          node --check tests/browser-fallback-contract.test.js
           node --check tests/chromium_extension_integration.mjs
           node --check tests/electron_lifecycle_integration.mjs
           node --check tests/electron_visual_gate.mjs
@@ -56,6 +57,7 @@ jobs:
         run: |
           node tests/lumi-ui-contract.test.js
           node tests/security-contract.test.js
+          node tests/browser-fallback-contract.test.js
           node tests/sergeant-owner-findings.test.js
 
   chromium-extension-runtime:
@@ -161,7 +163,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install -r requirements.txt pyinstaller "libtorrent==2.0.13" "imageio-ffmpeg>=0.5,<1"
           npm install --no-save electron@29.4.6 electron-builder@24.13.3 playwright@1.54.2
       - name: Build actual LUMIDM-server.exe and packaged app.asar candidate
         shell: pwsh

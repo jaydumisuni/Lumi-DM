@@ -6,11 +6,13 @@ const path = require("path");
 const REQUIRED_FILES = Object.freeze([
   "manifest.json",
   "background.js",
+  "notification-guard.js",
   "browser-bridge.js",
   "security-shim.js",
   "media-quality-bridge.js",
   "content-core.js",
   "media-quality-picker.js",
+  "content-safety.js",
   "popup.html",
   "popup.js",
   "icons/icon16.png",
@@ -18,9 +20,22 @@ const REQUIRED_FILES = Object.freeze([
   "icons/icon128.png",
 ]);
 
+function isFile(candidate) {
+  try {
+    return fs.statSync(candidate).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function isCanonicalExtensionDirectory(candidate) {
-  if (!candidate || !fs.existsSync(candidate)) return false;
-  return REQUIRED_FILES.every(relative => fs.existsSync(path.join(candidate, relative)));
+  if (!candidate) return false;
+  try {
+    if (!fs.statSync(candidate).isDirectory()) return false;
+  } catch {
+    return false;
+  }
+  return REQUIRED_FILES.every(relative => isFile(path.join(candidate, relative)));
 }
 
 function extensionCandidates({ appPath = "", resourcesPath = "", isPackaged = false } = {}) {

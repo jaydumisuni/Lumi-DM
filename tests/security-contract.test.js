@@ -89,6 +89,20 @@ async function rejects(promise, pattern) {
   assert.strictEqual(fs.existsSync(path.join(root, "static", "browser-extension", "chromium")), false,
     "the removed static extension must not return");
   assert(canonicalExtension.isCanonicalExtensionDirectory(resolved));
+  for (const required of ["notification-guard.js", "content-safety.js"]) {
+    assert(canonicalExtension.REQUIRED_FILES.includes(required), `${required} must be part of the canonical package contract`);
+  }
+
+  const disguised = path.join(temporary, "extension-with-directory-in-place-of-file");
+  fs.cpSync(resolved, disguised, { recursive: true });
+  const disguisedGuard = path.join(disguised, "notification-guard.js");
+  fs.rmSync(disguisedGuard, { force: true });
+  fs.mkdirSync(disguisedGuard);
+  assert.strictEqual(
+    canonicalExtension.isCanonicalExtensionDirectory(disguised),
+    false,
+    "a directory must never satisfy a required extension file",
+  );
 
   const extension = handlers.get("ttg-prepare-browser-extension");
   assert(extension, "extension preparation handler registered");
@@ -110,7 +124,7 @@ async function rejects(promise, pattern) {
     Promise.resolve().then(() => canonicalExtension.copyCanonicalExtension(resolved, prepared.path)),
     /already exists/,
   );
-  console.log("Executable deny-list, safe reveal, canonical extension, and non-destructive preparation: PASS");
+  console.log("Executable deny-list, safe reveal, canonical extension files, and non-destructive preparation: PASS");
 
   const widgetHtml = fs.readFileSync(path.join(root, "electron", "widget-approved.html"), "utf8");
   const script = [...widgetHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];

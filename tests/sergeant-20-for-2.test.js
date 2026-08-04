@@ -57,6 +57,7 @@ const exactWorkflow = read(".github/workflows/exact-electron-ui-gate.yml");
 const readableWorkflow = read(".github/workflows/materialize-readable-source.yml");
 const iconWorkflow = read(".github/workflows/regenerate-lumi-icons.yml");
 const securityEvidence = execFileSync(process.execPath, [path.join(__dirname, "security-contract.test.js")], { encoding: "utf8" });
+const browserFallbackEvidence = execFileSync(process.execPath, [path.join(__dirname, "browser-fallback-contract.test.js")], { encoding: "utf8" });
 const lifecycleEvidence = execFileSync(process.execPath, [path.join(__dirname, "lumi-windows-lifecycle.test.js")], { encoding: "utf8" });
 
 const expectedSidebar = [
@@ -114,6 +115,8 @@ lane("A", 11, "One canonical production extension", () => {
     "content-core.js", "media-quality-picker.js", "content-safety.js",
   ]);
   assert(extensionSource.includes('path.resolve(__dirname, "..", "browser-extension")'));
+  assert(extensionSource.includes('"notification-guard.js"'));
+  assert(extensionSource.includes('"content-safety.js"'));
   assert(contract.includes("resolveCanonicalExtension"));
   assert(contract.includes("copyCanonicalExtension"));
   assert(!exists("static/browser-extension/chromium"));
@@ -123,14 +126,16 @@ lane("A", 12, "Automatic same-PC extension authentication", () => {
   assert(extensionSecurity.includes("lumiEnsureSamePcToken"));
   assert(extensionPopup.includes("No pairing code required"));
   assert(!extensionPopup.includes("Pairing code"));
-  assert(securityEvidence.includes("canonical extension, and non-destructive preparation: PASS"));
+  assert(securityEvidence.includes("canonical extension files, and non-destructive preparation: PASS"));
 });
-lane("A", 13, "Real canonical extension takeover and fallback", () => {
+lane("A", 13, "Real canonical extension takeover and browser fallback", () => {
   assert(extensionEngine.includes("chrome.downloads.onCreated"));
   assert(extensionEngine.includes("monitorHandoff"));
   assert(chromiumIntegration.includes("resolveCanonicalExtension"));
   assert(chromiumIntegration.includes("browser copy was not cancelled after Lumi confirmation"));
   assert(chromiumIntegration.includes("browser download did not resume after Lumi failure"));
+  assert(browserFallbackEvidence.includes("restores browser navigation on failure: PASS"));
+  assert(browserFallbackEvidence.includes("timeout browser fallback: PASS"));
 });
 lane("A", 14, "Exact media quality size audio and subtitle picker", () => {
   for (const marker of [
@@ -161,7 +166,7 @@ lane("A", 16, "Readable Electron runtime", () => {
   assert(!exists("electron/main-payload-01.js"));
 });
 lane("A", 17, "Tray and widget lifecycle", () => {
-  assert(lifecycleEvidence.includes("PASS"));
+  assert(lifecycleEvidence.includes("Lumi readable Windows lifecycle and identity contract: PASS"));
   assert(widget.includes("window.lumiWidget"));
   assert(widget.includes('id="close-widget"'));
   assert(widget.includes('bridge.action("cancel"'));
@@ -186,6 +191,8 @@ lane("A", 20, "Actual packaged Windows release proof is mandatory", () => {
   assert(packagedBuild.includes("LUMIDM-server.exe"));
   assert(packagedBuild.includes("electron-builder --win --x64 --dir"));
   assert(packagedBuild.includes("app.asar"));
+  assert(packagedBuild.includes("--collect-all imageio_ffmpeg"));
+  assert(packagedBuild.includes("--hidden-import libtorrent"));
   assert(packagedRuntime.includes("electronApp.isPackaged"));
   assert(packagedRuntime.includes("packaged sidecar"));
   assert(workflow.includes("packaged-windows-runtime"));
@@ -261,8 +268,10 @@ lane("B", 20, "Sergeant aggregates every source runtime package and network gate
   assert(workflow.includes("sergeant-20-for-2"));
   assert(workflow.includes("PACKAGED_WINDOWS_RESULT"));
   assert(workflow.includes('test "$PACKAGED_WINDOWS_RESULT" = success'));
+  assert(workflow.includes("browser-fallback-contract.test.js"));
   assert(exactWorkflow.includes("exact-approved-electron-ui"));
   assert(iconWorkflow.includes("LUMI_ICON_FAMILY_VERIFIED"));
+  assert(iconWorkflow.includes("--require-hashes"));
 });
 
 const failures = results.filter(result => result.status !== "PASS");

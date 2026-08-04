@@ -23,6 +23,8 @@ $requiredSource = @(
   "static\index.html",
   "static\favicon-256.png",
   "browser-extension\manifest.json",
+  "browser-extension\notification-guard.js",
+  "browser-extension\content-safety.js",
   "browser-extension\media-quality-picker.js",
   "browser-extension\media-quality-bridge.js",
   "Resouces\download manager logo.png",
@@ -54,6 +56,8 @@ python -m PyInstaller `
   --collect-all yt_dlp `
   --collect-all cryptography `
   --collect-all psutil `
+  --collect-all imageio_ffmpeg `
+  --hidden-import libtorrent `
   (Join-Path $Root "server.py")
 
 $ServerExe = Join-Path $ServerDist "LUMIDM-server.exe"
@@ -120,6 +124,8 @@ foreach ($relative in @(
   "static\index.html",
   "static\favicon-256.png",
   "browser-extension\manifest.json",
+  "browser-extension\notification-guard.js",
+  "browser-extension\content-safety.js",
   "browser-extension\media-quality-picker.js",
   "browser-extension\media-quality-bridge.js",
   "Resouces\download manager logo.png",
