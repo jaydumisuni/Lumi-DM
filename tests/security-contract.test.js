@@ -7,6 +7,7 @@ const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
+const canonicalExtension = require(path.join(root, "electron", "browser-extension-source.js"));
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-security-"));
 const home = path.join(temporary, "home");
 const downloads = path.join(home, "Downloads");
@@ -29,6 +30,7 @@ const electron = {
   app: {
     isPackaged: false,
     whenReady() { return { then(callback) { ready = callback; } }; },
+    getAppPath() { return root; },
     getPath(name) {
       return { home, downloads, documents, userData }[name] || home;
     },
@@ -46,8 +48,11 @@ vm.runInNewContext(contract, {
     if (id === "electron") return electron;
     if (id === "fs") return fs;
     if (id === "path") return path;
+    if (id === "./browser-extension-source") return canonicalExtension;
     throw new Error(`Unexpected require ${id}`);
   },
+  module: { exports: {} },
+  exports: {},
   __dirname: path.join(root, "electron"),
   process: { ...process, resourcesPath: temporary },
   console,
@@ -75,6 +80,16 @@ async function rejects(promise, pattern) {
   await rejects(open({}, blockedBundle), /does not launch/);
   await rejects(open({}, outside), /outside Lumi's approved folders/);
 
+  const resolved = canonicalExtension.resolveCanonicalExtension({
+    appPath: root,
+    resourcesPath: temporary,
+    isPackaged: true,
+  });
+  assert.strictEqual(resolved, path.join(root, "browser-extension"));
+  assert.strictEqual(fs.existsSync(path.join(root, "static", "browser-extension", "chromium")), false,
+    "the removed static extension must not return");
+  assert(canonicalExtension.isCanonicalExtensionDirectory(resolved));
+
   const extension = handlers.get("ttg-prepare-browser-extension");
   assert(extension, "extension preparation handler registered");
   const existing = path.join(documents, "keep-me");
@@ -82,8 +97,20 @@ async function rejects(promise, pattern) {
   fs.writeFileSync(path.join(existing, "user.txt"), "preserve");
   const prepared = await extension({});
   assert(fs.existsSync(path.join(existing, "user.txt")), "existing user folder must remain untouched");
-  assert(fs.existsSync(path.join(prepared.path, "manifest.json")), "prepared extension must contain its manifest");
-  console.log("Executable deny-list, safe reveal, and extension preparation contract: PASS");
+  assert.strictEqual(prepared.source, resolved, "Electron must prepare the canonical extension source");
+  assert.strictEqual(prepared.samePcAuthentication, "automatic");
+  assert(canonicalExtension.isCanonicalExtensionDirectory(prepared.path));
+  const manifest = JSON.parse(fs.readFileSync(path.join(prepared.path, "manifest.json"), "utf8"));
+  assert.strictEqual(manifest.version, "5.1.0");
+  assert.deepStrictEqual(manifest.content_scripts[0].js, [
+    "content-core.js", "media-quality-picker.js", "content-safety.js",
+  ]);
+  assert(!fs.readFileSync(path.join(prepared.path, "popup.html"), "utf8").includes("Pairing code"));
+  await rejects(
+    Promise.resolve().then(() => canonicalExtension.copyCanonicalExtension(resolved, prepared.path)),
+    /already exists/,
+  );
+  console.log("Executable deny-list, safe reveal, canonical extension, and non-destructive preparation: PASS");
 
   const widgetHtml = fs.readFileSync(path.join(root, "electron", "widget-approved.html"), "utf8");
   const script = [...widgetHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
