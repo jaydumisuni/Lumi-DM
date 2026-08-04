@@ -8,12 +8,21 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const { chromium } = require("playwright");
+const { resolveCanonicalExtension } = require("../electron/browser-extension-source.js");
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const extensionPath = path.join(root, "browser-extension");
-const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-extension-runtime-"));
+// Use the same pure resolver called by the packaged Electron preparation path.
+const extensionPath = resolveCanonicalExtension({
+  appPath: root,
+  resourcesPath: path.join(root, "unused-resources"),
+  isPackaged: true,
+});
+assert.equal(extensionPath, path.join(root, "browser-extension"));
+assert.equal(fs.existsSync(path.join(root, "static", "browser-extension", "chromium")), false,
+  "a second static Chromium extension must not exist");
 
+const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-extension-runtime-"));
 const TOKEN = "owner-runtime-extension-token";
 const payload = Buffer.alloc(4 * 1024 * 1024, 0x4c);
 const state = {
@@ -22,6 +31,7 @@ const state = {
   statusCalls: new Map(),
   handoffs: new Map(),
   failStatus: new Set(),
+  mediaInfoCalls: 0,
 };
 
 function json(response, status, value, origin = "*") {
@@ -84,12 +94,34 @@ const server = http.createServer(async (request, response) => {
     json(response, 200, { downloads: [] }, origin);
     return;
   }
+  if (url.pathname === "/api/settings") {
+    json(response, 200, {
+      default_dir: path.join(os.tmpdir(), "lumi-extension-downloads"),
+      temp_dir: path.join(os.tmpdir(), "lumi-extension-temp"),
+      default_connections: 32,
+    }, origin);
+    return;
+  }
   if (url.pathname === "/api/browser/repair-pending") {
     json(response, 200, { pending: null }, origin);
     return;
   }
   if (url.pathname === "/api/browser/intercept-mode") {
     json(response, 200, { mode: "auto" }, origin);
+    return;
+  }
+  if (url.pathname === "/api/v3/media/info") {
+    state.mediaInfoCalls += 1;
+    json(response, 200, {
+      title: "Owner quality proof",
+      webpage_url: url.searchParams.get("url"),
+      formats: [
+        { format_id: "137", ext: "mp4", height: 1080, fps: 30, filesize: 320000000, vcodec: "avc1", acodec: "none", tbr: 4500 },
+        { format_id: "22", ext: "mp4", height: 720, fps: 30, filesize: 180000000, vcodec: "avc1", acodec: "mp4a", tbr: 2500 },
+        { format_id: "140", ext: "m4a", height: 0, fps: 0, filesize: 11000000, vcodec: "none", acodec: "mp4a", abr: 128 },
+      ],
+      subtitles: { en: [{ ext: "vtt", source: "subtitles" }] },
+    }, origin);
     return;
   }
   if (url.pathname === "/api/v5/browser/capture" && request.method === "POST") {
@@ -126,7 +158,6 @@ const server = http.createServer(async (request, response) => {
     json(response, 200, { ok: true }, origin);
     return;
   }
-
   if (url.pathname === "/api/host-profiles" && request.method === "POST") {
     json(response, 200, { ok: true }, origin);
     return;
@@ -203,19 +234,21 @@ try {
   let worker = context.serviceWorkers()[0];
   if (!worker) worker = await context.waitForEvent("serviceworker", { timeout: 30_000 });
   const extensionId = new URL(worker.url()).host;
-  assert.ok(extensionId, "actual Chromium extension service worker loaded");
-  assert.equal(await worker.evaluate(() => chrome.runtime.getManifest().name), "Lumi Download Manager");
+  assert.ok(extensionId, "canonical Chromium extension service worker loaded");
+  const manifest = await worker.evaluate(() => chrome.runtime.getManifest());
+  assert.equal(manifest.name, "Lumi Download Manager");
+  assert.equal(manifest.version, "5.1.0");
+  assert.deepEqual(manifest.content_scripts[0].js, ["content-core.js", "media-quality-picker.js", "content-safety.js"]);
 
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
   await waitFor(() => state.localAuthCalls > 0, "same-PC extension did not authenticate automatically");
 
-  // Confirmation path: the browser download remains paused until Lumi owns it,
-  // then the browser copy is cancelled and erased only after the Lumi decision.
+  // Browser ownership remains paused until Lumi confirms takeover.
   const confirmedId = await startDownload(worker, "owner-confirmed.iso");
   const confirmedCapture = await waitFor(
     () => state.captures.find(item => item.data.url.includes("owner-confirmed.iso")),
-    "actual extension did not capture the browser download",
+    "canonical extension did not capture the browser download",
   );
   assert.equal(confirmedCapture.authorization, `Bearer ${TOKEN}`);
   const paused = await waitFor(async () => {
@@ -223,29 +256,58 @@ try {
     return item?.paused ? item : null;
   }, "browser download was not paused while waiting for Lumi");
   assert.equal(paused.state, "in_progress");
-  assert.equal(state.handoffs.get(confirmedCapture.handoffId), "pending");
   state.handoffs.set(confirmedCapture.handoffId, "lumi");
-  await waitFor(async () => !(await downloads(worker)).some(entry => entry.id === confirmedId), "browser copy was not cancelled after Lumi confirmation");
+  await waitFor(async () => !(await downloads(worker)).some(entry => entry.id === confirmedId),
+    "browser copy was not cancelled after Lumi confirmation");
 
-  // Failure path: if Lumi becomes unavailable after staging, the exact same
-  // real browser download resumes and completes instead of being lost.
+  // Lumi failure resumes the exact original browser download.
   const fallbackId = await startDownload(worker, "owner-fallback.iso");
   const fallbackCapture = await waitFor(
     () => state.captures.find(item => item.data.url.includes("owner-fallback.iso")),
     "fallback download was not captured",
   );
-  await waitFor(async () => (await downloads(worker)).find(entry => entry.id === fallbackId)?.paused, "fallback download was not paused first");
+  await waitFor(async () => (await downloads(worker)).find(entry => entry.id === fallbackId)?.paused,
+    "fallback download was not paused first");
   state.failStatus.add(fallbackCapture.handoffId);
   const completed = await waitFor(async () => {
     const item = (await downloads(worker)).find(entry => entry.id === fallbackId);
     return item?.state === "complete" ? item : null;
   }, "browser download did not resume after Lumi failure", 35_000);
   assert.equal(completed.paused, false);
-  assert.ok((state.statusCalls.get(fallbackCapture.handoffId) || 0) >= 4, "fallback did not wait for repeated Lumi failures");
+  assert.ok((state.statusCalls.get(fallbackCapture.handoffId) || 0) >= 4);
+
+  // Exact media-quality selection is inspected and persisted into the same
+  // browser handoff path instead of silently choosing the largest/default file.
+  const infoResponse = await popup.evaluate(() => new Promise(resolve => {
+    chrome.runtime.sendMessage({ type: "LUMI_MEDIA_INFO", url: "https://example.com/watch/owner" }, resolve);
+  }));
+  assert.equal(infoResponse.ok, true);
+  assert.equal(infoResponse.info.formats.length, 3);
+  assert.equal(state.mediaInfoCalls, 1);
+
+  const mediaResponse = await popup.evaluate(() => new Promise(resolve => {
+    chrome.runtime.sendMessage({
+      type: "LUMI_MEDIA_STAGE",
+      url: "https://example.com/watch/owner",
+      title: "Owner quality proof",
+      filename: "Owner quality proof",
+      format_id: "137+bestaudio/best",
+      subtitles: true,
+      subtitle_languages: ["en"],
+    }, resolve);
+  }));
+  assert.equal(mediaResponse.ok, true);
+  const mediaCapture = state.captures.find(item => item.data.url === "https://example.com/watch/owner");
+  assert.ok(mediaCapture, "media selection was not persisted through the canonical handoff");
+  assert.equal(mediaCapture.data.format_id, "137+bestaudio/best");
+  assert.equal(mediaCapture.data.connections, 32);
+  assert.equal(mediaCapture.data.subtitles, true);
+  assert.deepEqual(mediaCapture.data.subtitle_languages, ["en"]);
+  state.handoffs.set(mediaCapture.handoffId, "lumi");
 
   assert.ok(state.localAuthCalls >= 1, "manual pairing was incorrectly required");
-  assert.equal(state.captures.length, 2);
-  console.log("Actual Chromium Lumi extension: auto-auth, pause, confirmed takeover, failure resume PASS");
+  assert.equal(state.captures.length, 3);
+  console.log("Canonical Chromium extension: auto-auth, takeover, fallback and exact media quality PASS");
 } finally {
   await context?.close().catch(() => {});
   await new Promise(resolve => server.close(resolve));
