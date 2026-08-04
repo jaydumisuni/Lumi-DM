@@ -5,15 +5,7 @@ on:
     branches:
       - ui/approved-replica-integration-20260730
     paths:
-      - "static/assets/lumi-brand-transparent.png"
-      - "scripts/generate_lumi_icon_family.py"
-      - "scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY"
-      - ".github/workflows/regenerate-lumi-icons.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "static/assets/lumi-brand-transparent.png"
+      - "Resouces/download manager logo.png"
       - "scripts/generate_lumi_icon_family.py"
       - ".github/workflows/regenerate-lumi-icons.yml"
   workflow_dispatch:
@@ -33,68 +25,55 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Apply pending atomic desktop-settings correction
-        shell: bash
-        run: |
-          if [ -f scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY ]; then
-            python - <<'PY'
-          from pathlib import Path
-          import re
-
-          path = Path("electron/main.js")
-          text = path.read_text(encoding="utf-8")
-          pattern = re.compile(
-              r'(?ms)^  ipcMain\.handle\("v5-desktop-settings-save", \(_event, value\) => \{\n'
-              r'    const wasVisible = .*?;\n'
-              r'    const requested = .*?;\n'
-              r'    if \(Object\.prototype\.hasOwnProperty\.call\(requested, "startAtLogin"\)\) \{\n'
-              r'      setStartupEnabled\(Boolean\(requested\.startAtLogin\)\);\n'
-              r'    \}\n'
-              r'    const \{ startAtLogin: _ignored, \.\.\.desktop \} = requested;\n'
-              r'    const next = writeDesktopPrefs\(validateDesktopDirectories\(desktop\)\);\n'
-          )
-          replacement = '''  ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
-            const wasVisible = Boolean(widgetWindow && !widgetWindow.isDestroyed() && widgetWindow.isVisible());
-            const requested = value && typeof value === "object" ? value : {};
-            const { startAtLogin: requestedStartup, ...desktop } = requested;
-            const validated = validateDesktopDirectories(desktop);
-            if (Object.prototype.hasOwnProperty.call(requested, "startAtLogin")) {
-              setStartupEnabled(Boolean(requestedStartup));
-            }
-            const next = writeDesktopPrefs(validated);
-          '''
-          updated, count = pattern.subn(replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f"Expected one desktop settings block, replaced {count}")
-          path.write_text(updated, encoding="utf-8")
-          PY
-            rm -f scripts/PATCH_MAIN_ATOMIC_SETTINGS.READY
-            rm -f .github/workflows/patch-main-atomic-settings.yml
-            node --check electron/main.js
-          fi
       - name: Install image tooling
         run: python -m pip install --disable-pip-version-check "Pillow>=10,<12"
-      - name: Remove stale icons and generate the complete family
+      - name: Regenerate the complete identity family
         run: python scripts/generate_lumi_icon_family.py
-      - name: Verify one approved identity across app extension and installer
+      - name: Verify the canonical source and every required surface
         shell: bash
         run: |
+          test -f 'Resouces/download manager logo.png'
           test -f assets/windows/Lumi-DM.ico
+          test -f assets/macos/Lumi-DM.icns
+          test -f assets/linux/Lumi-DM.png
+          test -f resources/app-icon.ico
           test -f static/favicon-256.png
           test -f browser-extension/icons/icon128.png
           test -f build_config/lumi-icon-family.json
           test ! -e Resouces/my_logo.png
-          grep -q 'static/assets/lumi-brand-transparent.png' build_config/lumi-icon-family.json
+          grep -Fq 'Resouces/download manager logo.png' build_config/lumi-icon-family.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path('build_config/lumi-icon-family.json').read_text(encoding='utf-8'))
+          assert report['schemaVersion'] == 3
+          assert report['source'] == 'Resouces/download manager logo.png'
+          assert len(report['sourceSha256']) == 64
+          generated = {item['path']: item for item in report['generated']}
+          for path in (
+              'assets/windows/Lumi-DM.ico',
+              'assets/macos/Lumi-DM.icns',
+              'assets/linux/Lumi-DM.png',
+              'resources/app-icon.ico',
+              'static/favicon-256.png',
+              'browser-extension/icons/icon128.png',
+          ):
+              assert path in generated, path
+          for size in (16, 32, 48, 128):
+              assert generated[f'static/favicon-{size}.png']['sha256'] == generated[f'browser-extension/icons/icon{size}.png']['sha256']
+          print('Canonical Lumi identity report PASS')
+          PY
           ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon|my_logo)\.(ico|icns|png)$'
-      - name: Commit generated identity and pending source corrections
+      - name: Commit generated identity
         shell: bash
         run: |
           if git diff --quiet && git diff --cached --quiet; then
-            echo "Lumi identity and pending source corrections already match"
+            echo "Lumi identity already matches the approved resource"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Apply atomic settings and regenerate approved Lumi identity"
+          git commit -m "Regenerate every Lumi icon from the approved resource"
           git push origin HEAD:ui/approved-replica-integration-20260730
