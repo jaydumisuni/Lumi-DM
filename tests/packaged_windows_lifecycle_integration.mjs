@@ -66,7 +66,8 @@ try {
 
   const packaged = await app.evaluate(({ app: electronApp, BrowserWindow, nativeImage }) => {
     const resources = process.resourcesPath;
-    const iconPath = require("path").join(resources, "static", "favicon-256.png");
+    const separator = process.platform === "win32" ? "\\" : "/";
+    const iconPath = [resources, "static", "favicon-256.png"].join(separator);
     const image = nativeImage.createFromPath(iconPath);
     const windows = BrowserWindow.getAllWindows().filter(window => !window.isDestroyed());
     return {
