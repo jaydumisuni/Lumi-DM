@@ -6,11 +6,18 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { _electron: electron } = require('playwright');
-const electronExecutable = require('electron');
+const developmentElectron = require('electron');
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
-const output = path.join(root, 'artifacts', 'electron-visual');
+const packagedExecutable = process.env.LUMI_PACKAGED_EXE
+  ? path.resolve(process.env.LUMI_PACKAGED_EXE)
+  : '';
+const packaged = Boolean(packagedExecutable);
+if (packaged) assert.ok(fs.isFileSync(packagedExecutable), `packaged Lumi executable missing: ${packagedExecutable}`);
+const output = process.env.LUMI_ELECTRON_VISUAL_OUTPUT
+  ? path.resolve(process.env.LUMI_ELECTRON_VISUAL_OUTPUT)
+  : path.join(root, 'artifacts', packaged ? 'packaged-electron-visual' : 'electron-visual');
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 
@@ -28,17 +35,21 @@ const ordinaryScreens = [
 
 const isolated = path.join(output, 'runtime-data');
 const app = await electron.launch({
-  executablePath: electronExecutable,
-  args: [path.join(root, 'electron', 'main.js')],
+  executablePath: packagedExecutable || developmentElectron,
+  args: packaged
+    ? [`--user-data-dir=${path.join(isolated, 'user-data')}`]
+    : [path.join(root, 'electron', 'main.js')],
   env: {
     ...process.env,
+    USERPROFILE: packaged ? path.join(isolated, 'profile') : process.env.USERPROFILE,
+    HOME: packaged ? path.join(isolated, 'profile') : process.env.HOME,
     LUMIDM_DATA_DIR: path.join(isolated, 'data'),
     LUMIDM_DOWNLOAD_DIR: path.join(isolated, 'downloads'),
     LUMIDM_TEMP_DIR: path.join(isolated, 'temporary'),
     LUMIDM_PYTHON: process.env.LUMIDM_PYTHON || 'python',
     ELECTRON_DISABLE_SECURITY_WARNINGS: 'true',
   },
-  timeout: 120_000,
+  timeout: 180_000,
 });
 
 async function resetTransient(page) {
@@ -57,7 +68,7 @@ async function resetTransient(page) {
 
 async function view(page, target) {
   await resetTransient(page);
-  await page.evaluate((next) => {
+  await page.evaluate(next => {
     window.LumiReplica.switchView(next);
     window.LumiReplica.state.search = '';
     window.LumiReplica.state.theme = 'dark';
@@ -71,14 +82,14 @@ async function capture(page, name) {
 }
 
 try {
-  const page = await app.firstWindow({ timeout: 120_000 });
-  await page.waitForURL(/^http:\/\/127\.0\.0\.1:7000\/?$/, { timeout: 120_000 });
+  const page = await app.firstWindow({ timeout: 180_000 });
+  await page.waitForURL(/^http:\/\/127\.0\.0\.1:7000\/?$/, { timeout: 180_000 });
   await page.waitForFunction(() => Boolean(window.LumiReplica?.state && document.querySelector('.app-frame')), null, { timeout: 120_000 });
 
-  const actual = await app.evaluate(({ BrowserWindow }) => {
-    const windows = BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed());
+  const actual = await app.evaluate(({ app: electronApp, BrowserWindow }) => {
+    const windows = BrowserWindow.getAllWindows().filter(window => !window.isDestroyed());
     if (!windows.length) throw new Error('Lumi main BrowserWindow missing');
-    const main = windows[0];
+    const main = windows.find(window => window.getBounds().width >= 900 && !window.isAlwaysOnTop()) || windows[0];
     main.setContentSize(1672, 941);
     main.show();
     main.focus();
@@ -86,6 +97,9 @@ try {
       title: main.getTitle(),
       url: main.webContents.getURL(),
       size: main.getContentSize(),
+      isPackaged: electronApp.isPackaged,
+      appPath: electronApp.getAppPath(),
+      resourcesPath: process.resourcesPath,
       skipTaskbar: main.isSkipTaskbar ? main.isSkipTaskbar() : false,
       windowCount: windows.length,
     };
@@ -93,6 +107,8 @@ try {
   assert.equal(actual.url, 'http://127.0.0.1:7000/');
   assert.deepEqual(actual.size, [1672, 941]);
   assert.equal(actual.skipTaskbar, false);
+  assert.equal(actual.isPackaged, packaged, 'visual capture used the wrong Electron execution boundary');
+  if (packaged) assert.match(actual.appPath, /app\.asar$/i);
 
   await page.waitForTimeout(800);
 
@@ -136,10 +152,13 @@ try {
     renderer: 'static/index.html',
     exactApprovedRenderer: true,
     captureSet: 'owner-approved-15',
-    capturedBy: 'Playwright Electron application running electron/main.js',
+    executionBoundary: packaged ? 'actual-packaged-app-asar' : 'development-electron-main-source',
+    capturedBy: packaged
+      ? 'Playwright launching the actual packaged Lumi-DM.exe'
+      : 'Playwright Electron application running electron/main.js',
   }, null, 2));
 } finally {
   await app.close();
 }
 
-console.log('Actual Electron owner-approved capture set: 15/15 PASS');
+console.log(`${packaged ? 'Packaged' : 'Development'} Electron owner-approved capture set: 15/15 PASS`);
