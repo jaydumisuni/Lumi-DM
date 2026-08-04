@@ -14,7 +14,11 @@ const packagedExecutable = process.env.LUMI_PACKAGED_EXE
   ? path.resolve(process.env.LUMI_PACKAGED_EXE)
   : '';
 const packaged = Boolean(packagedExecutable);
-if (packaged) assert.ok(fs.isFileSync(packagedExecutable), `packaged Lumi executable missing: ${packagedExecutable}`);
+if (packaged) {
+  let packagedFile = false;
+  try { packagedFile = fs.statSync(packagedExecutable).isFile(); } catch (_) {}
+  assert.ok(packagedFile, `packaged Lumi executable missing: ${packagedExecutable}`);
+}
 const output = process.env.LUMI_ELECTRON_VISUAL_OUTPUT
   ? path.resolve(process.env.LUMI_ELECTRON_VISUAL_OUTPUT)
   : path.join(root, 'artifacts', packaged ? 'packaged-electron-visual' : 'electron-visual');
