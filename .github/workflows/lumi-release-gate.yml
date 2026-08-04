@@ -1,0 +1,300 @@
+name: Lumi release gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-approved-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Require the literal owner-approved renderer
+        run: node tests/lumi-ui-contract.test.js
+
+  ui-electron-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: JavaScript syntax
+        run: |
+          node --check static/lumi-approved-ui.js
+          node --check static/lumi-owner-finish.js
+          node --check static/lumi-runtime-controls.js
+          node --check electron/main.js
+          node --check electron/preload-main.js
+          node --check electron/release-gate-contract.js
+          node --check electron/browser-extension-source.js
+          node --check electron/update-manager.js
+          node --check browser-extension/background.js
+          node --check browser-extension/browser-bridge.js
+          node --check browser-extension/security-shim.js
+          node --check browser-extension/media-quality-bridge.js
+          node --check browser-extension/content-core.js
+          node --check browser-extension/media-quality-picker.js
+          node --check browser-extension/popup.js
+          node --check browser-extension/popup-runtime-fix.js
+          node --check tests/browser-fallback-contract.test.js
+          node --check tests/chromium_extension_integration.mjs
+          node --check tests/electron_lifecycle_integration.mjs
+          node --check tests/electron_visual_gate.mjs
+          node --check tests/packaged_windows_lifecycle_integration.mjs
+      - name: UI speed extension security and owner contracts
+        run: |
+          node tests/lumi-ui-contract.test.js
+          node tests/security-contract.test.js
+          node tests/browser-fallback-contract.test.js
+          node tests/sergeant-owner-findings.test.js
+
+  chromium-extension-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install real Chromium extension runtime
+        run: |
+          npm install --no-save playwright@1.54.2
+          npx playwright install --with-deps chromium
+      - name: Canonical extension auto-auth takeover fallback and exact quality
+        run: xvfb-run -a node tests/chromium_extension_integration.mjs
+
+  approved-visual-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install visual comparison dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy "Pillow>=9.1.0" playwright
+          python -m playwright install --with-deps chromium
+      - name: Compare fifteen screens with approved mockups
+        run: python tests/visual_approved_gate.py
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-approved-visual-evidence
+          path: artifacts/visual
+          if-no-files-found: error
+
+  windows-lifecycle-contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Windows tray widget taskbar startup and identity contract
+        run: node tests/lumi-windows-lifecycle.test.js
+
+  windows-electron-source-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Lumi development Electron runtime
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          npm install --no-save electron@29 playwright@1.54.2
+      - name: Source startup close-to-tray and widget isolation
+        shell: pwsh
+        env:
+          LUMIDM_PYTHON: python
+        run: node tests/electron_lifecycle_integration.mjs
+
+  packaged-windows-runtime:
+    name: Actual packaged Windows Lumi
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: requirements.txt
+      - name: Install source sidecar and packaged-app proof tooling
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller "libtorrent==2.0.13" "imageio-ffmpeg>=0.5,<1"
+          npm install --no-save electron@29.4.6 electron-builder@24.13.3 playwright@1.54.2
+      - name: Build actual LUMIDM-server.exe and packaged app.asar candidate
+        shell: pwsh
+        run: ./scripts/build_packaged_windows_proof.ps1
+      - name: Export packaged executable path
+        shell: pwsh
+        run: |
+          $proof = Get-Content artifacts/packaged-windows-proof/packaged-proof.json | ConvertFrom-Json
+          "LUMI_PACKAGED_EXE=$($proof.executable)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LUMI_ELECTRON_VISUAL_OUTPUT=$((Join-Path $env:GITHUB_WORKSPACE 'artifacts/packaged-electron-visual'))" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Launch the actual EXE and prove packaged sidecar extension icon tray and widget
+        shell: pwsh
+        run: node tests/packaged_windows_lifecycle_integration.mjs
+      - name: Capture all fifteen approved states from the actual packaged EXE
+        shell: pwsh
+        run: node tests/electron_visual_gate.mjs
+      - name: Freeze packaged SHA-256 evidence
+        shell: pwsh
+        run: |
+          $proof = Get-Content artifacts/packaged-windows-proof/packaged-proof.json | ConvertFrom-Json
+          $files = @(
+            $proof.executable,
+            $proof.appAsar,
+            $proof.server,
+            $proof.canonicalIcon,
+            (Join-Path $proof.extension 'manifest.json'),
+            (Join-Path $proof.extension 'icons/icon128.png')
+          )
+          $evidence = foreach ($file in $files) {
+            $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $file
+            [ordered]@{ path = $file; bytes = (Get-Item -LiteralPath $file).Length; sha256 = $hash.Hash.ToLowerInvariant() }
+          }
+          $evidence | ConvertTo-Json -Depth 4 | Set-Content artifacts/packaged-windows-proof/packaged-hashes.json -Encoding UTF8
+          Get-Content artifacts/packaged-windows-proof/packaged-hashes.json
+      - name: Upload actual packaged proof and visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-actual-packaged-windows-proof
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            artifacts/packaged-windows-proof/packaged-proof.json
+            artifacts/packaged-windows-proof/packaged-hashes.json
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/Lumi-DM.exe
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/resources/app.asar
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/resources/server/LUMIDM-server.exe
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/resources/browser-extension
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/resources/static/favicon-256.png
+            artifacts/packaged-windows-proof/electron-dist/win-unpacked/resources/Resouces/download manager logo.png
+            artifacts/packaged-electron-visual
+
+  real-download-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install runtime and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Real download extension speed duplicate delete and restart proof
+        run: pytest -q -s tests/test_release_gate_download.py tests/test_owner_reported_workflows.py tests/test_settings_restart.py -vv
+
+  windows-public-internet-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Lumi runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Download public Cloudflare payload through Lumi with 32 connections
+        run: python tests/windows_public_internet_smoke.py
+
+  sergeant-20-for-2:
+    name: Sergeant 20-for-2
+    if: always()
+    needs:
+      - exact-approved-source
+      - ui-electron-contract
+      - chromium-extension-runtime
+      - approved-visual-contract
+      - windows-lifecycle-contract
+      - windows-electron-source-runtime
+      - packaged-windows-runtime
+      - real-download-engine
+      - windows-public-internet-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Require every independent evidence lane
+        env:
+          SOURCE_RESULT: ${{ needs.exact-approved-source.result }}
+          UI_RESULT: ${{ needs.ui-electron-contract.result }}
+          EXTENSION_RESULT: ${{ needs.chromium-extension-runtime.result }}
+          VISUAL_RESULT: ${{ needs.approved-visual-contract.result }}
+          WINDOWS_RESULT: ${{ needs.windows-lifecycle-contract.result }}
+          WINDOWS_SOURCE_ELECTRON_RESULT: ${{ needs.windows-electron-source-runtime.result }}
+          PACKAGED_WINDOWS_RESULT: ${{ needs.packaged-windows-runtime.result }}
+          ENGINE_RESULT: ${{ needs.real-download-engine.result }}
+          INTERNET_RESULT: ${{ needs.windows-public-internet-smoke.result }}
+        run: |
+          test "$SOURCE_RESULT" = success
+          test "$UI_RESULT" = success
+          test "$EXTENSION_RESULT" = success
+          test "$VISUAL_RESULT" = success
+          test "$WINDOWS_RESULT" = success
+          test "$WINDOWS_SOURCE_ELECTRON_RESULT" = success
+          test "$PACKAGED_WINDOWS_RESULT" = success
+          test "$ENGINE_RESULT" = success
+          test "$INTERNET_RESULT" = success
+      - name: Execute both twenty-lane Sergeant passes
+        run: node tests/sergeant-20-for-2.test.js
+      - name: Execute permanent owner-reported regression review
+        run: node tests/sergeant-owner-findings.test.js

@@ -1,0 +1,48 @@
+name: Materialize exact approved Lumi UI
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - scripts/exact-approved-ui/READY
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Replace repository renderer with exact approved bytes
+        run: python scripts/materialize-exact-approved-ui.py
+      - name: Prove exact approved SHA-256 values
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(sha256sum static/index.html | cut -d' ' -f1)" = "7a99817a0c0a898fd111c36c554df40e0b138e17d5f366603e2870ceb5835a7e"
+          test "$(sha256sum static/lumi-approved-ui.css | cut -d' ' -f1)" = "fb5a17c0c573643bc6644859d98bb9ffacbd020573a8589b2807b3def7f9c8b3"
+          test "$(sha256sum static/lumi-approved-ui.js | cut -d' ' -f1)" = "1cf175f6960594df2f9680b5c8f11362b48c17c5f920c08cd0fa1364c3267280"
+          test "$(sha256sum static/assets/lumi-brand-transparent.png | cut -d' ' -f1)" = "b49a92046af4d2368c1481f63a40fddae4a5371c005e7eb62976835ee269d944"
+          test ! -e static/lumi-approved-integration.js
+          test ! -e static/lumi-release-gate-hotfix.js
+          test ! -e static/lumi-approved-brand.svg
+      - name: Commit literal approved replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A static scripts/exact-approved-ui
+          if git diff --cached --quiet; then
+            echo "No materialization changes required"
+            exit 0
+          fi
+          git commit -m "Replace Lumi renderer with exact approved UI bytes"
+          git push origin HEAD:ui/approved-replica-integration-20260730

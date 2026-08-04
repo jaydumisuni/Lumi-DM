@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Lumi Download Manager",
   "short_name": "Lumi DM",
-  "version": "5.0.1",
-  "description": "Securely stage browser downloads in Lumi, choose options in the corner popup, and safely fall back to the browser.",
+  "version": "5.1.0",
+  "description": "Securely hand browser downloads and exact media qualities to the Lumi desktop manager on the same computer.",
   "permissions": [
     "alarms",
     "contextMenus",
@@ -51,7 +51,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js", "content-safety.js"],
+      "js": ["content-core.js", "media-quality-picker.js", "content-safety.js"],
       "run_at": "document_idle"
     }
   ],

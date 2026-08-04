@@ -2,7 +2,7 @@
 
 The browser keeps ownership of its download until Lumi has persisted a pending
 request. The desktop setup popup then decides whether Lumi takes over, the browser
-resumes, or both copies are cancelled.
+resumes, or the download is cancelled.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from core.v2.wave2 import services as wave2_services
 
 wave5_browser_api = Blueprint("lumi_wave5_browser", __name__, url_prefix="/api/v5/browser")
 _BROWSER_PENDING = "browser_pending"
+_DUPLICATE_POLICIES = {"rename", "overwrite", "reject"}
 
 
 def _body() -> dict[str, Any]:
@@ -34,7 +35,9 @@ def _services():
 def _error(exc: Exception):
     if isinstance(exc, KeyError):
         return jsonify({"error": str(exc).strip("'")}), 404
-    if isinstance(exc, (ValueError, FileExistsError)):
+    if isinstance(exc, FileExistsError):
+        return jsonify({"error": str(exc)}), 409
+    if isinstance(exc, ValueError):
         return jsonify({"error": str(exc)}), 400
     return jsonify({"error": str(exc)}), 500
 
@@ -46,6 +49,31 @@ def _remove_pending_task(task_id: str) -> None:
         return
     if task.status in {_BROWSER_PENDING, TaskStatus.STAGED.value, TaskStatus.PAUSED.value}:
         runtime.store.delete_task(task_id)
+
+
+def _string_list(value: Any, *, limit: int = 24) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value[:limit] if str(item).strip()]
+
+
+def _media_metadata(data: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "filename": str(data.get("filename") or "Media download"),
+        "format_id": str(data.get("format_id") or "bestvideo+bestaudio/best"),
+        "audio_only": bool(data.get("audio_only")),
+        "video_only": bool(data.get("video_only")),
+        "subtitles": bool(data.get("subtitles")),
+        "subtitle_languages": _string_list(data.get("subtitle_languages"), limit=12),
+        "automatic_subtitles": bool(data.get("automatic_subtitles", True)),
+        "embed_subtitles": bool(data.get("embed_subtitles", True)),
+        "thumbnail": bool(data.get("thumbnail", True)),
+        "embed_thumbnail": bool(data.get("embed_thumbnail", True)),
+        "metadata": bool(data.get("metadata", True)),
+        "merge_output_format": str(data.get("merge_output_format") or ""),
+        "browser_capture": True,
+        "detected_type": str(data.get("type") or "video").lower(),
+    }
 
 
 def _stage_task(data: dict[str, Any]):
@@ -81,12 +109,7 @@ def _stage_task(data: dict[str, Any]):
             TaskType.VIDEO.value,
             url,
             target_dir=target,
-            metadata={
-                "filename": str(data.get("filename") or "Media download"),
-                "format_id": str(data.get("format_id") or "bestvideo+bestaudio/best"),
-                "browser_capture": True,
-                "detected_type": dtype,
-            },
+            metadata=_media_metadata(data),
             queue_id=str(data.get("queue_id") or "default"),
             priority=int(data.get("priority") or 0),
             start_paused=True,
@@ -109,9 +132,14 @@ def _stage_task(data: dict[str, Any]):
             priority=int(data.get("priority") or 0),
             start_paused=True,
             request_envelope=secured,
+            # Browser capture is provisional. Use a harmless unique staging path
+            # so the popup can ask about a real collision only after the user has
+            # confirmed the final filename and folder.
             duplicate_policy="rename",
         )
 
+    if data.get("connections") not in (None, ""):
+        task.connections = max(1, min(128, int(data.get("connections") or 1)))
     task.status = _BROWSER_PENDING
     task.metadata.update({
         "browser_capture": True,
@@ -121,6 +149,18 @@ def _stage_task(data: dict[str, Any]):
     })
     runtime.store.save_task(task)
     return task
+
+
+def _renamed_path(destination: Path) -> Path:
+    if not destination.exists():
+        return destination
+    stem = destination.stem
+    suffix = destination.suffix
+    for index in range(1, 10000):
+        candidate = destination.with_name(f"{stem} ({index}){suffix}")
+        if not candidate.exists():
+            return candidate
+    raise FileExistsError(f"Unable to create a unique name for {destination.name}")
 
 
 @wave5_browser_api.post("/capture")
@@ -175,23 +215,36 @@ def confirm_handoff(handoff_id: str):
         filename = Path(str(data.get("filename") or task.filename or "download.bin")).name
         target_dir = Path(str(data.get("target_dir") or task.target_dir or Path.home() / "Downloads"))
         target_dir.mkdir(parents=True, exist_ok=True)
+        destination = target_dir / filename
+        policy = str(data.get("duplicate_policy") or "").strip().lower()
+        if policy and policy not in _DUPLICATE_POLICIES:
+            raise ValueError("unsupported duplicate policy")
+        if destination.exists() and not policy:
+            raise FileExistsError(f"DUPLICATE_FILE|{destination}")
+        if destination.exists() and policy == "reject":
+            raise FileExistsError(f"DUPLICATE_FILE|{destination}")
+        if policy == "rename":
+            destination = _renamed_path(destination)
+            filename = destination.name
+        if not policy:
+            policy = "reject"
+
         task.filename = filename
         task.target_dir = str(target_dir)
-        task.final_path = str(target_dir / filename)
+        task.final_path = str(destination)
         if task.type == TaskType.HTTP.value:
             task.partial_path = str(Path(task.temp_dir) / f"{filename}.part")
         queue_id = str(data.get("queue_id") or task.queue_id or "default")
         if runtime.store.get_queue(queue_id) is None:
             raise KeyError(f"unknown queue: {queue_id}")
         task.queue_id = queue_id
-        category_id = str(data.get("category_id") or task.category_id or "other")
-        task.category_id = category_id
+        task.category_id = str(data.get("category_id") or task.category_id or "other")
         task.priority = int(data.get("priority") or task.priority or 0)
         if data.get("connections") not in (None, ""):
             task.connections = max(1, min(128, int(data.get("connections") or 1)))
         if data.get("max_speed_bps") not in (None, ""):
             task.max_speed_bps = max(0, int(data.get("max_speed_bps") or 0))
-        task.duplicate_policy = str(data.get("duplicate_policy") or task.duplicate_policy or "rename")
+        task.duplicate_policy = policy
         task.metadata["browser_confirmed"] = True
         task.metadata["start_mode"] = str(data.get("start_mode") or "now")
         task.status = (
@@ -203,7 +256,11 @@ def confirm_handoff(handoff_id: str):
         runtime.store.append_event(
             task.id,
             "browser_download_confirmed",
-            {"start_mode": task.metadata["start_mode"], "handoff_id": handoff_id},
+            {
+                "start_mode": task.metadata["start_mode"],
+                "handoff_id": handoff_id,
+                "duplicate_policy": policy,
+            },
         )
         if task.status == TaskStatus.QUEUED.value:
             runtime.queue.wake()

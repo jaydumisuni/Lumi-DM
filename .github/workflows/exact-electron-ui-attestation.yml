@@ -1,0 +1,36 @@
+name: Exact Electron UI attestation
+
+on:
+  workflow_run:
+    workflows: ["Exact approved Electron UI"]
+    types: [completed]
+
+permissions:
+  pull-requests: write
+  issues: write
+  contents: read
+
+jobs:
+  attest:
+    if: github.event.workflow_run.head_branch == 'ui/approved-replica-integration-20260730'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish exact runtime result to the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$PR_NUMBER"
+          if [ "$CONCLUSION" = success ]; then
+            STATUS="PASS"
+          else
+            STATUS="FAIL"
+          fi
+          gh api "repos/$REPOSITORY/issues/$PR_NUMBER/comments" \
+            -f body="EXACT_APPROVED_ELECTRON_UI_${STATUS}\n\nHead: \`$HEAD_SHA\`\nWorkflow: $RUN_URL\n\nThis attestation is generated only after the actual Electron BrowserWindow, frozen approved renderer bytes, browser reference, and canonical icon lanes complete." >/dev/null

@@ -1,7 +1,7 @@
 "use strict";
 
 /* Enforces the desktop/window contract without changing the locked widget renderer. */
-const { app, ipcMain, nativeImage, shell } = require("electron");
+const { app, nativeImage } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -13,12 +13,6 @@ function approvedIconPath() {
   return app.isPackaged
     ? path.join(process.resourcesPath, "static", "favicon-256.png")
     : path.resolve(__dirname, "..", "static", "favicon-256.png");
-}
-
-function extensionSourcePath() {
-  return app.isPackaged
-    ? path.join(process.resourcesPath, "static", "browser-extension", "chromium")
-    : path.resolve(__dirname, "..", "static", "browser-extension", "chromium");
 }
 
 function widgetSettingsPath() {
@@ -70,7 +64,9 @@ function applyMainContract(window) {
   try {
     window.setMinimumSize(1024, 640);
     const bounds = window.getBounds();
-    if (bounds.width < 1180 || bounds.height < 700) window.setSize(Math.max(1180, bounds.width), Math.max(700, bounds.height), true);
+    if (bounds.width < 1180 || bounds.height < 700) {
+      window.setSize(Math.max(1180, bounds.width), Math.max(700, bounds.height), true);
+    }
     const icon = nativeImage.createFromPath(approvedIconPath());
     if (!icon.isEmpty()) window.setIcon(icon);
   } catch (_) {}
@@ -93,7 +89,9 @@ function applyWidgetContract(window) {
     if (!contractChangingWidget && mainIsOpen()) changeWidget(false);
   });
   window.webContents.on("did-finish-load", syncWidgetVisibility);
-  window.on("closed", () => { if (widgetWindow === window) widgetWindow = null; });
+  window.on("closed", () => {
+    if (widgetWindow === window) widgetWindow = null;
+  });
   syncWidgetVisibility();
 }
 
@@ -105,37 +103,10 @@ app.on("browser-window-created", (_event, window) => {
 });
 
 app.whenReady().then(() => {
-  if (!ipcMain.listenerCount("ttg-open-path")) {
-    ipcMain.handle("ttg-open-path", async (_event, value) => {
-      const target = String(value || "").trim();
-      if (!target) throw new Error("No file or folder path was provided");
-      const result = await shell.openPath(target);
-      if (result) throw new Error(result);
-      return { ok: true };
-    });
-  }
-  if (!ipcMain.listenerCount("ttg-open-external")) {
-    ipcMain.handle("ttg-open-external", async (_event, value) => {
-      const target = String(value || "").trim();
-      if (!/^https?:\/\//i.test(target)) throw new Error("Only HTTP or HTTPS links may be opened");
-      await shell.openExternal(target);
-      return { ok: true };
-    });
-  }
-  if (!ipcMain.listenerCount("ttg-prepare-browser-extension")) {
-    ipcMain.handle("ttg-prepare-browser-extension", async () => {
-      const source = extensionSourcePath();
-      if (!fs.existsSync(path.join(source, "manifest.json"))) {
-        throw new Error("The Lumi browser extension package is missing from this build");
-      }
-      const destination = path.join(app.getPath("documents"), "Lumi DM Browser Extension");
-      fs.rmSync(destination, { recursive: true, force: true });
-      fs.cpSync(source, destination, { recursive: true });
-      const result = await shell.openPath(destination);
-      if (result) throw new Error(result);
-      return { ok: true, path: destination };
-    });
-  }
+  // Secure path, external-link and extension IPC handlers are owned exclusively
+  // by release-gate-contract.js. This module must never register fallbacks for
+  // those channels because fallback ownership can bypass validation or package
+  // the wrong extension source.
   setInterval(syncWidgetVisibility, 350);
 });
 

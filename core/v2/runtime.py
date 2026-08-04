@@ -47,7 +47,7 @@ class LumiRuntime:
             max_running=max_running,
         )
         self.default_connections = max(
-            1, int(self.store.get_setting("default_connections", 8))
+            1, int(self.store.get_setting("default_connections", 32))
         )
         self.completion_action = str(
             self.store.get_setting("completion_action", "none")
