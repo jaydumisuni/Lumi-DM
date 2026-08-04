@@ -51,6 +51,31 @@ def _remove_pending_task(task_id: str) -> None:
         runtime.store.delete_task(task_id)
 
 
+def _string_list(value: Any, *, limit: int = 24) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value[:limit] if str(item).strip()]
+
+
+def _media_metadata(data: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "filename": str(data.get("filename") or "Media download"),
+        "format_id": str(data.get("format_id") or "bestvideo+bestaudio/best"),
+        "audio_only": bool(data.get("audio_only")),
+        "video_only": bool(data.get("video_only")),
+        "subtitles": bool(data.get("subtitles")),
+        "subtitle_languages": _string_list(data.get("subtitle_languages"), limit=12),
+        "automatic_subtitles": bool(data.get("automatic_subtitles", True)),
+        "embed_subtitles": bool(data.get("embed_subtitles", True)),
+        "thumbnail": bool(data.get("thumbnail", True)),
+        "embed_thumbnail": bool(data.get("embed_thumbnail", True)),
+        "metadata": bool(data.get("metadata", True)),
+        "merge_output_format": str(data.get("merge_output_format") or ""),
+        "browser_capture": True,
+        "detected_type": str(data.get("type") or "video").lower(),
+    }
+
+
 def _stage_task(data: dict[str, Any]):
     active = wave2_services()
     runtime = active.runtime
@@ -84,12 +109,7 @@ def _stage_task(data: dict[str, Any]):
             TaskType.VIDEO.value,
             url,
             target_dir=target,
-            metadata={
-                "filename": str(data.get("filename") or "Media download"),
-                "format_id": str(data.get("format_id") or "bestvideo+bestaudio/best"),
-                "browser_capture": True,
-                "detected_type": dtype,
-            },
+            metadata=_media_metadata(data),
             queue_id=str(data.get("queue_id") or "default"),
             priority=int(data.get("priority") or 0),
             start_paused=True,
@@ -118,6 +138,8 @@ def _stage_task(data: dict[str, Any]):
             duplicate_policy="rename",
         )
 
+    if data.get("connections") not in (None, ""):
+        task.connections = max(1, min(128, int(data.get("connections") or 1)))
     task.status = _BROWSER_PENDING
     task.metadata.update({
         "browser_capture": True,
