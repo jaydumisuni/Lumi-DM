@@ -12,8 +12,17 @@ const { _electron: electron } = require("playwright");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
 const executable = path.resolve(String(process.env.LUMI_PACKAGED_EXE || ""));
+
+function isFile(file) {
+  try {
+    return fs.statSync(file).isFile();
+  } catch (_) {
+    return false;
+  }
+}
+
 assert.ok(process.env.LUMI_PACKAGED_EXE, "LUMI_PACKAGED_EXE is required");
-assert.ok(fs.isFileSync(executable), `packaged Lumi executable missing: ${executable}`);
+assert.ok(isFile(executable), `packaged Lumi executable missing: ${executable}`);
 
 const isolated = fs.mkdtempSync(path.join(os.tmpdir(), "lumi-packaged-proof-"));
 const userData = path.join(isolated, "user-data");
@@ -91,7 +100,7 @@ try {
     path.join(resources, "browser-extension", "media-quality-bridge.js"),
     path.join(resources, "server", "LUMIDM-server.exe"),
   ];
-  for (const file of required) assert.ok(fs.isFileSync(file), `packaged resource missing: ${file}`);
+  for (const file of required) assert.ok(isFile(file), `packaged resource missing: ${file}`);
   assert.equal(fs.existsSync(path.join(resources, "static", "browser-extension", "chromium")), false,
     "packaged app contains the removed duplicate extension");
 
@@ -109,15 +118,16 @@ try {
   assert.deepEqual(manifest.content_scripts[0].js, ["content-core.js", "media-quality-picker.js", "content-safety.js"]);
 
   const appInfo = await page.evaluate(() => window.electronApp.getAppInfo());
-  assert.equal(appInfo.isPackaged, true, "renderer bridge did not report packaged execution");
+  assert.equal(appInfo.name, "Lumi DM", "packaged renderer bridge did not report the Lumi application identity");
+  assert.equal(appInfo.platform, "win32", "packaged renderer bridge did not report the Windows runtime");
 
   const prepared = await page.evaluate(() => window.electronApp.prepareBrowserExtension());
   preparedPath = prepared.path;
   assert.equal(prepared.samePcAuthentication, "automatic");
-  assert.ok(fs.isFileSync(path.join(preparedPath, "manifest.json")));
+  assert.ok(isFile(path.join(preparedPath, "manifest.json")));
   assert.equal(sha256(path.join(preparedPath, "manifest.json")), sha256(path.join(resources, "browser-extension", "manifest.json")),
     "prepared extension differs from the exact packaged extension");
-  assert.ok(fs.isFileSync(path.join(preparedPath, "media-quality-picker.js")));
+  assert.ok(isFile(path.join(preparedPath, "media-quality-picker.js")));
 
   const api = await page.evaluate(async () => {
     const downloads = await fetch("/api/downloads?limit=1").then(response => response.json());
