@@ -1,0 +1,200 @@
+/* Lumi DM approved UI lock.
+   Shared geometry and identity for both approved Dark and Clear Glass themes.
+   Theme-specific material/color changes live in lumi-clear-glass.css. */
+
+:root{
+  --lumi-sidebar-width:clamp(238px,19.5vw,316px);
+}
+
+/* The approved Lumi shell owns the whole window. */
+.ttg-desktop .app-shell{
+  grid-template-columns:var(--lumi-sidebar-width) minmax(0,1fr);
+}
+.ttg-desktop .sidebar{
+  width:var(--lumi-sidebar-width);
+  min-width:var(--lumi-sidebar-width);
+}
+
+/* Approved titlebar: department identity at left, search + shell controls at right. */
+.ttg-titlebar-brand{
+  padding-left:30px;
+}
+.ttg-titlebar-brand strong{
+  font-size:12px;
+  font-weight:760;
+  letter-spacing:.01em;
+}
+.ttg-titlebar-brand img,
+.ttg-titlebar-brand small{
+  display:none!important;
+}
+
+/* The approved screenshots keep the page heading and primary actions in content,
+   not duplicated in the title/top strip. */
+.ttg-desktop .topbar .view-heading,
+.ttg-desktop .topbar .live-speed,
+.ttg-desktop .topbar #new-download-btn{
+  display:none!important;
+}
+.ttg-desktop .topbar{
+  min-height:58px;
+  justify-content:flex-end;
+}
+.ttg-desktop .top-actions{
+  width:100%;
+  margin-left:0;
+  justify-content:flex-end;
+}
+.ttg-desktop .search-box{
+  width:min(285px,34vw);
+}
+
+/* Approved Lumi sidebar identity: exact Lumi symbol plus separate product name. */
+.ttg-desktop .brand-block{
+  height:clamp(112px,12.5vw,148px);
+  min-height:112px;
+  padding:8px 18px 5px 28px;
+  gap:12px;
+  border-bottom:0;
+  overflow:visible;
+}
+.ttg-desktop .brand-logo{
+  width:clamp(58px,4.7vw,76px);
+  height:clamp(88px,7.1vw,112px);
+  object-fit:contain;
+  object-position:center;
+  flex:none;
+  filter:drop-shadow(0 7px 13px rgba(102,34,238,.20));
+}
+.ttg-desktop .brand-name{
+  font-size:clamp(36px,3vw,50px);
+  line-height:.94;
+  font-weight:820;
+  letter-spacing:-.045em;
+}
+.ttg-desktop .brand-sub{
+  margin-top:8px;
+  font-size:clamp(9px,.82vw,13px);
+  font-weight:760;
+  letter-spacing:.02em;
+  white-space:nowrap;
+  background:linear-gradient(90deg,#9223ec,#188fff 58%,#0cc8d2);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+
+.ttg-desktop .nav-list{
+  padding:4px 14px 8px;
+}
+.ttg-desktop .nav-item{
+  min-height:43px;
+  border-radius:9px;
+  padding-left:13px;
+  padding-right:13px;
+}
+.ttg-desktop .nav-submenu{
+  padding-left:28px;
+  border-left:1px solid rgba(121,137,168,.20);
+  margin-left:28px;
+}
+
+/* Approved storage card. Data is real and supplied by lumi-ui.js. */
+.ttg-desktop .sidebar-footer{
+  margin-top:auto;
+  padding:10px 14px 18px;
+  border-top:0;
+  display:block;
+}
+.lumi-storage-card{
+  border:1px solid rgba(119,82,218,.34);
+  border-radius:11px;
+  padding:11px 13px 14px;
+  background:linear-gradient(145deg,rgba(12,20,36,.78),rgba(8,14,27,.78));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 12px 32px rgba(0,0,0,.12);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+}
+.lumi-storage-drive{
+  min-width:118px;
+  max-width:100%;
+  height:34px;
+  border:1px solid rgba(116,135,166,.25);
+  border-radius:7px;
+  background:#08111d;
+  color:#edf2f8;
+  padding:0 30px 0 10px;
+  font:inherit;
+  font-size:12px;
+  outline:0;
+}
+.lumi-storage-body{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 82px;
+  gap:12px;
+  align-items:center;
+  margin-top:14px;
+}
+.lumi-storage-label{
+  font-size:9px;
+  font-weight:760;
+  letter-spacing:.04em;
+  color:#c5cfdd;
+}
+.lumi-storage-free{
+  display:block;
+  margin-top:7px;
+  font-size:24px;
+  line-height:1;
+  font-weight:760;
+  white-space:nowrap;
+}
+.lumi-storage-total{
+  display:block;
+  margin-top:6px;
+  color:#c5cfdd;
+  font-size:10px;
+}
+.lumi-storage-ring{
+  width:78px;
+  height:78px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  position:relative;
+  background:conic-gradient(#7c20df 0%,#2393ff var(--lumi-storage-used,0%),rgba(118,137,169,.22) var(--lumi-storage-used,0%) 100%);
+}
+.lumi-storage-ring::before{
+  content:"";
+  position:absolute;
+  width:56px;
+  height:56px;
+  border-radius:50%;
+  background:#08111d;
+}
+.lumi-storage-ring strong{
+  position:relative;
+  z-index:1;
+  font-size:18px;
+}
+.lumi-storage-best{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:12px;
+  font-size:10px;
+}
+.lumi-storage-best span{color:#09d3e7}
+.lumi-storage-best strong{color:#aa48f5;font-weight:650}
+.lumi-legacy-chrome{display:none!important}
+
+/* Theme selector belongs to the approved Lumi gear menu. */
+.ttg-theme-segment-two{grid-template-columns:repeat(2,1fr)!important}
+
+@media(max-width:900px){
+  :root{--lumi-sidebar-width:238px}
+  .ttg-desktop .brand-block{padding-left:18px}
+  .ttg-desktop .brand-logo{width:56px;height:84px}
+  .ttg-desktop .brand-name{font-size:35px}
+  .ttg-desktop .brand-sub{font-size:9px}
+}

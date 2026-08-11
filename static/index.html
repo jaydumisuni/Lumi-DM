@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="/static/ttg-shell.css">
 <link rel="stylesheet" href="/static/ttg-theme.css">
 <link rel="stylesheet" href="/static/main-ui.css">
+<link rel="stylesheet" href="/static/lumi-approved-ui.css">
+<link rel="stylesheet" href="/static/lumi-clear-glass.css">
 </head>
 <body>
 <div class="brand-background" aria-hidden="true"></div>
@@ -50,8 +52,17 @@
       <i>›</i>
     </button>
     <div class="sidebar-footer">
-      <div class="connection-state"><span class="state-dot" id="server-dot"></span><div><strong id="server-state">Connecting</strong><small id="client-role">Local session</small></div></div>
-      <div class="sidebar-speed"><span>Current speed</span><strong id="sidebar-speed">0 B/s</strong></div>
+      <section class="lumi-storage-card" aria-label="Storage summary">
+        <select class="lumi-storage-drive" id="lumi-storage-drive" aria-label="Storage drive"><option>Storage</option></select>
+        <div class="lumi-storage-body">
+          <div><div class="lumi-storage-label">STORAGE LEFT</div><strong class="lumi-storage-free" id="lumi-storage-free">—</strong><span class="lumi-storage-total" id="lumi-storage-total">Loading storage…</span></div>
+          <div class="lumi-storage-ring" id="lumi-storage-ring" style="--lumi-storage-used:0"><strong id="lumi-storage-percent">0%</strong></div>
+        </div>
+        <div class="lumi-storage-best"><span>Best speed</span><strong id="lumi-storage-best-speed">0 B/s</strong></div>
+      </section>
+      <div class="lumi-legacy-chrome" aria-hidden="true">
+        <span class="state-dot" id="server-dot"></span><strong id="server-state">Connecting</strong><small id="client-role">Local session</small><strong id="sidebar-speed">0 B/s</strong>
+      </div>
     </div>
   </aside>
   <div class="workspace">
@@ -107,7 +118,8 @@
 <script src="/static/technician-workspaces.js"></script>
 <script src="/static/operating-systems.js"></script>
 <script src="/static/ttg-shell.js"></script>
-<script src="/static/ttg-theme.js"></script>
+<script src="/static/lumi-theme.js"></script>
 <script src="/static/main-ui.js"></script>
+<script src="/static/lumi-ui.js"></script>
 </body>
 </html>

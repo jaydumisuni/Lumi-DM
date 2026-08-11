@@ -1,29 +1,53 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "brand": "Lumi Download Manager",
-  "rendering_rule": "Preserve the source aspect ratio. Never stretch, crop or force width and height independently.",
+  "canonical_source": "Resouces/my_logo.png",
+  "canonical_source_git_blob_sha1": "13ad15bbc12b312ed25180516822f82dff41aa2f",
+  "canonical_source_sha256": "6201010c970fee53ba3bf3649eeda407e7fba333d18a920f685329589042f7ce",
+  "identity_rule": "Every app-identity surface must use the owner-approved Lumi artwork. Semantic file, platform and action icons remain semantic because they are part of the approved UI.",
+  "rendering_rule": "Preserve the approved Lumi artwork and its aspect ratio. Never stretch width and height independently.",
   "fit": "contain",
   "transparent_padding": true,
   "high_dpi": true,
+  "verified_runtime_identity": {
+    "desktop_builder_icon": "static/favicon-256.png",
+    "desktop_builder_icon_sha256": "30705b7c1e86c938f4e2870ec9091e3f26b1e4029ba793a75e63e87a6bf71b71",
+    "desktop_builder_logo": "static/favicon-96.png",
+    "desktop_builder_logo_sha256": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
+    "browser_extension_icon": "static/browser-extension/chromium/icon.svg",
+    "browser_extension_icon_sha256": "3df160fe0d2d5ae449789a92e83f53195d41fd3299b1c5996e551cf73a58e6bb",
+    "windows_native_icon": "assets/windows/Lumi-DM.ico",
+    "windows_native_icon_sha256": "a3d3941154611e3c136322c22d71665a8c1ff2334371b14ba00ab4d508e00d1e",
+    "browser_extension_native_reference": "browser-extension/icons/icon128.png",
+    "browser_extension_native_reference_sha256": "050d7f3c8359cbe8ccd462d0a93523bc93528c3d6b893c2bc9ee7a1282ea6dd3",
+    "android_launcher_reference": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+    "android_launcher_reference_sha256": "dee72a3bbd9a1393419a6c3e57363c01deae51f42a1bdd6da3cebe51f6ff65c4",
+    "ios_launcher_reference": "ios/AppIcon.appiconset/Icon-60@3x.png",
+    "ios_launcher_reference_sha256": "9352e7972bd0ec7f8bf2b7e45e015159ab3ad048600b707254aa0a29bf986c04",
+    "macos_launcher_reference": "macos/icons.iconset/icon_512x512.png",
+    "macos_launcher_reference_sha256": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
+    "evidence": [
+      "commit 1ef96ccb0b3bb28529ceaf5682be85ea63020323 — Use the approved Lumi artwork for packaged Windows identity",
+      "commit 5df8654c3bbd8048c2f55c50dec89444c9d3ef85 — Use the real Lumi artwork in the extension icon",
+      "2026-08-12 identity audit — Windows ICO, web favicons, browser-extension PNGs, Android launchers, iOS AppIcon variants and macOS iconset variants all render the Lumi symbol; no foreign product mark was found"
+    ]
+  },
   "surfaces": {
     "tray_and_taskbar": {
       "sizes": [16, 20, 24, 32, 40, 48, 64, 128, 256],
-      "format": "multi-resolution ICO on Windows",
+      "format": "surface-specific native asset",
       "safe_padding_percent": 10
     },
     "corner_widget": {
-      "css_box": [38, 38],
       "source_minimum": [96, 96],
       "fit": "contain"
     },
     "download_setup_popup": {
-      "css_box": [42, 42],
       "source_minimum": [128, 128],
       "fit": "contain"
     },
     "main_sidebar": {
-      "css_box": [36, 36],
-      "source_minimum": [96, 96],
+      "source": "static/favicon-96.png",
       "fit": "contain"
     },
     "browser_extension": {
@@ -38,9 +62,16 @@
       "fit": "cover",
       "position": "center",
       "opacity_range": [0.1, 0.18],
-      "overlay": "dark readability gradient",
+      "overlay": "theme readability gradient",
       "source": "Resouces/backgroud .PNG"
     }
+  },
+  "themes": {
+    "default": "dark",
+    "available": ["dark", "glass"],
+    "glass_label": "Clear Glass",
+    "dark_reference": "Resouces/Epected ui/dark mode",
+    "glass_reference": "Resouces/Epected ui/light mode"
   },
   "builder_contract": {
     "generate_surface_specific_assets": true,
