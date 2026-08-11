@@ -11,8 +11,8 @@ permissions:
   contents: read
 
 jobs:
-  public-youtube:
-    name: Public YouTube inspect select and download
+  public-media:
+    name: Public media inspect select and download
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,5 +29,5 @@ jobs:
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
-      - name: Real public YouTube Lumi smoke
+      - name: Real public HTTPS media Lumi smoke
         run: pytest -q -s tests/public_media_smoke.py -vv
