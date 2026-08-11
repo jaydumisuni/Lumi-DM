@@ -120,8 +120,11 @@ def test_public_media_inspect_select_download_and_output(lumi):
     assert media.get("source_type") == "media", media
     assert media.get("id"), media
     formats = media.get("formats") or []
-    assert formats, media
 
+    # Direct-file extractors can legitimately expose a single root format rather
+    # than a format list. Quality-rich sites are covered by the separate DASH
+    # selected-format/mux release gate, so use yt-dlp's canonical best selector
+    # for this public direct-media lane when no choices are advertised.
     progressive = next(
         (
             row for row in formats
@@ -130,7 +133,7 @@ def test_public_media_inspect_select_download_and_output(lumi):
         ),
         None,
     )
-    selector = str(progressive["format_id"] if progressive else formats[0]["format_id"])
+    selector = str(progressive["format_id"]) if progressive else "best"
 
     started = client.post(
         "/api/downloads/video",
