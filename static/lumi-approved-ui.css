@@ -162,7 +162,7 @@
   display:grid;
   place-items:center;
   position:relative;
-  background:conic-gradient(#2393ff 0 calc(var(--lumi-storage-used,0) * .72%),#7c20df calc(var(--lumi-storage-used,0) * .72%) calc(var(--lumi-storage-used,0) * 1%),rgba(118,137,169,.22) calc(var(--lumi-storage-used,0) * 1%) 100%);
+  background:conic-gradient(#7c20df 0%,#2393ff var(--lumi-storage-used,0%),rgba(118,137,169,.22) var(--lumi-storage-used,0%) 100%);
 }
 .lumi-storage-ring::before{
   content:"";
