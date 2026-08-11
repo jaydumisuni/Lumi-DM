@@ -7,6 +7,7 @@
   const STORAGE_KEY = "Lumi.sidebar.storage.path";
   let storageRows = [];
   let bestSpeed = 0;
+  let storageRequestId = 0;
 
   window.addEventListener("DOMContentLoaded", () => {
     lockApprovedShell();
@@ -80,6 +81,7 @@
 
   async function refreshStorage(path = "") {
     if (typeof api !== "function") return;
+    const requestId = ++storageRequestId;
     try {
       let requested = path || currentPath();
       if (!requested) {
@@ -89,6 +91,7 @@
         ? `/api/v4/maintenance/storage?path=${encodeURIComponent(requested)}`
         : "/api/v4/maintenance/storage";
       const result = await api("GET", route);
+      if (requestId !== storageRequestId) return;
       storageRows = Array.isArray(result?.directories) ? result.directories : [];
       if (result?.selected?.path) {
         const index = storageRows.findIndex(row => row.path === result.selected.path);
