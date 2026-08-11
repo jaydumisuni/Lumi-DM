@@ -16,7 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-YOUTUBE_TEST_VIDEO = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+# Google uses this public clip as Android CTS media test input. It gives Lumi a
+# durable third-party HTTPS source without relying on account/session cookies.
+PUBLIC_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
 
 
 @pytest.fixture(scope="module")
@@ -106,48 +108,12 @@ def stream_types(ffprobe: str, path: Path) -> set[str]:
     return {str(row.get("codec_type") or "") for row in data.get("streams") or []}
 
 
-def choose_small_format(formats: list[dict]) -> str:
-    """Choose a low-bandwidth real format while still requiring audio and video."""
-    progressive = [
-        row
-        for row in formats
-        if row.get("vcodec") not in {"", "none"}
-        and row.get("acodec") not in {"", "none"}
-        and 0 < int(row.get("height") or 0) <= 480
-    ]
-    if progressive:
-        progressive.sort(key=lambda row: (int(row.get("height") or 0), int(row.get("filesize") or 0)))
-        return str(progressive[0]["format_id"])
-
-    video = next(
-        (
-            row
-            for row in reversed(formats)
-            if row.get("vcodec") not in {"", "none"}
-            and row.get("acodec") in {"", "none"}
-            and 0 < int(row.get("height") or 0) <= 480
-        ),
-        None,
-    )
-    audio = next(
-        (
-            row
-            for row in formats
-            if row.get("acodec") not in {"", "none"}
-            and row.get("vcodec") in {"", "none"}
-        ),
-        None,
-    )
-    assert video and audio, "YouTube inspection did not expose a usable audio/video selection"
-    return f"{video['format_id']}+{audio['format_id']}"
-
-
-def test_public_youtube_inspect_select_download_and_output(lumi):
-    """Prove a public YouTube URL works through Lumi inspection and download."""
+def test_public_media_inspect_select_download_and_output(lumi):
+    """Prove a real public HTTPS video works through Lumi inspection and download."""
     client, root, ffprobe = lumi
     inspected = client.get(
         "/api/downloads/video/formats",
-        query_string={"url": YOUTUBE_TEST_VIDEO},
+        query_string={"url": PUBLIC_VIDEO},
     )
     assert inspected.status_code == 200, inspected.get_data(as_text=True)
     media = inspected.get_json()
@@ -155,13 +121,22 @@ def test_public_youtube_inspect_select_download_and_output(lumi):
     assert media.get("id"), media
     formats = media.get("formats") or []
     assert formats, media
-    selector = choose_small_format(formats)
+
+    progressive = next(
+        (
+            row for row in formats
+            if row.get("vcodec") not in {"", "none"}
+            and row.get("acodec") not in {"", "none"}
+        ),
+        None,
+    )
+    selector = str(progressive["format_id"] if progressive else formats[0]["format_id"])
 
     started = client.post(
         "/api/downloads/video",
         json={
-            "url": YOUTUBE_TEST_VIDEO,
-            "target_dir": str(root / "youtube"),
+            "url": PUBLIC_VIDEO,
+            "target_dir": str(root / "public-media"),
             "format_id": selector,
             "audio_only": False,
             "subtitles": False,
