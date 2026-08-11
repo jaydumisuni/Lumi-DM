@@ -1,13 +1,17 @@
-const CACHE_NAME = 'LUMIDM-static-v1';
+const CACHE_NAME = 'LUMIDM-static-v2';
 const CORE = [
   '/',
   '/static/index.html',
   '/static/app.css',
   '/static/app.js',
+  '/static/main-ui.css',
+  '/static/lumi-approved-ui.css',
+  '/static/lumi-clear-glass.css',
+  '/static/lumi-theme.js',
+  '/static/lumi-ui.js',
   '/static/manifest.webmanifest',
   '/static/favicon-192.png',
-  '/static/favicon-512.png',
-  '/static/preview.html'
+  '/static/favicon-512.png'
 ];
 
 self.addEventListener('install', (evt) => {
