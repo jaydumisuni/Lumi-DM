@@ -234,6 +234,48 @@ jobs:
       - name: Real download extension speed duplicate delete and restart proof
         run: pytest -q -s tests/test_release_gate_download.py tests/test_owner_reported_workflows.py tests/test_settings_restart.py -vv
 
+  specialist-backend-e2e:
+    name: Firmware OS and media end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Lumi runtime and media proof tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Firmware OS catalogue stage confirm checksum and selected-media mux proof
+        run: pytest -q -s tests/test_specialist_backends.py -vv
+
+  public-media-smoke:
+    name: Public media inspect select and download
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Lumi runtime and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Real public HTTPS media proof through Lumi
+        run: pytest -q -s tests/public_media_smoke.py -vv
+
   windows-public-internet-smoke:
     runs-on: windows-latest
     timeout-minutes: 15
@@ -264,6 +306,8 @@ jobs:
       - windows-electron-source-runtime
       - packaged-windows-runtime
       - real-download-engine
+      - specialist-backend-e2e
+      - public-media-smoke
       - windows-public-internet-smoke
     runs-on: ubuntu-latest
     steps:
@@ -283,6 +327,8 @@ jobs:
           WINDOWS_SOURCE_ELECTRON_RESULT: ${{ needs.windows-electron-source-runtime.result }}
           PACKAGED_WINDOWS_RESULT: ${{ needs.packaged-windows-runtime.result }}
           ENGINE_RESULT: ${{ needs.real-download-engine.result }}
+          SPECIALIST_RESULT: ${{ needs.specialist-backend-e2e.result }}
+          PUBLIC_MEDIA_RESULT: ${{ needs.public-media-smoke.result }}
           INTERNET_RESULT: ${{ needs.windows-public-internet-smoke.result }}
         run: |
           test "$SOURCE_RESULT" = success
@@ -293,6 +339,8 @@ jobs:
           test "$WINDOWS_SOURCE_ELECTRON_RESULT" = success
           test "$PACKAGED_WINDOWS_RESULT" = success
           test "$ENGINE_RESULT" = success
+          test "$SPECIALIST_RESULT" = success
+          test "$PUBLIC_MEDIA_RESULT" = success
           test "$INTERNET_RESULT" = success
       - name: Execute both twenty-lane Sergeant passes
         run: node tests/sergeant-20-for-2.test.js
