@@ -1,29 +1,39 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "brand": "Lumi Download Manager",
-  "rendering_rule": "Preserve the source aspect ratio. Never stretch, crop or force width and height independently.",
+  "canonical_source": "Resouces/my_logo.png",
+  "canonical_source_git_blob_sha1": "13ad15bbc12b312ed25180516822f82dff41aa2f",
+  "canonical_source_sha256": "6201010c970fee53ba3bf3649eeda407e7fba333d18a920f685329589042f7ce",
+  "identity_rule": "Every app-identity surface must use the owner-approved Lumi artwork. Semantic file, platform and action icons remain semantic because they are part of the approved UI.",
+  "rendering_rule": "Preserve the approved Lumi artwork and its aspect ratio. Never stretch width and height independently.",
   "fit": "contain",
   "transparent_padding": true,
   "high_dpi": true,
+  "verified_runtime_identity": {
+    "desktop_builder_icon": "static/favicon-256.png",
+    "desktop_builder_logo": "static/favicon-96.png",
+    "browser_extension_icon": "static/browser-extension/chromium/icon.svg",
+    "evidence": [
+      "commit 1ef96ccb0b3bb28529ceaf5682be85ea63020323 — Use the approved Lumi artwork for packaged Windows identity",
+      "commit 5df8654c3bbd8048c2f55c50dec89444c9d3ef85 — Use the real Lumi artwork in the extension icon"
+    ]
+  },
   "surfaces": {
     "tray_and_taskbar": {
       "sizes": [16, 20, 24, 32, 40, 48, 64, 128, 256],
-      "format": "multi-resolution ICO on Windows",
+      "format": "surface-specific native asset",
       "safe_padding_percent": 10
     },
     "corner_widget": {
-      "css_box": [38, 38],
       "source_minimum": [96, 96],
       "fit": "contain"
     },
     "download_setup_popup": {
-      "css_box": [42, 42],
       "source_minimum": [128, 128],
       "fit": "contain"
     },
     "main_sidebar": {
-      "css_box": [36, 36],
-      "source_minimum": [96, 96],
+      "source": "static/favicon-96.png",
       "fit": "contain"
     },
     "browser_extension": {
@@ -38,9 +48,16 @@
       "fit": "cover",
       "position": "center",
       "opacity_range": [0.1, 0.18],
-      "overlay": "dark readability gradient",
+      "overlay": "theme readability gradient",
       "source": "Resouces/backgroud .PNG"
     }
+  },
+  "themes": {
+    "default": "dark",
+    "available": ["dark", "glass"],
+    "glass_label": "Clear Glass",
+    "dark_reference": "Resouces/Epected ui/dark mode",
+    "glass_reference": "Resouces/Epected ui/light mode"
   },
   "builder_contract": {
     "generate_surface_specific_assets": true,
