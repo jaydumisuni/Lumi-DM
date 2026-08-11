@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-YOUTUBE_TEST_VIDEO = "https://www.youtube.com/watch?v=BaW_jenozKc"
+YOUTUBE_TEST_VIDEO = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
 
 
 @pytest.fixture(scope="module")
