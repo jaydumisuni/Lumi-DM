@@ -54,6 +54,8 @@ python -m PyInstaller `
   --paths $Root `
   --collect-submodules core `
   --collect-all yt_dlp `
+  --collect-all yt_dlp_ejs `
+  --collect-all deno `
   --collect-all cryptography `
   --collect-all psutil `
   --collect-all imageio_ffmpeg `
