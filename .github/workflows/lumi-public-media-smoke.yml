@@ -1,0 +1,33 @@
+name: Lumi public media smoke
+
+on:
+  push:
+    branches: [ui/approved-replica-integration-20260730]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-media:
+    name: Public media inspect select and download
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install declared Lumi runtime and ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Real public HTTPS media Lumi smoke
+        run: pytest -q -s tests/public_media_smoke.py -vv

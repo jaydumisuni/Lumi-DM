@@ -34,7 +34,16 @@ http.request = function lumiAuthenticatedRequest(input, ...rest) {
   if (isLumiLocal(options)) {
     options = { ...options, headers: { ...(options.headers || {}) } };
     const route = String(options.path || "");
-    if (sessionCookie && route !== "/api/security/bootstrap") options.headers.Cookie = sessionCookie;
+    const method = String(options.method || "GET").toUpperCase();
+    options.headers["X-Lumi-Client"] ||= "electron-native";
+    if (sessionCookie && route !== "/api/security/bootstrap") {
+      options.headers.Cookie = sessionCookie;
+    }
+    // Cookie-authenticated unsafe requests are internal same-origin actions.
+    // Without this explicit origin Flask correctly rejects them as CSRF-prone.
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      options.headers.Origin ||= "http://127.0.0.1:7000";
+    }
   }
   return originalRequest(options, ...rest);
 };
@@ -88,7 +97,7 @@ function bootstrap() {
 function keepAuthenticated() {
   if (stopped || sessionCookie) return;
   void bootstrap().catch(() => {
-    if (!stopped) setTimeout(keepAuthenticated, 500);
+    if (!stopped) setTimeout(keepAuthenticated, 250);
   });
 }
 

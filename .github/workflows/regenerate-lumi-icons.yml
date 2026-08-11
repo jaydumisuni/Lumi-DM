@@ -1,0 +1,114 @@
+name: Regenerate Lumi Icons
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - "Resouces/download manager logo.png"
+      - "scripts/generate_lumi_icon_family.py"
+      - "requirements-icon-toolchain.txt"
+      - ".github/workflows/regenerate-lumi-icons.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  regenerate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/approved-replica-integration-20260730
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install hash-locked image tooling
+        run: >-
+          python -m pip install --disable-pip-version-check
+          --only-binary=:all: --require-hashes
+          -r requirements-icon-toolchain.txt
+      - name: Regenerate the complete identity family
+        shell: bash
+        run: |
+          python scripts/generate_lumi_icon_family.py | tee /tmp/lumi-icons.log
+          grep -Fq 'LUMI_ICON_FAMILY_VERIFIED' /tmp/lumi-icons.log
+      - name: Verify the canonical source and every required surface
+        shell: bash
+        run: |
+          test -f 'Resouces/download manager logo.png'
+          test -f assets/windows/Lumi-DM.ico
+          test -f assets/macos/Lumi-DM.icns
+          test -f assets/linux/Lumi-DM.png
+          test -f resources/app-icon.ico
+          test -f static/favicon-256.png
+          test -f browser-extension/icons/icon128.png
+          test -f build_config/lumi-icon-family.json
+          test ! -e Resouces/my_logo.png
+          grep -Fq 'Resouces/download manager logo.png' build_config/lumi-icon-family.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path('build_config/lumi-icon-family.json').read_text(encoding='utf-8'))
+          assert report['schemaVersion'] == 3
+          assert report['source'] == 'Resouces/download manager logo.png'
+          assert len(report['sourceSha256']) == 64
+          generated = {item['path']: item for item in report['generated']}
+          for path in (
+              'assets/windows/Lumi-DM.ico',
+              'assets/macos/Lumi-DM.icns',
+              'assets/linux/Lumi-DM.png',
+              'resources/app-icon.ico',
+              'static/favicon-256.png',
+              'browser-extension/icons/icon128.png',
+          ):
+              assert path in generated, path
+          # Extension and application identity must be byte-identical at every shared size.
+          for size in (16, 32, 48, 128):
+              assert generated[f'static/favicon-{size}.png']['sha256'] == generated[f'browser-extension/icons/icon{size}.png']['sha256']
+          print('Canonical Lumi identity report PASS')
+          PY
+          ! git ls-files | grep -E '(^|/)(lumi-logo|TechGuyTool-DM|legacy.*icon|old.*icon|my_logo)\.(ico|icns|png)$'
+      - name: Commit only generated identity surfaces
+        shell: bash
+        env:
+          PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git add -- \
+            assets/windows/Lumi-DM.ico \
+            assets/windows/app-icon.ico \
+            assets/macos/Lumi-DM.icns \
+            assets/macos/app-icon.icns \
+            assets/linux/Lumi-DM.png \
+            assets/linux/app-icon.png \
+            resources/app-icon.ico \
+            resources/app-icon.icns \
+            resources/app-icon.png \
+            static/favicon-*.png \
+            static/favicon.ico \
+            static/icon.png \
+            browser-extension/icons/icon16.png \
+            browser-extension/icons/icon32.png \
+            browser-extension/icons/icon48.png \
+            browser-extension/icons/icon128.png \
+            build_config/lumi-icon-family.json
+
+          if ! git diff --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Unexpected files changed during icon generation"
+            git status --short
+            exit 1
+          fi
+          if git diff --cached --quiet; then
+            echo "Lumi identity already matches the approved resource"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Regenerate every Lumi icon from the approved resource"
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:ui/approved-replica-integration-20260730

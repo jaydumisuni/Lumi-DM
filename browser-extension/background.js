@@ -1,10 +1,10 @@
 /**
  * Lumi extension production service worker.
  *
- * Security contract implemented by browser-bridge.js:
- * - isLocalServer enforcement keeps capture credentials on loopback Lumi only.
- * - Request secrets can only be sent to local Lumi.
- * - Repair capture uses /api/browser/repair-capture.
+ * browser-bridge.js preserves the mature old-Lumi interception, request capture,
+ * repair, host-rule, takeover and browser-fallback engine. The media bridge adds
+ * exact quality/size selection without creating a second extension.
  */
 import "./notification-guard.js";
 import "./browser-bridge.js";
+import "./media-quality-bridge.js";

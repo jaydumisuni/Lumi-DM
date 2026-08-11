@@ -2,17 +2,29 @@
   "schemaVersion": 2,
   "company": "THETECHGUY DIGITAL SOLUTIONS",
   "domain": "thetechguyds.com",
-  "website": "https://thetechguyds.com/tools",
+  "website": "https://tools.thetechguyds.com",
   "appName": "Lumi DM",
   "appVersion": "1.0.0",
   "projectType": "multi-platform-source",
   "entryFile": "electron/main.js",
-  "logo": "static/favicon-96.png",
-  "icon": "static/favicon-256.png",
-  "description": "Fast multi-source download manager with browser capture, media, torrents, firmware, operating-system images and technician workflows.",
+  "logo": "Resouces/download manager logo.png",
+  "iconSource": "Resouces/download manager logo.png",
+  "runtimeIcon": "static/favicon-256.png",
+  "icon": "assets/windows/Lumi-DM.ico",
+  "icons": {
+    "source": "Resouces/download manager logo.png",
+    "runtime": "static/favicon-256.png",
+    "windows": "assets/windows/Lumi-DM.ico",
+    "macos": "assets/macos/Lumi-DM.icns",
+    "linux": "assets/linux/Lumi-DM.png",
+    "browserExtension": "browser-extension/icons/icon128.png"
+  },
+  "description": "Fast multi-source download manager with browser capture, exact media-quality selection, torrents, firmware, operating-system images and technician workflows.",
   "repository": "jaydumisuni/Lumi-DM",
   "distribution": {
     "publicDownloads": "github-releases-only",
+    "downloadPage": "https://tools.thetechguyds.com",
+    "releaseChannel": "github-latest-release",
     "runFromSourceSupported": false,
     "desktopWrapperDownload": false,
     "localBuildLaunchers": false,
@@ -48,6 +60,22 @@
     "appId": "com.lumi.dm",
     "electronVersion": "^29.0.0",
     "electronBuilderVersion": "^24.0.0",
+    "bundledResources": [
+      {
+        "source": "browser-extension",
+        "destination": "browser-extension",
+        "required": true,
+        "singleSource": true
+      }
+    ],
+    "browserExtension": {
+      "source": "browser-extension",
+      "destination": "browser-extension",
+      "singleCommittedSource": true,
+      "samePcAuthentication": "automatic",
+      "externalPairingCodes": false,
+      "preparationModule": "electron/browser-extension-source.js"
+    },
     "pythonSidecars": [
       {
         "id": "lumi-server",

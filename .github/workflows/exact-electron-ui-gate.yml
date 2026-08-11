@@ -1,0 +1,157 @@
+name: Exact approved Electron UI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Prove exact approved repository bytes and production hooks
+        run: |
+          node --check static/lumi-approved-ui.js
+          node --check electron/main.js
+          node --check electron/preload-main.js
+          node tests/lumi-ui-contract.test.js
+
+  approved-browser-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install visual dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy "Pillow>=9.1.0" playwright
+          python -m playwright install --with-deps chromium
+      - name: Render exact frozen files against approved references
+        run: python tests/visual_approved_gate.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exact-approved-browser-reference
+          path: artifacts/visual
+          if-no-files-found: error
+
+  canonical-icon-pixels:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install image dependency
+        run: pip install "Pillow>=9.1.0"
+      - name: Inspect owner source taskbar tray window installer and extension assets
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from PIL import Image
+
+          source = Path('Resouces/download manager logo.png')
+          assert source.is_file()
+          report = json.loads(Path('build_config/lumi-icon-family.json').read_text(encoding='utf-8'))
+          assert report['schemaVersion'] == 3
+          assert report['source'] == source.as_posix()
+          assert report['sourceSha256'] == hashlib.sha256(source.read_bytes()).hexdigest()
+          generated = {item['path']: item for item in report['generated']}
+          required = [16, 24, 32, 48, 64, 96, 128, 256]
+          for size in required:
+              path = Path('static') / f'favicon-{size}.png'
+              image = Image.open(path).convert('RGBA')
+              assert image.size == (size, size), (path, image.size)
+              assert image.getchannel('A').getbbox() is not None, path
+              assert generated[path.as_posix()]['sha256'] == hashlib.sha256(path.read_bytes()).hexdigest()
+          for size in (16, 32, 48, 128):
+              app_icon = Path('static') / f'favicon-{size}.png'
+              extension_icon = Path('browser-extension/icons') / f'icon{size}.png'
+              assert hashlib.sha256(app_icon.read_bytes()).digest() == hashlib.sha256(extension_icon.read_bytes()).digest()
+          ico = Image.open('assets/windows/Lumi-DM.ico')
+          assert ico.format == 'ICO'
+          main = Path('electron/main.js').read_text(encoding='utf-8')
+          assert main.count('favicon-256.png') >= 1
+          contract = json.loads(Path('techguy-build.json').read_text(encoding='utf-8'))
+          assert contract['iconSource'] == source.as_posix()
+          assert contract['icons']['source'] == source.as_posix()
+          assert not Path('Resouces/my_logo.png').exists()
+          print('Canonical owner resource and generated identity pixels PASS')
+          PY
+
+  source-windows-electron:
+    name: Windows source Electron visual proof
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Lumi and source Electron capture dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt "Pillow>=9.1.0"
+          npm install --no-save electron@29 playwright@1.54.2
+      - name: Launch electron/main.js and capture all fifteen source BrowserWindow states
+        shell: pwsh
+        env:
+          LUMIDM_PYTHON: python
+        run: node tests/electron_visual_gate.mjs
+      - name: Confirm this lane is explicitly source runtime then compare approved references
+        shell: pwsh
+        run: |
+          $runtime = Get-Content artifacts/electron-visual/electron-runtime.json | ConvertFrom-Json
+          if ($runtime.executionBoundary -ne 'development-electron-main-source') { throw 'Source lane used the wrong execution boundary' }
+          python tests/compare_electron_visual.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: source-windows-electron-approved-ui
+          path: artifacts/electron-visual
+          if-no-files-found: error
+
+  exact-approved-electron-ui:
+    name: Exact approved Electron UI
+    if: always()
+    needs: [exact-source, approved-browser-reference, canonical-icon-pixels, source-windows-electron]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require source browser icon and source-Electron visual proof
+        env:
+          SOURCE: ${{ needs.exact-source.result }}
+          BROWSER: ${{ needs.approved-browser-reference.result }}
+          ICON: ${{ needs.canonical-icon-pixels.result }}
+          SOURCE_ELECTRON: ${{ needs.source-windows-electron.result }}
+        run: |
+          test "$SOURCE" = success
+          test "$BROWSER" = success
+          test "$ICON" = success
+          test "$SOURCE_ELECTRON" = success
+          echo 'The actual packaged app.asar boundary is enforced separately by Lumi release gate / Actual packaged Windows Lumi.'

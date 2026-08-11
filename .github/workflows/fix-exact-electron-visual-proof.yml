@@ -1,0 +1,40 @@
+name: Fix exact Electron visual proof
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - scripts/fix-exact-electron-visual-proof.READY
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Repair the actual-Electron visual proof
+        run: |
+          python scripts/fix-exact-electron-visual-proof.py
+          python -m py_compile tests/visual_approved_gate.py tests/compare_electron_visual.py
+          node --check tests/electron_visual_gate.mjs
+          rm scripts/fix-exact-electron-visual-proof.READY
+      - name: Commit corrected proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual_approved_gate.py tests/compare_electron_visual.py tests/electron_visual_gate.mjs .github/workflows/exact-electron-ui-gate.yml scripts/fix-exact-electron-visual-proof.READY
+          git commit -m "Compare actual Electron with frozen approved renderer"
+          git push origin HEAD:ui/approved-replica-integration-20260730

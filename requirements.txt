@@ -1,7 +1,7 @@
 flask>=3.0
 requests>=2.31
 beautifulsoup4>=4.12
-yt-dlp>=2024.1.1
+yt-dlp[default,deno]>=2026.7.4
 psutil>=5.9
 cryptography>=42.0
 # Optional for torrent support — install ONE of:

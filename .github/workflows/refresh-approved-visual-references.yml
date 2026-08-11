@@ -1,0 +1,37 @@
+name: Refresh approved visual references
+
+on:
+  push:
+    branches:
+      - ui/approved-replica-integration-20260730
+    paths:
+      - scripts/refresh-approved-visual-references.READY
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Bind gates to owner-approved captures
+        run: |
+          python scripts/refresh-approved-visual-references.py
+          python -m py_compile tests/visual_approved_gate.py tests/compare_electron_visual.py
+          node --check tests/lumi-ui-contract.test.js
+          rm scripts/refresh-approved-visual-references.READY
+      - name: Commit refreshed visual evidence contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual_approved_gate.py tests/compare_electron_visual.py tests/lumi-ui-contract.test.js scripts/refresh-approved-visual-references.READY
+          git commit -m "Bind visual gates to owner-approved captures"
+          git push origin HEAD:ui/approved-replica-integration-20260730

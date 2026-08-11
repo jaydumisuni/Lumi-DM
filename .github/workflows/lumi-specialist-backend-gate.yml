@@ -1,0 +1,33 @@
+name: Lumi specialist backend gate
+
+on:
+  push:
+    branches: [ui/approved-replica-integration-20260730]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  technician-media-e2e:
+    name: Firmware OS and media end-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Lumi runtime and media proof tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest
+      - name: Technician catalogue stage confirm checksum and real yt-dlp mux proof
+        run: pytest -q -s tests/test_specialist_backends.py -vv
