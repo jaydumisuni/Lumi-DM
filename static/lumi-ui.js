@@ -24,6 +24,10 @@
     setInterval(() => void refreshStorage(currentPath()), 30000);
   }, { once: true });
 
+  function setTextIfDifferent(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
+  }
+
   function lockApprovedShell() {
     const title = document.querySelector(".ttg-titlebar-brand");
     if (title && title.dataset.lumiLocked !== "true") {
@@ -36,9 +40,9 @@
       const extension = gear.querySelector('[data-main-shell-action="extension"] span:last-child');
       const update = gear.querySelector('[data-shell-action="update"] span:last-child');
       const help = gear.querySelector('[data-main-shell-action="help"] span:last-child');
-      if (extension) extension.textContent = "Browser extension";
-      if (update) update.textContent = "Check for updates";
-      if (help) help.textContent = "Help / Report a bug";
+      setTextIfDifferent(extension, "Browser extension");
+      setTextIfDifferent(update, "Check for updates");
+      setTextIfDifferent(help, "Help / Report a bug");
 
       const head = gear.querySelector(".ttg-shell-menu-head");
       if (head && !gear.querySelector(".lumi-appearance-control")) {
