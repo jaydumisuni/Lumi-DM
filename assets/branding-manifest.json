@@ -11,11 +11,25 @@
   "high_dpi": true,
   "verified_runtime_identity": {
     "desktop_builder_icon": "static/favicon-256.png",
+    "desktop_builder_icon_sha256": "30705b7c1e86c938f4e2870ec9091e3f26b1e4029ba793a75e63e87a6bf71b71",
     "desktop_builder_logo": "static/favicon-96.png",
+    "desktop_builder_logo_sha256": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
     "browser_extension_icon": "static/browser-extension/chromium/icon.svg",
+    "browser_extension_icon_sha256": "3df160fe0d2d5ae449789a92e83f53195d41fd3299b1c5996e551cf73a58e6bb",
+    "windows_native_icon": "assets/windows/Lumi-DM.ico",
+    "windows_native_icon_sha256": "a3d3941154611e3c136322c22d71665a8c1ff2334371b14ba00ab4d508e00d1e",
+    "browser_extension_native_reference": "browser-extension/icons/icon128.png",
+    "browser_extension_native_reference_sha256": "050d7f3c8359cbe8ccd462d0a93523bc93528c3d6b893c2bc9ee7a1282ea6dd3",
+    "android_launcher_reference": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+    "android_launcher_reference_sha256": "dee72a3bbd9a1393419a6c3e57363c01deae51f42a1bdd6da3cebe51f6ff65c4",
+    "ios_launcher_reference": "ios/AppIcon.appiconset/Icon-60@3x.png",
+    "ios_launcher_reference_sha256": "9352e7972bd0ec7f8bf2b7e45e015159ab3ad048600b707254aa0a29bf986c04",
+    "macos_launcher_reference": "macos/icons.iconset/icon_512x512.png",
+    "macos_launcher_reference_sha256": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
     "evidence": [
       "commit 1ef96ccb0b3bb28529ceaf5682be85ea63020323 — Use the approved Lumi artwork for packaged Windows identity",
-      "commit 5df8654c3bbd8048c2f55c50dec89444c9d3ef85 — Use the real Lumi artwork in the extension icon"
+      "commit 5df8654c3bbd8048c2f55c50dec89444c9d3ef85 — Use the real Lumi artwork in the extension icon",
+      "2026-08-12 identity audit — Windows ICO, web favicons, browser-extension PNGs, Android launchers, iOS AppIcon variants and macOS iconset variants all render the Lumi symbol; no foreign product mark was found"
     ]
   },
   "surfaces": {
