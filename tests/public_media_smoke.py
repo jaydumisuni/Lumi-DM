@@ -16,9 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-# Google uses this public clip as Android CTS media test input. It gives Lumi a
-# durable third-party HTTPS source without relying on account/session cookies.
-PUBLIC_VIDEO = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+# Stable public MP4 served from GitHub's raw content CDN. This provides a real
+# third-party HTTPS media source without account/session cookies.
+PUBLIC_VIDEO = "https://raw.githubusercontent.com/mediaelement/mediaelement-files/master/big_buck_bunny.mp4"
 
 
 @pytest.fixture(scope="module")
