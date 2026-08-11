@@ -205,6 +205,37 @@ async function waitFor(predicate, message, timeout = 20_000) {
   throw new Error(message);
 }
 
+async function extensionWorker(context, timeout = 30_000) {
+  const ready = async worker => {
+    if (!worker || !worker.url().startsWith("chrome-extension://")) return false;
+    try {
+      return await worker.evaluate(() => (
+        typeof globalThis.chrome === "object"
+        && typeof globalThis.chrome?.runtime?.getManifest === "function"
+        && typeof globalThis.chrome?.downloads?.search === "function"
+      ));
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const deadline = Date.now() + timeout;
+  while (Date.now() < deadline) {
+    for (const candidate of context.serviceWorkers()) {
+      if (await ready(candidate)) return candidate;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    try {
+      const candidate = await context.waitForEvent("serviceworker", { timeout: Math.min(1000, remaining) });
+      if (await ready(candidate)) return candidate;
+    } catch (_) {
+      // Keep polling: MV3 workers may be replaced while Chromium starts the extension.
+    }
+  }
+  throw new Error("canonical Chromium extension service worker did not expose runtime/download APIs");
+}
+
 async function downloads(worker) {
   return worker.evaluate(() => new Promise(resolve => chrome.downloads.search({}, resolve)));
 }
@@ -231,8 +262,7 @@ try {
     ],
   });
 
-  let worker = context.serviceWorkers()[0];
-  if (!worker) worker = await context.waitForEvent("serviceworker", { timeout: 30_000 });
+  const worker = await extensionWorker(context);
   const extensionId = new URL(worker.url()).host;
   assert.ok(extensionId, "canonical Chromium extension service worker loaded");
   const manifest = await worker.evaluate(() => chrome.runtime.getManifest());
