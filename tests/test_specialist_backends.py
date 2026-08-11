@@ -30,6 +30,16 @@ class QuietStaticHandler(SimpleHTTPRequestHandler):
         pass
 
 
+class QuietStaticServer(ThreadingHTTPServer):
+    """Suppress expected disconnect noise from yt-dlp range/probe requests."""
+
+    def handle_error(self, request, client_address):
+        error = sys.exc_info()[1]
+        if isinstance(error, (BrokenPipeError, ConnectionResetError)):
+            return
+        super().handle_error(request, client_address)
+
+
 @pytest.fixture(scope="module")
 def specialist_assets(tmp_path_factory):
     """Create deterministic firmware, OS, DASH, and direct-video assets."""
@@ -123,7 +133,7 @@ def specialist_assets(tmp_path_factory):
     assert manifest.is_file()
 
     handler = lambda *args, **kwargs: QuietStaticHandler(*args, directory=str(root), **kwargs)
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server = QuietStaticServer(("127.0.0.1", 0), handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     base = f"http://127.0.0.1:{server.server_port}"
@@ -355,7 +365,7 @@ def test_firmware_catalogue_search_stage_confirm_checksum(lumi, specialist_asset
     assert task["metadata"]["firmware_sha256"] == specialist_assets["firmware_sha256"]
 
     events = client.get(f"/api/downloads/{task['id']}/events").get_json()["events"]
-    assert any(item.get("event") == "firmware_staged" for item in events)
+    assert any(item.get("event_type") == "firmware_staged" for item in events)
 
     confirmed = client.post(
         f"/api/downloads/{task['id']}/confirm",
@@ -425,7 +435,7 @@ def test_os_catalogue_search_stage_confirm_checksum(lumi, specialist_assets):
     assert task["metadata"]["os_sha256"] == specialist_assets["os_sha256"]
 
     events = client.get(f"/api/downloads/{task['id']}/events").get_json()["events"]
-    assert any(item.get("event") == "operating_system_staged" for item in events)
+    assert any(item.get("event_type") == "operating_system_staged" for item in events)
 
     confirmed = client.post(
         f"/api/downloads/{task['id']}/confirm",
