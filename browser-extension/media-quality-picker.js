@@ -103,6 +103,8 @@
     for (const format of Array.isArray(info?.formats) ? info.formats : []) {
       const id = String(format.format_id || "");
       if (!id) continue;
+      const protocol = String(format.protocol || "").trim().toLowerCase();
+      if (protocol && protocol !== "http" && protocol !== "https") continue;
       const videoCodec = codecName(format.vcodec);
       const audioCodec = codecName(format.acodec);
       const audioOnly = !videoCodec && Boolean(audioCodec);
@@ -122,6 +124,7 @@
         bitrate: Number(format.tbr || format.abr || format.vbr || 0),
         hdr: String(format.dynamic_range || "").trim(),
         language: String(format.language || "").trim(),
+        protocol,
       });
     }
     rows.sort((left, right) => {
