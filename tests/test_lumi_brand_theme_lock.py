@@ -13,27 +13,59 @@ def git_blob_sha1(data: bytes) -> str:
     return hashlib.sha1(header + data).hexdigest()
 
 
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def manifest() -> dict:
+    return json.loads((ROOT / "assets" / "branding-manifest.json").read_text(encoding="utf-8"))
+
+
 def test_owner_approved_lumi_logo_is_canonical() -> None:
-    manifest = json.loads((ROOT / "assets" / "branding-manifest.json").read_text(encoding="utf-8"))
-    approved = (ROOT / manifest["canonical_source"]).read_bytes()
+    brand = manifest()
+    approved = (ROOT / brand["canonical_source"]).read_bytes()
     duplicate = (ROOT / "Resouces" / "download manager logo.png").read_bytes()
 
     assert approved == duplicate
-    assert git_blob_sha1(approved) == manifest["canonical_source_git_blob_sha1"]
-    assert hashlib.sha256(approved).hexdigest() == manifest["canonical_source_sha256"]
+    assert git_blob_sha1(approved) == brand["canonical_source_git_blob_sha1"]
+    assert hashlib.sha256(approved).hexdigest() == brand["canonical_source_sha256"]
 
 
 def test_runtime_identity_points_only_to_verified_lumi_assets() -> None:
-    manifest = json.loads((ROOT / "assets" / "branding-manifest.json").read_text(encoding="utf-8"))
+    brand = manifest()
+    identity = brand["verified_runtime_identity"]
     build = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
-    extension = (ROOT / "static" / "browser-extension" / "chromium" / "icon.svg").read_text(encoding="utf-8")
 
-    assert build["logo"] == manifest["verified_runtime_identity"]["desktop_builder_logo"]
-    assert build["icon"] == manifest["verified_runtime_identity"]["desktop_builder_icon"]
-    assert 'src="/static/favicon-96.png" alt="Lumi" class="brand-logo"' in html
+    assert build["logo"] == identity["desktop_builder_logo"]
+    assert build["icon"] == identity["desktop_builder_icon"]
+    assert sha256(ROOT / identity["desktop_builder_logo"]) == identity["desktop_builder_logo_sha256"]
+    assert sha256(ROOT / identity["desktop_builder_icon"]) == identity["desktop_builder_icon_sha256"]
+
+    sidebar_source = brand["surfaces"]["main_sidebar"]["source"]
+    assert sidebar_source == identity["desktop_builder_logo"]
+    assert f'src="/{sidebar_source}" alt="Lumi" class="brand-logo"' in html
+
+    extension_path = ROOT / identity["browser_extension_icon"]
+    extension = extension_path.read_text(encoding="utf-8")
+    assert sha256(extension_path) == identity["browser_extension_icon_sha256"]
     assert "data:image/" in extension
     assert "placeholder extension icon" not in extension
+
+
+def test_audited_native_identity_assets_are_hash_locked() -> None:
+    identity = manifest()["verified_runtime_identity"]
+    pairs = [
+        ("windows_native_icon", "windows_native_icon_sha256"),
+        ("browser_extension_native_reference", "browser_extension_native_reference_sha256"),
+        ("android_launcher_reference", "android_launcher_reference_sha256"),
+        ("ios_launcher_reference", "ios_launcher_reference_sha256"),
+        ("macos_launcher_reference", "macos_launcher_reference_sha256"),
+    ]
+    for path_key, hash_key in pairs:
+        asset = ROOT / identity[path_key]
+        assert asset.is_file(), identity[path_key]
+        assert sha256(asset) == identity[hash_key]
 
 
 def test_lumi_dark_is_default_and_clear_glass_is_the_only_light_theme() -> None:
@@ -61,6 +93,8 @@ def test_approved_shell_storage_and_categories_are_runtime_bound() -> None:
     assert 'THETECHGUY TOOL' in ui
     assert '/api/v4/maintenance/storage' in ui
     assert 'clear.dataset.mainView = "categories"' in ui
+    assert 'const requestId = ++storageRequestId' in ui
+    assert 'if (requestId !== storageRequestId) return;' in ui
 
 
 def test_stale_reminal_preview_is_removed() -> None:
@@ -68,3 +102,15 @@ def test_stale_reminal_preview_is_removed() -> None:
     service_worker = (ROOT / "static" / "sw.js").read_text(encoding="utf-8")
     assert "preview.html" not in service_worker
     assert "LUMIDM-static-v2" in service_worker
+    for required in (
+        "/static/app-hardening.js",
+        "/static/technician-workspaces.css",
+        "/static/main-ui.js",
+        "/static/main-ui-core.js",
+        "/static/main-ui-views.js",
+        "/static/main-ui-settings.js",
+        "/static/main-ui-shell.js",
+        "/static/main-ui-download.js",
+        "/static/main-ui-fixes.js",
+    ):
+        assert required in service_worker
