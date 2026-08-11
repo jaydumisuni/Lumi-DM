@@ -53,11 +53,13 @@ jobs:
           node --check tests/electron_lifecycle_integration.mjs
           node --check tests/electron_visual_gate.mjs
           node --check tests/packaged_windows_lifecycle_integration.mjs
-      - name: UI speed extension security and owner contracts
+          node --check tests/update-manager.test.js
+      - name: UI speed extension security update and owner contracts
         run: |
           node tests/lumi-ui-contract.test.js
           node tests/security-contract.test.js
           node tests/browser-fallback-contract.test.js
+          node tests/update-manager.test.js
           node tests/sergeant-owner-findings.test.js
 
   chromium-extension-runtime:
