@@ -235,7 +235,7 @@ jobs:
         run: pytest -q -s tests/test_release_gate_download.py tests/test_owner_reported_workflows.py tests/test_settings_restart.py -vv
 
   specialist-backend-e2e:
-    name: Firmware OS and media end-to-end
+    name: Firmware OS media and approved screen backend end-to-end
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -252,8 +252,8 @@ jobs:
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
-      - name: Firmware OS catalogue stage confirm checksum and selected-media mux proof
-        run: pytest -q -s tests/test_specialist_backends.py -vv
+      - name: Firmware OS media categories queues LinkGrabber settings and overview proof
+        run: pytest -q -s tests/test_specialist_backends.py tests/test_approved_backend_surface.py -vv
 
   public-media-smoke:
     name: Public media inspect select and download
