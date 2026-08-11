@@ -118,7 +118,7 @@
     setText("lumi-storage-free", formatBytes(free));
     setText("lumi-storage-total", total ? `of ${formatBytes(total)}` : "Storage unavailable");
     setText("lumi-storage-percent", `${usedPct}%`);
-    document.getElementById("lumi-storage-ring")?.style.setProperty("--lumi-storage-used", String(usedPct));
+    document.getElementById("lumi-storage-ring")?.style.setProperty("--lumi-storage-used", `${usedPct}%`);
   }
 
   function updateBestSpeed() {
