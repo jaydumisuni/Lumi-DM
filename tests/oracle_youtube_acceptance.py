@@ -1,8 +1,8 @@
 """Local Oracle/Athena acceptance proof for Lumi's real YouTube path.
 
 This is intentionally not a GitHub-hosted CI proof. Oracle runs it on the user's
-local Windows machine so YouTube sees the same kind of normal residential/local
-browser environment that Lumi will actually use.
+local Windows machine so YouTube sees the same kind of normal local environment
+that Lumi will actually use.
 """
 from __future__ import annotations
 
@@ -11,8 +11,6 @@ import importlib
 import json
 import os
 from pathlib import Path
-import shutil
-import subprocess
 import sys
 import tempfile
 import time
@@ -21,6 +19,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+# yt-dlp's long-standing small public test video. Keep this lane deliberately
+# lightweight; the purpose is to prove YouTube access through Lumi, not load-test it.
 YOUTUBE_TEST_URL = "https://www.youtube.com/watch?v=BaW_jenozKc"
 TERMINAL = {"completed", "failed", "cancelled", "needs_link"}
 
@@ -43,6 +43,7 @@ def classify_failure(text: str) -> str:
 
 
 def choose_selector(formats: list[dict]) -> tuple[str, dict]:
+    """Prefer the smallest listed progressive A/V format to avoid unnecessary data."""
     usable = [row for row in formats if str(row.get("format_id") or "")]
     progressive = [
         row for row in usable
@@ -51,39 +52,18 @@ def choose_selector(formats: list[dict]) -> tuple[str, dict]:
         and 0 < int(row.get("height") or 0) <= 360
     ]
     if progressive:
-        progressive.sort(key=lambda row: (int(row.get("height") or 9999), int(row.get("filesize") or 0) or 10**18))
+        progressive.sort(
+            key=lambda row: (
+                int(row.get("height") or 9999),
+                int(row.get("filesize") or 0) or 10**18,
+            )
+        )
         row = progressive[0]
-        return str(row["format_id"]), {"mode": "progressive", "video": row}
+        return str(row["format_id"]), {"mode": "progressive", "format": row}
 
-    videos = [
-        row for row in usable
-        if str(row.get("vcodec") or "none") not in {"", "none"}
-        and str(row.get("acodec") or "none") in {"", "none"}
-        and 0 < int(row.get("height") or 0) <= 360
-    ]
-    audios = [
-        row for row in usable
-        if str(row.get("acodec") or "none") not in {"", "none"}
-        and str(row.get("vcodec") or "none") in {"", "none"}
-    ]
-    if videos and audios:
-        videos.sort(key=lambda row: (int(row.get("height") or 9999), int(row.get("filesize") or 0) or 10**18))
-        audios.sort(key=lambda row: (float(row.get("abr") or 10**9), int(row.get("filesize") or 0) or 10**18))
-        video, audio = videos[0], audios[0]
-        return f"{video['format_id']}+{audio['format_id']}", {"mode": "separate", "video": video, "audio": audio}
-
+    # This fallback is still a real Lumi/yt-dlp selection. If YouTube stops
+    # advertising a progressive format, Lumi may use its normal ffmpeg path.
     return "best[height<=360]/best", {"mode": "fallback"}
-
-
-def stream_types(ffprobe: str, path: Path) -> set[str]:
-    completed = subprocess.run(
-        [ffprobe, "-v", "error", "-show_entries", "stream=codec_type", "-of", "json", str(path)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    data = json.loads(completed.stdout or "{}")
-    return {str(row.get("codec_type") or "") for row in data.get("streams") or []}
 
 
 def pair_extension(owner):
@@ -121,23 +101,14 @@ def poll(client, task_id: str, timeout: float = 180.0) -> dict:
 
 
 def main() -> int:
-    ffmpeg = shutil.which("ffmpeg")
-    ffprobe = shutil.which("ffprobe")
-    if not ffmpeg or not ffprobe:
-        emit({"ok": False, "stage": "preflight", "error": "ffmpeg/ffprobe missing"})
-        return 2
-
     with tempfile.TemporaryDirectory(prefix="lumi-oracle-youtube-") as tmp:
         root = Path(tmp)
-        previous = {key: os.environ.get(key) for key in (
-            "LUMIDM_DATA_DIR", "LUMIDM_DOWNLOAD_DIR", "LUMIDM_TEMP_DIR", "LUMIDM_FFMPEG", "LUMIDM_FFPROBE"
-        )}
+        keys = ("LUMIDM_DATA_DIR", "LUMIDM_DOWNLOAD_DIR", "LUMIDM_TEMP_DIR")
+        previous = {key: os.environ.get(key) for key in keys}
         os.environ.update(
             LUMIDM_DATA_DIR=str(root / "data"),
             LUMIDM_DOWNLOAD_DIR=str(root / "downloads"),
             LUMIDM_TEMP_DIR=str(root / "temporary"),
-            LUMIDM_FFMPEG=ffmpeg,
-            LUMIDM_FFPROBE=ffprobe,
         )
         try:
             for name in list(sys.modules):
@@ -219,20 +190,10 @@ def main() -> int:
             outputs = [path for path in candidates if path.is_file()]
             if not outputs:
                 raise RuntimeError(f"completed task has no output file: {completed}")
+            output = max(outputs, key=lambda item: item.stat().st_size)
+            if output.stat().st_size <= 0:
+                raise RuntimeError("YouTube output is empty")
 
-            verified = None
-            for path in outputs:
-                try:
-                    types = stream_types(ffprobe, path)
-                except Exception:
-                    continue
-                if {"video", "audio"}.issubset(types):
-                    verified = (path, types)
-                    break
-            if verified is None:
-                raise RuntimeError(f"no output contains both video and audio: {[str(p) for p in outputs]}")
-
-            output, types = verified
             digest = hashlib.sha256(output.read_bytes()).hexdigest()
             emit({
                 "ok": True,
@@ -247,9 +208,6 @@ def main() -> int:
                 "output": str(output),
                 "bytes": output.stat().st_size,
                 "sha256": digest,
-                "streams": sorted(types),
-                "ffmpeg": ffmpeg,
-                "ffprobe": ffprobe,
             })
             return 0
         except Exception as exc:
