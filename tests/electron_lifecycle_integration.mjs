@@ -67,7 +67,14 @@ try {
   await page.waitForURL(/^http:\/\/127\.0\.0\.1:7000\/?$/, { timeout: 120_000 });
   await page.waitForFunction(() => Boolean(window.LumiReplica?.state && window.electronApp?.isElectron));
 
-  const initial = await windows();
+  // Renderer readiness can occur just before loadURL resolves and main.js calls
+  // BrowserWindow.show(). Wait for the native visibility transition instead of
+  // racing it with the renderer-ready signal.
+  const initial = await waitFor(async () => {
+    const all = await windows();
+    const candidate = all.find(isMain);
+    return candidate?.visible ? all : null;
+  }, "normal launch did not show the main window");
   const main = initial.find(isMain);
   assert.ok(main, "actual Lumi main BrowserWindow is present");
   assert.equal(main.visible, true, "normal launch shows the main window");
