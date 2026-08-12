@@ -6,6 +6,7 @@ on:
       - fix/lumi-identity-binaries
     paths:
       - tools/generate_lumi_identity.py
+      - tests/test_lumi_brand_theme_lock.py
       - .github/workflows/repair-lumi-identity.yml
   workflow_dispatch:
 
@@ -27,11 +28,14 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install image tooling
-        run: python -m pip install --disable-pip-version-check 'Pillow==11.3.0'
+      - name: Install proof tooling
+        run: python -m pip install --disable-pip-version-check 'Pillow==11.3.0' 'pytest==8.4.1'
 
       - name: Generate and verify every Lumi identity asset
         run: python tools/generate_lumi_identity.py --write --verify
+
+      - name: Prove identity and theme lock
+        run: python -m pytest tests/test_lumi_brand_theme_lock.py -q
 
       - name: Commit generated binaries
         shell: bash
