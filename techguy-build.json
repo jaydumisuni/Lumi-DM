@@ -56,23 +56,18 @@
         "id": "lumi-server",
         "enabled": true,
         "entry": "server.py",
+        "python": "3.13",
         "name": "LUMIDM-server",
         "requirements": "requirements.txt",
         "output": "dist/server",
         "console": false,
         "extraRequirements": [
+          "libtorrent==2.0.13",
           "imageio-ffmpeg>=0.5,<1"
         ],
-        "extraRequirementsByPlatform": {
-          "windows": [
-            "libtorrent==2.0.13"
-          ]
-        },
-        "hiddenImportsByPlatform": {
-          "windows": [
-            "libtorrent"
-          ]
-        },
+        "hiddenImports": [
+          "libtorrent"
+        ],
         "collectAll": [
           "yt_dlp",
           "cryptography",
@@ -80,7 +75,8 @@
           "imageio_ffmpeg"
         ],
         "collectSubmodules": [
-          "core"
+          "core",
+          "libtorrent"
         ]
       }
     ]
