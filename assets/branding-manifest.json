@@ -4,46 +4,61 @@
   "canonical_source": "Resouces/my_logo.png",
   "canonical_source_git_blob_sha1": "13ad15bbc12b312ed25180516822f82dff41aa2f",
   "canonical_source_sha256": "6201010c970fee53ba3bf3649eeda407e7fba333d18a920f685329589042f7ce",
-  "identity_rule": "Every app-identity surface must use the owner-approved Lumi artwork. Semantic file, platform and action icons remain semantic because they are part of the approved UI.",
+  "identity_rule": "Every app-identity surface is generated from the owner-approved Lumi artwork. Semantic file, platform and action icons remain semantic because they convey function.",
   "rendering_rule": "Preserve the approved Lumi artwork and its aspect ratio. Never stretch width and height independently.",
   "fit": "contain",
   "transparent_padding": true,
   "high_dpi": true,
   "verified_runtime_identity": {
     "desktop_builder_icon": "static/favicon-256.png",
-    "desktop_builder_icon_sha256": "30705b7c1e86c938f4e2870ec9091e3f26b1e4029ba793a75e63e87a6bf71b71",
+    "desktop_builder_icon_sha256": "03cf21a8fa74c653be089ef6107f63a922a0dd20bff36d659dae9e25118d9f34",
     "desktop_builder_logo": "static/favicon-96.png",
     "desktop_builder_logo_sha256": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
     "browser_extension_icon": "static/browser-extension/chromium/icon.svg",
-    "browser_extension_icon_sha256": "3df160fe0d2d5ae449789a92e83f53195d41fd3299b1c5996e551cf73a58e6bb",
+    "browser_extension_icon_sha256": "bae59ec1e8f42003e92ab6ba68fcd20e8ec3f9d5cabc039f741115d82d8f9c3d",
     "windows_native_icon": "assets/windows/Lumi-DM.ico",
-    "windows_native_icon_sha256": "a3d3941154611e3c136322c22d71665a8c1ff2334371b14ba00ab4d508e00d1e",
+    "windows_native_icon_sha256": "8de7d540c296c7f23cf0dbb5142658e88d472725e2449ee99a78c78262e05b3a",
     "browser_extension_native_reference": "browser-extension/icons/icon128.png",
-    "browser_extension_native_reference_sha256": "050d7f3c8359cbe8ccd462d0a93523bc93528c3d6b893c2bc9ee7a1282ea6dd3",
+    "browser_extension_native_reference_sha256": "59851404bf8cdafb2b34b3a2f0405be33edad88e3d3095308c179729c33f8f49",
     "android_launcher_reference": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
-    "android_launcher_reference_sha256": "dee72a3bbd9a1393419a6c3e57363c01deae51f42a1bdd6da3cebe51f6ff65c4",
+    "android_launcher_reference_sha256": "a5cec7d69c517e3ed178857091898a8a430b877eda479f90359befd618c6f561",
     "ios_launcher_reference": "ios/AppIcon.appiconset/Icon-60@3x.png",
-    "ios_launcher_reference_sha256": "9352e7972bd0ec7f8bf2b7e45e015159ab3ad048600b707254aa0a29bf986c04",
+    "ios_launcher_reference_sha256": "b207af4e0433cdeb97113a873c7b8c5b5b1ebae6fc39754168910e976df06437",
     "macos_launcher_reference": "macos/icons.iconset/icon_512x512.png",
     "macos_launcher_reference_sha256": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
     "evidence": [
-      "commit 1ef96ccb0b3bb28529ceaf5682be85ea63020323 — Use the approved Lumi artwork for packaged Windows identity",
-      "commit 5df8654c3bbd8048c2f55c50dec89444c9d3ef85 — Use the real Lumi artwork in the extension icon",
-      "2026-08-12 identity audit — Windows ICO, web favicons, browser-extension PNGs, Android launchers, iOS AppIcon variants and macOS iconset variants all render the Lumi symbol; no foreign product mark was found"
+      "Identity binaries are generated deterministically from Resouces/my_logo.png by tools/generate_lumi_identity.py.",
+      "Every generated app-identity path is hash-locked under generated_identity_assets_sha256; representative runtime hashes are derived from those files after generation."
     ]
   },
   "surfaces": {
     "tray_and_taskbar": {
-      "sizes": [16, 20, 24, 32, 40, 48, 64, 128, 256],
+      "sizes": [
+        16,
+        20,
+        24,
+        32,
+        40,
+        48,
+        64,
+        128,
+        256
+      ],
       "format": "surface-specific native asset",
       "safe_padding_percent": 10
     },
     "corner_widget": {
-      "source_minimum": [96, 96],
+      "source_minimum": [
+        96,
+        96
+      ],
       "fit": "contain"
     },
     "download_setup_popup": {
-      "source_minimum": [128, 128],
+      "source_minimum": [
+        128,
+        128
+      ],
       "fit": "contain"
     },
     "main_sidebar": {
@@ -51,24 +66,37 @@
       "fit": "contain"
     },
     "browser_extension": {
-      "native_sizes": [16, 48, 128],
+      "native_sizes": [
+        16,
+        48,
+        128
+      ],
       "fit": "contain"
     },
     "splash": {
       "fit": "contain",
-      "source_minimum": [256, 256]
+      "source_minimum": [
+        256,
+        256
+      ]
     },
     "background": {
       "fit": "cover",
       "position": "center",
-      "opacity_range": [0.1, 0.18],
+      "opacity_range": [
+        0.1,
+        0.18
+      ],
       "overlay": "theme readability gradient",
       "source": "Resouces/backgroud .PNG"
     }
   },
   "themes": {
     "default": "dark",
-    "available": ["dark", "glass"],
+    "available": [
+      "dark",
+      "glass"
+    ],
     "glass_label": "Clear Glass",
     "dark_reference": "Resouces/Epected ui/dark mode",
     "glass_reference": "Resouces/Epected ui/light mode"
@@ -77,6 +105,65 @@
     "generate_surface_specific_assets": true,
     "validate_aspect_ratio": true,
     "reject_distortion": true,
-    "test_windows_scaling_percent": [100, 125, 150, 200]
+    "test_windows_scaling_percent": [
+      100,
+      125,
+      150,
+      200
+    ]
+  },
+  "generator": {
+    "path": "tools/generate_lumi_identity.py",
+    "canonical_symbol_crop_px": [
+      94,
+      0,
+      618,
+      924
+    ],
+    "safe_content_height_percent": 92,
+    "generated_asset_count": 41
+  },
+  "generated_identity_assets_sha256": {
+    "static/favicon-16.png": "fdaa96de062633e438e7c8757341c711eb56cbf26aeb8ddb708554ee82fcf70a",
+    "static/favicon-32.png": "57eb53cdc59e7cc5b0c695c7a3a73a7378104258eb9c6e0c3bb683a358fb0c71",
+    "static/favicon-48.png": "b7990df53e873838304741a948279f5091a40dd4b9b21db51dd9ee74fae2f5b5",
+    "static/favicon-96.png": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
+    "static/favicon-192.png": "a5cec7d69c517e3ed178857091898a8a430b877eda479f90359befd618c6f561",
+    "static/favicon-256.png": "03cf21a8fa74c653be089ef6107f63a922a0dd20bff36d659dae9e25118d9f34",
+    "static/favicon-512.png": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
+    "browser-extension/icons/icon16.png": "fdaa96de062633e438e7c8757341c711eb56cbf26aeb8ddb708554ee82fcf70a",
+    "browser-extension/icons/icon48.png": "b7990df53e873838304741a948279f5091a40dd4b9b21db51dd9ee74fae2f5b5",
+    "browser-extension/icons/icon128.png": "59851404bf8cdafb2b34b3a2f0405be33edad88e3d3095308c179729c33f8f49",
+    "android/app/src/main/res/mipmap-mdpi/ic_launcher.png": "b7990df53e873838304741a948279f5091a40dd4b9b21db51dd9ee74fae2f5b5",
+    "android/app/src/main/res/mipmap-hdpi/ic_launcher.png": "9d85a76bb51451dcb91c675536ecdc1df8140ef45a570d3af498c4de84a103d2",
+    "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
+    "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png": "1f74fd5fd9dd1e76976b17aa2e9b680eb06d2217a5b88b261cad6f62e99867d4",
+    "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png": "a5cec7d69c517e3ed178857091898a8a430b877eda479f90359befd618c6f561",
+    "ios/AppIcon.appiconset/Icon-20@1x.png": "dfc3eacadacee3c07c3ffb7a0269b21c0fba1a660cbf70d0c054c7774950494c",
+    "ios/AppIcon.appiconset/Icon-20@2x.png": "cda87487a59e393f35d19ecc0439edb5c2d122c44766722ee84e19f39be20425",
+    "ios/AppIcon.appiconset/Icon-20@3x.png": "d2d0bb99b6248be5535c01e49f9e1bca099b944440e288c25781fff04ae3dc70",
+    "ios/AppIcon.appiconset/Icon-29@1x.png": "b6bbff9fd737aae6f9afefb3f61fae4defc4b7d1f2944f34686441d2323c31ba",
+    "ios/AppIcon.appiconset/Icon-29@2x.png": "1781928880e758a96fecb4646707d4ba6dab888ea7d737f21284c3901f23627d",
+    "ios/AppIcon.appiconset/Icon-29@3x.png": "ca3eab8e0cc04abb76c5fa3c9ab7d50a6730ca202051273c48294c58f7e4e812",
+    "ios/AppIcon.appiconset/Icon-40@1x.png": "cda87487a59e393f35d19ecc0439edb5c2d122c44766722ee84e19f39be20425",
+    "ios/AppIcon.appiconset/Icon-40@2x.png": "ee9fafcd2a78d4a44d5a30b1e43ea60f08122ab8473ef4d856476e3879267f60",
+    "ios/AppIcon.appiconset/Icon-40@3x.png": "21067f7f4509f31ebbabdc1177ee71ceccc5cc7e0f169be93988f1e3806f37de",
+    "ios/AppIcon.appiconset/Icon-60@2x.png": "21067f7f4509f31ebbabdc1177ee71ceccc5cc7e0f169be93988f1e3806f37de",
+    "ios/AppIcon.appiconset/Icon-60@3x.png": "b207af4e0433cdeb97113a873c7b8c5b5b1ebae6fc39754168910e976df06437",
+    "ios/AppIcon.appiconset/Icon-76@1x.png": "8c4dd3e1453e1e64269065be20a14dc9dbef15af091983955114e49a55a0e6e5",
+    "ios/AppIcon.appiconset/Icon-76@2x.png": "342f36ee232ddeaff461ce7fb410cffeedb80583a174bb826fef8d2b144052c8",
+    "ios/AppIcon.appiconset/Icon-83_5@2x.png": "6357d7d06d7e91a2fbb39b7941ae8045e4eecf5aa7aad2c4a70324f653a2ace9",
+    "macos/icons.iconset/icon_16x16.png": "fdaa96de062633e438e7c8757341c711eb56cbf26aeb8ddb708554ee82fcf70a",
+    "macos/icons.iconset/icon_16x16@2x.png": "57eb53cdc59e7cc5b0c695c7a3a73a7378104258eb9c6e0c3bb683a358fb0c71",
+    "macos/icons.iconset/icon_32x32.png": "57eb53cdc59e7cc5b0c695c7a3a73a7378104258eb9c6e0c3bb683a358fb0c71",
+    "macos/icons.iconset/icon_32x32@2x.png": "ed5818c9970aefd96f8281743e90943533f5a3c1ee4f1b1382e60a97912fedaa",
+    "macos/icons.iconset/icon_128x128.png": "59851404bf8cdafb2b34b3a2f0405be33edad88e3d3095308c179729c33f8f49",
+    "macos/icons.iconset/icon_128x128@2x.png": "03cf21a8fa74c653be089ef6107f63a922a0dd20bff36d659dae9e25118d9f34",
+    "macos/icons.iconset/icon_256x256.png": "03cf21a8fa74c653be089ef6107f63a922a0dd20bff36d659dae9e25118d9f34",
+    "macos/icons.iconset/icon_256x256@2x.png": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
+    "macos/icons.iconset/icon_512x512.png": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
+    "macos/icons.iconset/icon_512x512@2x.png": "4e2bb38aa79f5208425d20c865c40902baaceb0a0168ad3cea0654a846463f9f",
+    "assets/windows/Lumi-DM.ico": "8de7d540c296c7f23cf0dbb5142658e88d472725e2449ee99a78c78262e05b3a",
+    "static/browser-extension/chromium/icon.svg": "bae59ec1e8f42003e92ab6ba68fcd20e8ec3f9d5cabc039f741115d82d8f9c3d"
   }
 }
