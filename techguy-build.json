@@ -48,6 +48,9 @@
     "appId": "com.lumi.dm",
     "electronVersion": "^29.0.0",
     "electronBuilderVersion": "^24.0.0",
+    "debDependencies": [
+      "aria2"
+    ],
     "pythonSidecars": [
       {
         "id": "lumi-server",
@@ -58,12 +61,18 @@
         "output": "dist/server",
         "console": false,
         "extraRequirements": [
-          "libtorrent==2.0.13",
           "imageio-ffmpeg>=0.5,<1"
         ],
-        "hiddenImports": [
-          "libtorrent"
-        ],
+        "extraRequirementsByPlatform": {
+          "windows": [
+            "libtorrent==2.0.13"
+          ]
+        },
+        "hiddenImportsByPlatform": {
+          "windows": [
+            "libtorrent"
+          ]
+        },
         "collectAll": [
           "yt_dlp",
           "cryptography",
