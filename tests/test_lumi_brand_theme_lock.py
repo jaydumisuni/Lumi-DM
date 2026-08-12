@@ -31,14 +31,29 @@ def test_owner_approved_lumi_logo_is_canonical() -> None:
     assert hashlib.sha256(approved).hexdigest() == brand["canonical_source_sha256"]
 
 
+def test_every_generated_identity_asset_is_hash_locked() -> None:
+    brand = manifest()
+    generated = brand["generated_identity_assets_sha256"]
+    assert len(generated) == brand["generator"]["generated_asset_count"]
+    assert len(generated) == 41
+
+    for relative, expected_hash in generated.items():
+        asset = ROOT / relative
+        assert asset.is_file(), relative
+        assert sha256(asset) == expected_hash, relative
+
+
 def test_runtime_identity_points_only_to_verified_lumi_assets() -> None:
     brand = manifest()
     identity = brand["verified_runtime_identity"]
+    generated = brand["generated_identity_assets_sha256"]
     build = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 
     assert build["logo"] == identity["desktop_builder_logo"]
     assert build["icon"] == identity["desktop_builder_icon"]
+    assert generated[identity["desktop_builder_logo"]] == identity["desktop_builder_logo_sha256"]
+    assert generated[identity["desktop_builder_icon"]] == identity["desktop_builder_icon_sha256"]
     assert sha256(ROOT / identity["desktop_builder_logo"]) == identity["desktop_builder_logo_sha256"]
     assert sha256(ROOT / identity["desktop_builder_icon"]) == identity["desktop_builder_icon_sha256"]
 
@@ -48,13 +63,16 @@ def test_runtime_identity_points_only_to_verified_lumi_assets() -> None:
 
     extension_path = ROOT / identity["browser_extension_icon"]
     extension = extension_path.read_text(encoding="utf-8")
+    assert generated[identity["browser_extension_icon"]] == identity["browser_extension_icon_sha256"]
     assert sha256(extension_path) == identity["browser_extension_icon_sha256"]
     assert "data:image/" in extension
     assert "placeholder extension icon" not in extension
 
 
 def test_audited_native_identity_assets_are_hash_locked() -> None:
-    identity = manifest()["verified_runtime_identity"]
+    brand = manifest()
+    identity = brand["verified_runtime_identity"]
+    generated = brand["generated_identity_assets_sha256"]
     pairs = [
         ("windows_native_icon", "windows_native_icon_sha256"),
         ("browser_extension_native_reference", "browser_extension_native_reference_sha256"),
@@ -63,8 +81,10 @@ def test_audited_native_identity_assets_are_hash_locked() -> None:
         ("macos_launcher_reference", "macos_launcher_reference_sha256"),
     ]
     for path_key, hash_key in pairs:
-        asset = ROOT / identity[path_key]
-        assert asset.is_file(), identity[path_key]
+        relative = identity[path_key]
+        asset = ROOT / relative
+        assert asset.is_file(), relative
+        assert generated[relative] == identity[hash_key]
         assert sha256(asset) == identity[hash_key]
 
 
