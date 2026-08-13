@@ -9,7 +9,11 @@
   "projectType": "multi-platform-source",
   "entryFile": "electron/main.js",
   "logo": "static/favicon-96.png",
-  "icon": "static/favicon-256.png",
+  "icon": "static/favicon-512.png",
+  "icons": {
+    "windows": "assets/windows/Lumi-DM.ico",
+    "linux": "static/favicon-512.png"
+  },
   "description": "Fast multi-source download manager with browser capture, media, torrents, firmware, operating-system images and technician workflows.",
   "repository": "jaydumisuni/Lumi-DM",
   "distribution": {
@@ -48,7 +52,7 @@
     "sourceRoot": "electron",
     "appId": "com.lumi.dm",
     "electronVersion": "^29.0.0",
-    "electronBuilderVersion": "^24.0.0",
+    "electronBuilderVersion": "^26.11.1",
     "debDependencies": [
       "aria2"
     ],
