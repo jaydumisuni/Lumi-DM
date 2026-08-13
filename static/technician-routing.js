@@ -25,11 +25,22 @@
 
       const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
       if (!operatingSystems) return;
-
-      // Do not stop propagation here. operating-systems.js owns the workspace
-      // renderer on the navigation target and must receive this same click.
+      event.preventDefault();
+      event.stopImmediatePropagation();
       keepGroupOpen(operatingSystems);
       if (typeof switchView === "function") switchView("operating_systems");
+      if (window.LumiOperatingSystemsOpen?.open) {
+        void window.LumiOperatingSystemsOpen.open();
+      } else {
+        console.error("Operating Systems opener is unavailable");
+        try {
+          if (typeof toast === "function") toast(
+            "Operating Systems did not open",
+            "The operating-system workspace opener is unavailable.",
+            "error",
+          );
+        } catch (_) {}
+      }
     }, true);
   }
 
