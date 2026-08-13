@@ -7,6 +7,7 @@
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
+    "/static/technician-routing.js",
     "/static/interaction-contract.js",
   ];
 
@@ -41,6 +42,7 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
+    UI.installTechnicianRouting();
     UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();
