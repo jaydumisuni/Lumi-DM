@@ -1,6 +1,7 @@
 {
   "schemaVersion": 2,
   "company": "THETECHGUY DIGITAL SOLUTIONS",
+  "authorEmail": "support@thetechguyds.com",
   "domain": "thetechguyds.com",
   "website": "https://thetechguyds.com/tools",
   "appName": "Lumi DM",
@@ -48,11 +49,15 @@
     "appId": "com.lumi.dm",
     "electronVersion": "^29.0.0",
     "electronBuilderVersion": "^24.0.0",
+    "debDependencies": [
+      "aria2"
+    ],
     "pythonSidecars": [
       {
         "id": "lumi-server",
         "enabled": true,
         "entry": "server.py",
+        "python": "3.13",
         "name": "LUMIDM-server",
         "requirements": "requirements.txt",
         "output": "dist/server",
@@ -71,7 +76,8 @@
           "imageio_ffmpeg"
         ],
         "collectSubmodules": [
-          "core"
+          "core",
+          "libtorrent"
         ]
       }
     ]
