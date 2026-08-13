@@ -3,19 +3,32 @@
 (() => {
   let installed = false;
 
+  function keepGroupOpen(item) {
+    const group = item.closest(".nav-group");
+    const toggle = group?.querySelector(".nav-group-toggle");
+    group?.classList.add("open");
+    toggle?.setAttribute("aria-expanded", "true");
+  }
+
   function installTechnicianRouting() {
     if (installed) return;
     installed = true;
     document.addEventListener("click", event => {
       const firmware = event.target.closest('.nav-item[data-view="firmware"]');
-      if (!firmware) return;
+      if (firmware) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        keepGroupOpen(firmware);
+        if (typeof openFirmwareView === "function") void openFirmwareView();
+        return;
+      }
+
+      const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
+      if (!operatingSystems) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      const group = firmware.closest(".nav-group");
-      const toggle = group?.querySelector(".nav-group-toggle");
-      group?.classList.add("open");
-      toggle?.setAttribute("aria-expanded", "true");
-      if (typeof openFirmwareView === "function") void openFirmwareView();
+      keepGroupOpen(operatingSystems);
+      if (window.LumiOperatingSystemsOpen?.open) void window.LumiOperatingSystemsOpen.open();
     }, true);
   }
 
