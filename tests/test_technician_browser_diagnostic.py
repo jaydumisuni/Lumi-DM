@@ -62,6 +62,7 @@ def test_technician_loader_diagnostic(tmp_path: Path) -> None:
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             page = browser.new_page(viewport={"width": 1440, "height": 900})
+            page.set_default_timeout(5000)
             console = []
             errors = []
             responses = []
@@ -86,7 +87,6 @@ def test_technician_loader_diagnostic(tmp_path: Path) -> None:
             print("FIRMWARE_VIEW_CLASS=", page.locator("#view-firmware").get_attribute("class"))
             print("FIRMWARE_HTML=", page.locator("#view-firmware").inner_html()[:4000])
             print("OPEN_FIRMWARE_TYPE=", page.evaluate("typeof openFirmwareView"))
-            print("FIRMWARE_CATALOGUE_STATUS=", page.evaluate("fetch('/api/v5/firmware/catalogue').then(r => r.status)"))
 
             assert page.locator("#view-firmware").get_attribute("class") and "active" in page.locator("#view-firmware").get_attribute("class")
             assert page.locator("#view-firmware .firmware-shell").count() == 1
@@ -98,7 +98,6 @@ def test_technician_loader_diagnostic(tmp_path: Path) -> None:
             print("OS_VIEW_CLASS=", page.locator("#view-operating_systems").get_attribute("class"))
             print("OS_HTML=", page.locator("#view-operating_systems").inner_html()[:4000])
             print("OS_SHELL_COUNT=", page.locator("#view-operating_systems .os-catalogue-shell").count())
-            print("OS_CATALOGUE_STATUS=", page.evaluate("fetch('/api/v5/os/catalogue').then(r => r.status)"))
             print("TECHNICIAN_RESPONSES=", responses)
             print("PAGE_ERRORS=", errors)
             print("CONSOLE_ERRORS=", [item for item in console if item[0] == "error"])
