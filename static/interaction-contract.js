@@ -3,11 +3,9 @@
 /*
  * Lumi desktop interaction contract.
  *
- * This layer is intentionally small and loaded after the legacy renderer and the
- * primary UI modules. It does not redesign the approved UI. It gives the static
- * shell one authoritative navigation path, keeps the Technician group reliable,
- * removes false button affordances, and exposes a runtime audit for every visible
- * button so dead controls cannot silently ship again.
+ * Loaded after the legacy renderer and primary UI modules. It does not redesign
+ * the approved UI. It supplies one authoritative route for the static shell,
+ * repairs the few generated false affordances, and audits visible controls.
  */
 (() => {
   const UI = window.LumiMainUI = window.LumiMainUI || {};
@@ -24,18 +22,23 @@
     "data-shell-action", "data-window-action", "data-firmware-action",
     "data-os-action", "data-os-family", "data-source", "data-tab",
     "data-close-modal", "data-close-source", "data-lumi-theme",
-    "data-notification-index", "data-contract-forward",
+    "data-notification-index", "data-contract-forward", "data-contract-ready",
   ];
   const STATIC_BUTTON_IDS = new Set([
     "boot-retry", "remote-pair-submit", "sidebar-open", "sidebar-close",
     "new-download-btn", "inspector-close", "ttg-bell", "ttg-gear",
-    "ttg-maximize", "lumi-widget-save", "lumi-modal-close",
+    "ttg-maximize", "hunter-promo", "lumi-widget-save", "lumi-modal-close",
     "lumi-open-tools", "lumi-open-support",
   ]);
+  const REPAIR_SELECTOR = [
+    "#view-overview .lumi-panel-head button.btn",
+    ".lumi-card .lumi-card-menu:not([data-action]):not([data-contract-ready])",
+  ].join(",");
 
   let installed = false;
   let observer = null;
   let repairScheduled = false;
+  let repairTimer = 0;
 
   function technicianGroup() {
     return document.querySelector(".nav-group");
@@ -87,8 +90,8 @@
       if (!CORE_VIEWS.has(view) && !TECHNICIAN_VIEWS.has(view)) return;
       event.preventDefault();
 
-      // Firmware and OS workspaces already own their content loaders. Keep their
-      // target-phase listeners alive while still making the route itself reliable.
+      // Firmware and OS scripts own their catalogue loaders. Keep their existing
+      // target listener alive after the reliable route has been selected.
       if (TECHNICIAN_VIEWS.has(view)) {
         routeView(view);
         setTechnicianOpen(true);
@@ -96,8 +99,6 @@
         return;
       }
 
-      // Core pages are fully routed here. Suppress legacy one-time listeners so
-      // one physical click means one route/render operation.
       event.stopImmediatePropagation();
       routeView(view);
       scheduleRepair();
@@ -183,57 +184,83 @@
 
   function repairVisibleControls() {
     repairScheduled = false;
+    repairTimer = 0;
 
-    // The approved Overview mockup shows "This session" as context, not as an
-    // actionable selector. Do not leave it looking like a dead button.
-    document.querySelectorAll("#view-overview .lumi-panel-head button.btn").forEach(button => {
-      const label = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-      if (!label.startsWith("this session") || button.dataset.contractNormalized === "true") return;
-      const text = document.createElement("span");
-      text.className = `${button.className} lumi-static-label`;
-      text.textContent = "This session";
-      text.setAttribute("aria-label", "Current session");
-      text.dataset.contractNormalized = "true";
-      button.replaceWith(text);
-    });
+    // Repairs deliberately run with the observer disconnected. That prevents
+    // generated-control normalization from recursively scheduling itself.
+    observer?.disconnect();
+    try {
+      document.querySelectorAll("#view-overview .lumi-panel-head button.btn").forEach(button => {
+        const label = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (!label.startsWith("this session")) return;
+        const text = document.createElement("span");
+        text.className = `${button.className} lumi-static-label`;
+        text.textContent = "This session";
+        text.setAttribute("aria-label", "Current session");
+        text.dataset.contractNormalized = "true";
+        button.replaceWith(text);
+      });
 
-    // Queue cards already expose safe pause/resume/delete actions. Their ellipsis
-    // now opens those actions instead of being a decorative dead button.
-    document.querySelectorAll(".lumi-card .lumi-card-menu:not([data-action])").forEach(button => {
-      const card = button.closest(".lumi-card");
-      const queueToggle = card?.querySelector('[data-action="toggle-queue"]');
-      if (queueToggle) {
-        button.type = "button";
-        button.dataset.contractReady = "queue-menu";
-        button.setAttribute("aria-haspopup", "menu");
-        button.setAttribute("aria-expanded", "false");
-        button.setAttribute("aria-label", "Queue actions");
-        return;
-      }
+      document.querySelectorAll(
+        ".lumi-card .lumi-card-menu:not([data-action]):not([data-contract-ready])",
+      ).forEach(button => {
+        const card = button.closest(".lumi-card");
+        const queueToggle = card?.querySelector('[data-action="toggle-queue"]');
+        if (queueToggle) {
+          button.type = "button";
+          button.dataset.contractReady = "queue-menu";
+          button.setAttribute("aria-haspopup", "menu");
+          button.setAttribute("aria-expanded", "false");
+          button.setAttribute("aria-label", "Queue actions");
+          return;
+        }
 
-      // Protected/default category cards cannot be deleted. Preserve the approved
-      // ellipsis visual without advertising an action that does not exist.
-      const visual = document.createElement("span");
-      visual.className = button.className;
-      visual.textContent = button.textContent || "⋮";
-      visual.setAttribute("aria-hidden", "true");
-      button.replaceWith(visual);
-    });
+        const visual = document.createElement("span");
+        visual.className = button.className;
+        visual.textContent = button.textContent || "⋮";
+        visual.setAttribute("aria-hidden", "true");
+        button.replaceWith(visual);
+      });
 
-    auditInteractionContract();
+      auditInteractionContract();
+    } finally {
+      observeRelevantMutations();
+    }
   }
 
   function scheduleRepair() {
     if (repairScheduled) return;
     repairScheduled = true;
-    queueMicrotask(repairVisibleControls);
+    // Use a task, not an unbounded microtask chain. The renderer gets to finish
+    // the current navigation/render operation before the contract audits it.
+    repairTimer = window.setTimeout(repairVisibleControls, 0);
+  }
+
+  function nodeNeedsRepair(node) {
+    if (!(node instanceof Element)) return false;
+    return node.matches?.(REPAIR_SELECTOR) || Boolean(node.querySelector?.(REPAIR_SELECTOR));
+  }
+
+  function observeRelevantMutations() {
+    if (!observer) return;
+    const content = document.getElementById("content");
+    if (!content || observer._lumiObserving) return;
+    observer.observe(content, { childList: true, subtree: true });
+    observer._lumiObserving = true;
+  }
+
+  function stopObserving() {
+    if (!observer) return;
+    observer.disconnect();
+    observer._lumiObserving = false;
   }
 
   function isActuallyVisible(element) {
-    if (element.hidden || element.closest("[hidden]")) return false;
+    if (!element.isConnected || element.hidden || element.closest("[hidden]")) return false;
+    // Own computed style does not account for an inactive ancestor. Geometry does.
+    if (!element.getClientRects().length) return false;
     const style = window.getComputedStyle?.(element);
-    if (style && (style.display === "none" || style.visibility === "hidden")) return false;
-    return true;
+    return !(style && (style.display === "none" || style.visibility === "hidden"));
   }
 
   function hasButtonContract(button) {
@@ -241,6 +268,7 @@
     if (button.type === "submit" || button.getAttribute("type") === "submit") return Boolean(button.closest("form"));
     if (STATIC_BUTTON_IDS.has(button.id)) return true;
     if (button.classList.contains("nav-group-toggle")) return true;
+    if (button.classList.contains("ttg-shell-modal-close")) return true;
     if (button.matches(".nav-item[data-view]")) return true;
     if (button.closest("#source-tabs") && button.dataset.source) return true;
     if (button.closest("#inspector-tabs") && button.dataset.tab) return true;
@@ -316,8 +344,10 @@
     document.addEventListener("keydown", event => {
       if (event.key === "Escape") closeQueueMenus();
     });
-    observer = new MutationObserver(scheduleRepair);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer = new MutationObserver(records => {
+      if (records.some(record => [...record.addedNodes].some(nodeNeedsRepair))) scheduleRepair();
+    });
+    observeRelevantMutations();
     scheduleRepair();
   }
 
