@@ -70,25 +70,40 @@ def test_technician_loader_diagnostic(tmp_path: Path) -> None:
             page.on(
                 "response",
                 lambda response: responses.append((response.status, response.url))
-                if "/api/v5/firmware" in response.url or "/api/v5/os/" in response.url
+                if "/api/v5/firmware" in response.url
+                or "/api/v5/os/" in response.url
+                or response.url.endswith("/static/operating-systems-open.js")
                 else None,
             )
 
             page.goto(f"http://127.0.0.1:{PORT}", wait_until="domcontentloaded")
             page.locator("#app-shell").wait_for(state="visible", timeout=20_000)
+            page.wait_for_timeout(1000)
             page.locator(".nav-group-toggle").click()
             page.locator('.nav-item[data-view="firmware"]').click()
-            page.wait_for_timeout(2500)
+            page.wait_for_timeout(1500)
 
             print("FIRMWARE_VIEW_CLASS=", page.locator("#view-firmware").get_attribute("class"))
             print("FIRMWARE_HTML=", page.locator("#view-firmware").inner_html()[:4000])
-            print("FIRMWARE_RESPONSES=", responses)
-            print("PAGE_ERRORS=", errors)
-            print("CONSOLE_ERRORS=", [item for item in console if item[0] == "error"])
             print("OPEN_FIRMWARE_TYPE=", page.evaluate("typeof openFirmwareView"))
-            print("CATALOGUE_STATUS=", page.evaluate("fetch('/api/v5/firmware/catalogue').then(r => r.status)"))
+            print("FIRMWARE_CATALOGUE_STATUS=", page.evaluate("fetch('/api/v5/firmware/catalogue').then(r => r.status)"))
 
             assert page.locator("#view-firmware").get_attribute("class") and "active" in page.locator("#view-firmware").get_attribute("class")
             assert page.locator("#view-firmware .firmware-shell").count() == 1
+
+            page.locator('.nav-item[data-view="operating_systems"]').click()
+            page.wait_for_timeout(1500)
+
+            print("OS_OPENER_TYPE=", page.evaluate("typeof window.LumiOperatingSystemsOpen === 'object' ? typeof window.LumiOperatingSystemsOpen.open : 'missing'"))
+            print("OS_VIEW_CLASS=", page.locator("#view-operating_systems").get_attribute("class"))
+            print("OS_HTML=", page.locator("#view-operating_systems").inner_html()[:4000])
+            print("OS_SHELL_COUNT=", page.locator("#view-operating_systems .os-catalogue-shell").count())
+            print("OS_CATALOGUE_STATUS=", page.evaluate("fetch('/api/v5/os/catalogue').then(r => r.status)"))
+            print("TECHNICIAN_RESPONSES=", responses)
+            print("PAGE_ERRORS=", errors)
+            print("CONSOLE_ERRORS=", [item for item in console if item[0] == "error"])
+
+            assert page.locator("#view-operating_systems").get_attribute("class") and "active" in page.locator("#view-operating_systems").get_attribute("class")
+            assert page.locator("#view-operating_systems .os-catalogue-shell").count() == 1
             assert not errors
             browser.close()
