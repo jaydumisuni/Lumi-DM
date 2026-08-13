@@ -7,6 +7,7 @@
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
+    "/static/interaction-contract.js",
   ];
 
   function loadModule(source) {
@@ -40,11 +41,17 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
+    UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();
     UI.installActualBrandLogos();
     UI.maybeShowExtensionNotice();
-    setTimeout(() => { try { if (typeof renderCurrentView === "function") renderCurrentView(); } catch (_) {} }, 0);
+    setTimeout(() => {
+      try {
+        if (typeof renderCurrentView === "function") renderCurrentView();
+        UI.repairInteractionContract();
+      } catch (_) {}
+    }, 0);
   }
 
   modules.reduce((promise, source) => promise.then(() => loadModule(source)), Promise.resolve())
