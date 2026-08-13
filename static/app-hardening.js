@@ -94,6 +94,22 @@ document.addEventListener("submit", event => {
   );
 }, true);
 
+// app-hardening loads before the legacy Technician workspace and primary UI
+// modules. Claim the OS route here, but deliberately do not stop propagation:
+// the later specialist handler still owns catalogue rendering and OS actions.
+document.addEventListener("click", event => {
+  const item = event.target.closest('.nav-item[data-view="operating_systems"]');
+  if (!item) return;
+  event.preventDefault();
+  const group = item.closest(".nav-group");
+  const toggle = group?.querySelector(".nav-group-toggle");
+  group?.classList.add("open");
+  toggle?.setAttribute("aria-expanded", "true");
+  try {
+    if (typeof switchView === "function") switchView("operating_systems");
+  } catch (_) {}
+}, true);
+
 document.addEventListener("DOMContentLoaded", () => {
   _applyReadOnlyPresentation();
   setInterval(_applyReadOnlyPresentation, 1500);
