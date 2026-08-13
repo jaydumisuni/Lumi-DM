@@ -7,6 +7,7 @@
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
+    "/static/operating-systems-open.js",
     "/static/technician-routing.js",
     "/static/interaction-contract.js",
   ];
