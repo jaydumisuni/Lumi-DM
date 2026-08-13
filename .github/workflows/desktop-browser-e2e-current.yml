@@ -31,4 +31,4 @@ jobs:
 
       - name: Full desktop browser interaction sweep
         run: |
-          python -m pytest -q tests/test_desktop_browser_e2e_v3.py -s
+          python -m pytest -q tests/test_desktop_browser_e2e_v4.py -s
