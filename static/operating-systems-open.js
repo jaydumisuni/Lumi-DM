@@ -4,6 +4,12 @@
   let cachedCatalogue = null;
   let family = sessionStorage.getItem("LUMI.osFamily") || "Windows";
 
+  const fallbackCatalogue = warning => ({
+    families: ["Windows", "macOS", "Linux"],
+    options: {},
+    warning,
+  });
+
   function claimRoute() {
     try {
       if (typeof switchView === "function") switchView("operating_systems");
@@ -18,23 +24,7 @@
     return data;
   }
 
-  async function open() {
-    const view = document.getElementById("view-operating_systems");
-    if (!view) return;
-    claimRoute();
-
-    let catalogue;
-    try {
-      cachedCatalogue ||= await apiGet("/api/v5/os/catalogue");
-      catalogue = cachedCatalogue;
-    } catch (error) {
-      catalogue = {
-        families: ["Windows", "macOS", "Linux"],
-        options: {},
-        warning: error.message,
-      };
-    }
-
+  function render(view, catalogue) {
     view.innerHTML = `
       <div class="firmware-shell os-catalogue-shell">
         <section class="firmware-hero os-hero">
@@ -56,6 +46,26 @@
         <div id="os-filter-host">${filterHtml(catalogue, family)}</div>
         <div id="os-results"><div class="empty"><div class="empty-icon">◫</div><strong>Select Windows, macOS or Linux</strong>Choose a version, edition and architecture, then search.</div></div>
       </div>`;
+  }
+
+  async function open() {
+    const view = document.getElementById("view-operating_systems");
+    if (!view) return;
+    claimRoute();
+
+    // Mount the workspace immediately. Catalogue hydration must never leave a
+    // selected navigation route visually blank while its API request resolves.
+    render(
+      view,
+      cachedCatalogue || fallbackCatalogue("Loading operating-system catalogue…"),
+    );
+
+    try {
+      cachedCatalogue ||= await apiGet("/api/v5/os/catalogue");
+      render(view, cachedCatalogue);
+    } catch (error) {
+      render(view, fallbackCatalogue(error.message));
+    }
   }
 
   function filterHtml(catalogue, value) {
@@ -84,6 +94,5 @@
     })[character]);
   }
 
-  claimRoute();
   window.LumiOperatingSystemsOpen = Object.freeze({ open });
 })();
