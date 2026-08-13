@@ -7,7 +7,6 @@
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
-    "/static/operating-systems-open.js",
     "/static/interaction-contract.js",
   ];
 
@@ -29,29 +28,14 @@
     toggle?.setAttribute("aria-expanded", "true");
   }
 
-  function installTechnicianNavigation() {
+  function installFirmwareNavigation() {
     document.addEventListener("click", event => {
       const firmware = event.target.closest('.nav-item[data-view="firmware"]');
-      if (firmware) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        keepTechnicianOpen(firmware);
-        if (typeof openFirmwareView === "function") void openFirmwareView();
-        return;
-      }
-
-      const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
-      if (!operatingSystems) return;
+      if (!firmware) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      keepTechnicianOpen(operatingSystems);
-      window.setTimeout(() => {
-        if (window.LumiOperatingSystemsOpen?.open) {
-          void window.LumiOperatingSystemsOpen.open();
-        } else {
-          console.error("Operating Systems opener is unavailable");
-        }
-      }, 0);
+      keepTechnicianOpen(firmware);
+      if (typeof openFirmwareView === "function") void openFirmwareView();
     }, true);
   }
 
@@ -75,7 +59,7 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
-    installTechnicianNavigation();
+    installFirmwareNavigation();
     UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();
