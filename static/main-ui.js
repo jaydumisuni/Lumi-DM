@@ -8,7 +8,6 @@
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
     "/static/operating-systems-open.js",
-    "/static/technician-routing.js",
     "/static/interaction-contract.js",
   ];
 
@@ -21,6 +20,39 @@
       script.onerror = () => reject(new Error(`Lumi UI module not loaded: ${source}`));
       document.head.appendChild(script);
     });
+  }
+
+  function keepTechnicianOpen(item) {
+    const group = item.closest(".nav-group");
+    const toggle = group?.querySelector(".nav-group-toggle");
+    group?.classList.add("open");
+    toggle?.setAttribute("aria-expanded", "true");
+  }
+
+  function installTechnicianNavigation() {
+    document.addEventListener("click", event => {
+      const firmware = event.target.closest('.nav-item[data-view="firmware"]');
+      if (firmware) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        keepTechnicianOpen(firmware);
+        if (typeof openFirmwareView === "function") void openFirmwareView();
+        return;
+      }
+
+      const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
+      if (!operatingSystems) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      keepTechnicianOpen(operatingSystems);
+      window.setTimeout(() => {
+        if (window.LumiOperatingSystemsOpen?.open) {
+          void window.LumiOperatingSystemsOpen.open();
+        } else {
+          console.error("Operating Systems opener is unavailable");
+        }
+      }, 0);
+    }, true);
   }
 
   function install() {
@@ -43,7 +75,7 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
-    UI.installTechnicianRouting();
+    installTechnicianNavigation();
     UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();
