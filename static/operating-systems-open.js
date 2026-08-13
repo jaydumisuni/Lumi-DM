@@ -4,6 +4,12 @@
   let cachedCatalogue = null;
   let family = sessionStorage.getItem("LUMI.osFamily") || "Windows";
 
+  function claimRoute() {
+    try {
+      if (typeof switchView === "function") switchView("operating_systems");
+    } catch (_) {}
+  }
+
   async function apiGet(path) {
     if (typeof v5Api === "function") return v5Api("GET", path);
     const response = await fetch(path);
@@ -15,11 +21,7 @@
   async function open() {
     const view = document.getElementById("view-operating_systems");
     if (!view) return;
-    try {
-      if (typeof switchView === "function" && state?.view !== "operating_systems") {
-        switchView("operating_systems");
-      }
-    } catch (_) {}
+    claimRoute();
 
     let catalogue;
     try {
@@ -82,5 +84,6 @@
     })[character]);
   }
 
+  claimRoute();
   window.LumiOperatingSystemsOpen = Object.freeze({ open });
 })();
