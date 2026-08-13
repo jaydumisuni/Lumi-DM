@@ -48,9 +48,10 @@ jobs:
             tests/test_desktop_release_contract_current.py \
             tests/test_desktop_acceptance_profile.py
 
-      - name: Download engine proof
+      - name: Download API and engine proof
         run: |
           python -m pytest -q \
+            tests/test_download_api_contract.py \
             tests/test_v2_http.py \
             tests/test_v3_media_torrent.py \
             tests/test_v3_runtime_api.py
