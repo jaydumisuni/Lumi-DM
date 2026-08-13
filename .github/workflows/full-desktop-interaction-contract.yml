@@ -1,0 +1,71 @@
+name: Lumi Full Desktop Interaction Contract
+
+on:
+  push:
+    branches:
+      - fix/full-desktop-interaction-contract
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  interaction-and-engine-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python proof dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pip install -r requirements.txt
+
+      - name: JavaScript syntax proof
+        run: |
+          set -eu
+          for file in static/*.js electron/*.js; do
+            node --check "$file"
+          done
+
+      - name: Full desktop interaction contract
+        run: |
+          python -m pytest -q \
+            tests/test_full_desktop_interaction_contract.py \
+            tests/test_desktop_acceptance_profile.py \
+            tests/test_lumi_brand_theme_lock.py \
+            tests/test_release_candidate_profile.py \
+            tests/test_release_shell_and_builder_contract.py
+
+      - name: Download engine proof
+        run: |
+          python -m pytest -q \
+            tests/test_v2_http.py \
+            tests/test_v3_media_torrent.py \
+            tests/test_v3_runtime_api.py
+
+      - name: Technician and reliability proof
+        run: |
+          python -m pytest -q \
+            tests/test_v4_fresh_checkout.py \
+            tests/test_v4_maintenance_diagnostics.py \
+            tests/test_v4_security.py \
+            tests/test_v5_finishing.py \
+            tests/test_v5_firmware_hardening.py \
+            tests/test_v5_native_security.py \
+            tests/test_v5_os_routes.py \
+            tests/test_v5_os_shell_release.py \
+            tests/test_v6_final_reliability.py \
+            tests/test_v6_ttg_shell_os_workspace.py
