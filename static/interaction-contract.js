@@ -313,7 +313,7 @@
 
   function hasButtonContract(button) {
     if (button.disabled) return true;
-    if (button.type === "submit" || button.getAttribute("type") === "submit") return Boolean(button.closest("form"));
+    if (button.closest("form") && (button.type === "submit" || button.getAttribute("role") === "submit")) return true;
     if (STATIC_BUTTON_IDS.has(button.id)) return true;
     if (button.classList.contains("nav-group-toggle")) return true;
     if (button.classList.contains("ttg-shell-modal-close")) return true;
