@@ -1,44 +1,10 @@
-name: Temporary OS Hook Patch
+name: Temporary OS Hook Patch Retired
 
 on:
-  push:
-    branches: [fix/full-desktop-interaction-contract]
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  patch:
+  retired:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: fix/full-desktop-interaction-contract
-      - name: Apply delegated OS navigation hook
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path("static/operating-systems.js")
-          text = path.read_text(encoding="utf-8")
-          delegated = 'document.addEventListener("click", event => {\n      if (!event.target.closest?.(\'.nav-item[data-view="operating_systems"]\')) return;\n      setTimeout(() => void renderOsView(), 0);\n    });'
-          pattern = r'''document\.querySelector\('\[data-view="operating_systems"\]'\)\?\.addEventListener\("click", \(\) => \{\s*setTimeout\(\(\) => void renderOsView\(\), 0\);\s*\}\);'''
-          if delegated in text:
-              print("Delegated OS listener already present")
-          else:
-              changed, count = re.subn(pattern, delegated, text, count=1)
-              if count != 1:
-                  raise SystemExit(f"Expected exactly one native OS listener, found {count}")
-              path.write_text(changed, encoding="utf-8")
-              print("Applied delegated OS listener")
-          PY
-          if git diff --quiet -- static/operating-systems.js; then
-            echo "No patch commit required"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add static/operating-systems.js
-          git commit -m "fix: delegate operating systems navigation rendering"
-          git push origin HEAD:fix/full-desktop-interaction-contract
+      - run: echo "OS navigation patch is now committed; executor retired."
