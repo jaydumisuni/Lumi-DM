@@ -2,6 +2,35 @@
 (() => {
   function installDesktopActions() {
     document.addEventListener("click", event => {
+      const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
+      if (operatingSystems) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const group = operatingSystems.closest(".nav-group");
+        const toggle = group?.querySelector(".nav-group-toggle");
+        group?.classList.add("open");
+        toggle?.setAttribute("aria-expanded", "true");
+        try {
+          if (typeof switchView === "function") switchView("operating_systems");
+        } catch (_) {}
+
+        const view = document.getElementById("view-operating_systems");
+        if (!view) return;
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.hidden = true;
+        trigger.dataset.osFamily = sessionStorage.getItem("LUMI.osFamily") || "Windows";
+        view.appendChild(trigger);
+        window.setTimeout(() => {
+          try {
+            if (trigger.isConnected) trigger.click();
+          } finally {
+            trigger.remove();
+          }
+        }, 0);
+        return;
+      }
+
       const openFolder = event.target.closest('[data-action="open-folder"]');
       if (!openFolder) return;
       event.preventDefault();
