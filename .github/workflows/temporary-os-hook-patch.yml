@@ -1,10 +1,42 @@
-name: Temporary Interaction Patch Retired
+name: Temporary Interaction Patch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [fix/full-desktop-interaction-contract]
+
+permissions:
+  contents: write
 
 jobs:
-  retired:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deterministic submit patch is committed; executor retired."
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/full-desktop-interaction-contract
+      - name: Restore mutation observer after repairs
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("static/interaction-contract.js")
+          text = path.read_text(encoding="utf-8")
+          old = "    observer?.disconnect();\n    try {\n"
+          new = "    stopObserving();\n    try {\n"
+          if new in text:
+              print("Observer reconnect lifecycle already fixed")
+          elif old in text:
+              path.write_text(text.replace(old, new, 1), encoding="utf-8")
+              print("Applied observer reconnect lifecycle fix")
+          else:
+              raise SystemExit("Expected interaction observer disconnect point not found")
+          PY
+          if git diff --quiet -- static/interaction-contract.js; then
+            echo "No patch commit required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/interaction-contract.js
+          git commit -m "fix: reconnect interaction observer after repairs"
+          git push origin HEAD:fix/full-desktop-interaction-contract
