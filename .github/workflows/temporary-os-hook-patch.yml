@@ -1,10 +1,58 @@
-name: Temporary Interaction Patch Retired
+name: Temporary Interaction Patch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [fix/full-desktop-interaction-contract]
+
+permissions:
+  contents: write
 
 jobs:
-  retired:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Observer lifecycle patch is committed; executor retired."
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/full-desktop-interaction-contract
+      - name: Route New Download source tabs through contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("static/interaction-contract.js")
+          text = path.read_text(encoding="utf-8")
+          marker = '    const submitButton = event.target.closest(\'button[type="submit"],input[type="submit"]\');\n'
+          lines = [
+              '    const sourceTab = event.target.closest("#source-tabs button[data-source]");',
+              '    if (sourceTab) {',
+              '      event.preventDefault();',
+              '      event.stopImmediatePropagation();',
+              '      try {',
+              '        if (typeof state !== "undefined") state.sourceTab = sourceTab.dataset.source;',
+              '        if (typeof renderSourceModal === "function") renderSourceModal();',
+              '        else reportInteractionFailure("New Download source tabs are unavailable");',
+              '      } catch (error) {',
+              '        reportInteractionFailure("New Download source did not open", error);',
+              '      }',
+              '      return;',
+              '    }',
+              '',
+          ]
+          block = "\n".join(lines) + "\n"
+          if block in text:
+              print("Delegated source-tab routing already present")
+          elif marker in text:
+              path.write_text(text.replace(marker, block + marker, 1), encoding="utf-8")
+              print("Applied delegated source-tab routing")
+          else:
+              raise SystemExit("Interaction-contract source-tab insertion point not found")
+          PY
+          if git diff --quiet -- static/interaction-contract.js; then
+            echo "No patch commit required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/interaction-contract.js
+          git commit -m "fix: delegate New Download source tab routing"
+          git push origin HEAD:fix/full-desktop-interaction-contract
