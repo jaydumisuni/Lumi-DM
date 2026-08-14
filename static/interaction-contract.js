@@ -114,6 +114,21 @@
       return;
     }
 
+    const submitButton = event.target.closest('button[type="submit"],input[type="submit"]');
+    if (submitButton) {
+      const form = submitButton.form || submitButton.closest("form");
+      if (!form) return;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (typeof form.requestSubmit === "function") form.requestSubmit(submitButton);
+      else form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: submitButton }));
+      return;
+    }
+
     const generatedModal = event.target.closest(
       '[data-action="open-queue-modal"],[data-action="open-category-modal"]',
     );
