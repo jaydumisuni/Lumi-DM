@@ -1,5 +1,6 @@
 "use strict";
 (() => {
+  const UI = window.LumiMainUI = window.LumiMainUI || {};
   let osLoader = null;
 
   function loadOperatingSystemsRenderer() {
@@ -59,6 +60,50 @@
     }, true);
   }
 
-  window.LumiMainUI = window.LumiMainUI || {};
-  Object.assign(window.LumiMainUI, { installDesktopActions });
+  function installActualBrandLogos() {
+    const brand = UI.BRAND || {};
+
+    function setImage(host, source, alt = "") {
+      if (!host || !source) return;
+      const current = host.firstElementChild;
+      if (
+        host.childElementCount === 1
+        && current?.tagName === "IMG"
+        && current.getAttribute("src") === source
+        && current.getAttribute("alt") === alt
+      ) return;
+      const image = document.createElement("img");
+      image.src = source;
+      image.alt = alt;
+      host.replaceChildren(image);
+    }
+
+    function apply() {
+      document.querySelectorAll("[data-os-family]").forEach(button => {
+        const family = button.dataset.osFamily;
+        const host = button.querySelector(".os-platform-icon");
+        const source = family === "Windows" ? brand.windows : family === "macOS" ? brand.apple : brand.linux;
+        setImage(host, source, family || "");
+      });
+
+      document.querySelectorAll("#view-firmware .firmware-card").forEach(card => {
+        const text = card.textContent.toLowerCase();
+        const host = card.querySelector(".firmware-source-icon");
+        const source = text.includes("apple") || text.includes("iphone") || text.includes("ipad")
+          ? brand.apple
+          : text.includes("android") || text.includes("samsung") || text.includes("xiaomi") || text.includes("oppo") || text.includes("vivo")
+            ? brand.android
+            : brand.lumi;
+        setImage(host, source, "");
+      });
+    }
+
+    apply();
+    const observer = new MutationObserver(apply);
+    [document.getElementById("view-operating_systems"), document.getElementById("view-firmware")]
+      .filter(Boolean)
+      .forEach(view => observer.observe(view, { childList: true, subtree: true }));
+  }
+
+  Object.assign(UI, { installDesktopActions, installActualBrandLogos });
 })();
