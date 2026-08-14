@@ -143,11 +143,18 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             page = browser.new_page(viewport={"width": 1440, "height": 900})
             page_errors: list[str] = []
             console_errors: list[str] = []
+            http_failures: list[str] = []
             page.on("pageerror", lambda error: page_errors.append(str(error)))
             page.on(
                 "console",
                 lambda message: console_errors.append(message.text)
                 if message.type == "error" else None,
+            )
+            page.on(
+                "response",
+                lambda response: http_failures.append(
+                    f"{response.status} {response.request.method} {response.url}"
+                ) if response.status >= 400 else None,
             )
 
             page.goto(f"http://127.0.0.1:{LUMI_PORT}", wait_until="domcontentloaded")
@@ -258,8 +265,12 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             page.wait_for_timeout(800)
             expect(page.locator("#view-downloads")).to_contain_text("fixture.bin")
 
-            print("FINAL_INTERACTION_AUDIT=", page.locator("html").get_attribute("data-lumi-interaction-contract"))
+            final_audit = page.locator("html").get_attribute("data-lumi-interaction-contract")
+            print("FINAL_INTERACTION_AUDIT=", final_audit)
+            if http_failures:
+                print("BROWSER_HTTP_FAILURES=", http_failures)
             if console_errors:
                 print("BROWSER_CONSOLE_ERRORS=", console_errors)
+            assert final_audit == "ready", "interaction contract audit did not finish ready"
             assert not page_errors, "renderer page errors: " + " | ".join(page_errors)
             browser.close()
