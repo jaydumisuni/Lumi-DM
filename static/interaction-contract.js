@@ -114,6 +114,25 @@
       return;
     }
 
+    const generatedModal = event.target.closest(
+      '[data-action="open-queue-modal"],[data-action="open-category-modal"]',
+    );
+    if (generatedModal) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const modalId = generatedModal.dataset.action === "open-queue-modal"
+        ? "queue-modal"
+        : "category-modal";
+      if (typeof openModal === "function") openModal(modalId);
+      else {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.hidden = false;
+        else reportInteractionFailure(modalId + " is unavailable");
+      }
+      scheduleRepair();
+      return;
+    }
+
     if (event.target.closest("#sidebar-open")) {
       event.preventDefault();
       event.stopImmediatePropagation();
