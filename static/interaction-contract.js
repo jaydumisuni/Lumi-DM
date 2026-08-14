@@ -222,7 +222,7 @@
 
     // Repairs deliberately run with the observer disconnected. That prevents
     // generated-control normalization from recursively scheduling itself.
-    observer?.disconnect();
+    stopObserving();
     try {
       document.querySelectorAll("#view-overview .lumi-panel-head button.btn").forEach(button => {
         const label = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
