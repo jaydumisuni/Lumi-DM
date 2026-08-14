@@ -1,10 +1,63 @@
-name: Temporary OS Hook Patch Retired
+name: Temporary Interaction Patch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [fix/full-desktop-interaction-contract]
+
+permissions:
+  contents: write
 
 jobs:
-  retired:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "OS navigation patch is now committed; executor retired."
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/full-desktop-interaction-contract
+      - name: Route generated queue and category modals through contract
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("static/interaction-contract.js")
+          text = path.read_text(encoding="utf-8")
+          marker = '''    if (event.target.closest("#sidebar-open")) {
+'''
+          block = '''    const generatedModal = event.target.closest(
+      '[data-action="open-queue-modal"],[data-action="open-category-modal"]',
+    );
+    if (generatedModal) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const modalId = generatedModal.dataset.action === "open-queue-modal"
+        ? "queue-modal"
+        : "category-modal";
+      if (typeof openModal === "function") openModal(modalId);
+      else {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.hidden = false;
+        else reportInteractionFailure(`${modalId} is unavailable`);
+      }
+      scheduleRepair();
+      return;
+    }
+
+'''
+          if block in text:
+              print("Generated modal routing already present")
+          elif marker in text:
+              path.write_text(text.replace(marker, block + marker, 1), encoding="utf-8")
+              print("Applied generated modal routing")
+          else:
+              raise SystemExit("Interaction-contract insertion point not found")
+          PY
+          if git diff --quiet -- static/interaction-contract.js; then
+            echo "No patch commit required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/interaction-contract.js
+          git commit -m "fix: route generated queue and category modals"
+          git push origin HEAD:fix/full-desktop-interaction-contract
