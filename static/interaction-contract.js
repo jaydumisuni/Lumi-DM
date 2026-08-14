@@ -317,7 +317,6 @@
     if (STATIC_BUTTON_IDS.has(button.id)) return true;
     if (button.classList.contains("nav-group-toggle")) return true;
     if (button.classList.contains("ttg-shell-modal-close")) return true;
-    if (button.closest(".toast")) return true;
     if (button.matches(".nav-item[data-view]")) return true;
     if (button.closest("#source-tabs") && button.dataset.source) return true;
     if (button.closest("#inspector-tabs") && button.dataset.tab) return true;
