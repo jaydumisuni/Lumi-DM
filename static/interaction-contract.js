@@ -114,6 +114,20 @@
       return;
     }
 
+    const sourceTab = event.target.closest("#source-tabs button[data-source]");
+    if (sourceTab) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      try {
+        if (typeof state !== "undefined") state.sourceTab = sourceTab.dataset.source;
+        if (typeof renderSourceModal === "function") renderSourceModal();
+        else reportInteractionFailure("New Download source tabs are unavailable");
+      } catch (error) {
+        reportInteractionFailure("New Download source did not open", error);
+      }
+      return;
+    }
+
     const submitButton = event.target.closest('button[type="submit"],input[type="submit"]');
     if (submitButton) {
       const form = submitButton.form || submitButton.closest("form");
