@@ -24,20 +24,32 @@ jobs:
           path = Path("static/operating-systems.js")
           text = path.read_text(encoding="utf-8")
           old = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
-              setTimeout(() => void bridgeOperatingSystemNav(), 0);
-            });'''
-          new = '''    document.addEventListener("click", event => {
-              if (!event.target.closest?.('.nav-item[data-view="operating_systems"]')) return;
               setTimeout(() => void renderOsView(), 0);
             });'''
+          old_native = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
+              setTimeout(() => void renderOsView(), 0);
+            });'''
+          actual_native = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
+      setTimeout(() => void renderOsView(), 0);
+    });'''
+          new = '''    document.addEventListener("click", event => {
+      if (!event.target.closest?.('.nav-item[data-view="operating_systems"]')) return;
+      setTimeout(() => void renderOsView(), 0);
+    });'''
 
           if new in text:
               print("Delegated OS listener already present")
+          elif actual_native in text:
+              path.write_text(text.replace(actual_native, new, 1), encoding="utf-8")
+              print("Applied delegated OS listener")
+          elif old_native in text:
+              path.write_text(text.replace(old_native, new, 1), encoding="utf-8")
+              print("Applied delegated OS listener")
           elif old in text:
               path.write_text(text.replace(old, new, 1), encoding="utf-8")
               print("Applied delegated OS listener")
           else:
-              raise SystemExit("Expected current OS navigation listener was not found; refusing to patch")
+              raise SystemExit("Expected native OS navigation listener was not found; refusing to patch")
           PY
 
           if git diff --quiet -- static/operating-systems.js; then
