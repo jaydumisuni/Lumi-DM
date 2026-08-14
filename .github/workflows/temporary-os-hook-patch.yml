@@ -14,36 +14,36 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/full-desktop-interaction-contract
-      - name: Route generated queue and category modals through contract
+      - name: Route generated modals through contract
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path("static/interaction-contract.js")
           text = path.read_text(encoding="utf-8")
-          marker = '''    if (event.target.closest("#sidebar-open")) {
-'''
-          block = '''    const generatedModal = event.target.closest(
-      '[data-action="open-queue-modal"],[data-action="open-category-modal"]',
-    );
-    if (generatedModal) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const modalId = generatedModal.dataset.action === "open-queue-modal"
-        ? "queue-modal"
-        : "category-modal";
-      if (typeof openModal === "function") openModal(modalId);
-      else {
-        const modal = document.getElementById(modalId);
-        if (modal) modal.hidden = false;
-        else reportInteractionFailure(`${modalId} is unavailable`);
-      }
-      scheduleRepair();
-      return;
-    }
-
-'''
+          marker = '    if (event.target.closest("#sidebar-open")) {\n'
+          lines = [
+              '    const generatedModal = event.target.closest(',
+              '      \'[data-action="open-queue-modal"],[data-action="open-category-modal"]\',',
+              '    );',
+              '    if (generatedModal) {',
+              '      event.preventDefault();',
+              '      event.stopImmediatePropagation();',
+              '      const modalId = generatedModal.dataset.action === "open-queue-modal"',
+              '        ? "queue-modal"',
+              '        : "category-modal";',
+              '      if (typeof openModal === "function") openModal(modalId);',
+              '      else {',
+              '        const modal = document.getElementById(modalId);',
+              '        if (modal) modal.hidden = false;',
+              '        else reportInteractionFailure(modalId + " is unavailable");',
+              '      }',
+              '      scheduleRepair();',
+              '      return;',
+              '    }',
+              '',
+          ]
+          block = "\n".join(lines) + "\n"
           if block in text:
               print("Generated modal routing already present")
           elif marker in text:
