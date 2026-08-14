@@ -1,33 +1,46 @@
 "use strict";
 (() => {
+  let osLoader = null;
+
+  function loadOperatingSystemsRenderer() {
+    if (window.LumiOperatingSystemsOpen?.open) return Promise.resolve(window.LumiOperatingSystemsOpen);
+    if (osLoader) return osLoader;
+    osLoader = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "/static/operating-systems-open.js";
+      script.async = false;
+      script.onload = () => {
+        if (window.LumiOperatingSystemsOpen?.open) resolve(window.LumiOperatingSystemsOpen);
+        else reject(new Error("Operating Systems renderer did not initialize"));
+      };
+      script.onerror = () => reject(new Error("Operating Systems renderer could not be loaded"));
+      document.head.appendChild(script);
+    }).catch(error => {
+      osLoader = null;
+      throw error;
+    });
+    return osLoader;
+  }
+
+  function openOperatingSystems(operatingSystems) {
+    const group = operatingSystems.closest(".nav-group");
+    const toggle = group?.querySelector(".nav-group-toggle");
+    group?.classList.add("open");
+    toggle?.setAttribute("aria-expanded", "true");
+    void loadOperatingSystemsRenderer()
+      .then(renderer => renderer.open())
+      .catch(error => {
+        if (typeof toast === "function") toast("Operating Systems unavailable", error.message || String(error), "error");
+      });
+  }
+
   function installDesktopActions() {
     document.addEventListener("click", event => {
       const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
       if (operatingSystems) {
         event.preventDefault();
         event.stopImmediatePropagation();
-        const group = operatingSystems.closest(".nav-group");
-        const toggle = group?.querySelector(".nav-group-toggle");
-        group?.classList.add("open");
-        toggle?.setAttribute("aria-expanded", "true");
-        try {
-          if (typeof switchView === "function") switchView("operating_systems");
-        } catch (_) {}
-
-        const view = document.getElementById("view-operating_systems");
-        if (!view) return;
-        const trigger = document.createElement("button");
-        trigger.type = "button";
-        trigger.hidden = true;
-        trigger.dataset.osFamily = sessionStorage.getItem("LUMI.osFamily") || "Windows";
-        view.appendChild(trigger);
-        window.setTimeout(() => {
-          try {
-            if (trigger.isConnected) trigger.click();
-          } finally {
-            trigger.remove();
-          }
-        }, 0);
+        openOperatingSystems(operatingSystems);
         return;
       }
 
