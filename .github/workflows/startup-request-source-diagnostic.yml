@@ -1,0 +1,21 @@
+name: Lumi Startup Request Source Diagnostic
+
+on:
+  push:
+    branches:
+      - fix/full-desktop-interaction-contract
+
+permissions:
+  contents: read
+
+jobs:
+  trace-startup-callers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate optional startup API callers
+        run: |
+          echo '=== BRANDING BACKGROUND CALLERS ==='
+          grep -RFn '/api/v5/branding/background' . --exclude-dir=.git || true
+          echo '=== PROMOTION CALLERS ==='
+          grep -RFn '/api/v5/promotions/current' . --exclude-dir=.git || true
