@@ -21,7 +21,8 @@
     if (!view) return;
     view.addEventListener("click", handleClick);
     view.addEventListener("submit", handleSubmit);
-    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
+    document.addEventListener("click", event => {
+      if (!event.target.closest?.('.nav-item[data-view="operating_systems"]')) return;
       setTimeout(() => void renderOsView(), 0);
     });
   });
