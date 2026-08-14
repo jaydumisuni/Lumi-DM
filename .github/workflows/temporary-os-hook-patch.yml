@@ -2,8 +2,7 @@ name: Temporary OS Hook Patch
 
 on:
   push:
-    branches:
-      - fix/full-desktop-interaction-contract
+    branches: [fix/full-desktop-interaction-contract]
 
 permissions:
   contents: write
@@ -15,48 +14,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: fix/full-desktop-interaction-contract
-      - name: Apply exact delegated listener patch
+      - name: Apply delegated OS navigation hook
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
+          import re
           path = Path("static/operating-systems.js")
           text = path.read_text(encoding="utf-8")
-          old = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
-              setTimeout(() => void renderOsView(), 0);
-            });'''
-          old_native = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
-              setTimeout(() => void renderOsView(), 0);
-            });'''
-          actual_native = '''    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
-      setTimeout(() => void renderOsView(), 0);
-    });'''
-          new = '''    document.addEventListener("click", event => {
-      if (!event.target.closest?.('.nav-item[data-view="operating_systems"]')) return;
-      setTimeout(() => void renderOsView(), 0);
-    });'''
-
-          if new in text:
+          delegated = 'document.addEventListener("click", event => {\n      if (!event.target.closest?.(\'.nav-item[data-view="operating_systems"]\')) return;\n      setTimeout(() => void renderOsView(), 0);\n    });'
+          pattern = r'''document\.querySelector\('\[data-view="operating_systems"\]'\)\?\.addEventListener\("click", \(\) => \{\s*setTimeout\(\(\) => void renderOsView\(\), 0\);\s*\}\);'''
+          if delegated in text:
               print("Delegated OS listener already present")
-          elif actual_native in text:
-              path.write_text(text.replace(actual_native, new, 1), encoding="utf-8")
-              print("Applied delegated OS listener")
-          elif old_native in text:
-              path.write_text(text.replace(old_native, new, 1), encoding="utf-8")
-              print("Applied delegated OS listener")
-          elif old in text:
-              path.write_text(text.replace(old, new, 1), encoding="utf-8")
-              print("Applied delegated OS listener")
           else:
-              raise SystemExit("Expected native OS navigation listener was not found; refusing to patch")
+              changed, count = re.subn(pattern, delegated, text, count=1)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one native OS listener, found {count}")
+              path.write_text(changed, encoding="utf-8")
+              print("Applied delegated OS listener")
           PY
-
           if git diff --quiet -- static/operating-systems.js; then
             echo "No patch commit required"
             exit 0
           fi
-
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add static/operating-systems.js
