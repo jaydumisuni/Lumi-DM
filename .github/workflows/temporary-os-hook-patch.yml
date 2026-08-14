@@ -1,10 +1,59 @@
-name: Temporary Interaction Patch Retired
+name: Temporary Interaction Patch
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [fix/full-desktop-interaction-contract]
+
+permissions:
+  contents: write
 
 jobs:
-  retired:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Interaction patch is committed; executor retired."
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/full-desktop-interaction-contract
+      - name: Route submit buttons through requestSubmit
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("static/interaction-contract.js")
+          text = path.read_text(encoding="utf-8")
+          marker = '    const generatedModal = event.target.closest(\n'
+          lines = [
+              '    const submitButton = event.target.closest(\'button[type="submit"],input[type="submit"]\');',
+              '    if (submitButton) {',
+              '      const form = submitButton.form || submitButton.closest("form");',
+              '      if (!form) return;',
+              '      if (!form.checkValidity()) {',
+              '        form.reportValidity();',
+              '        return;',
+              '      }',
+              '      event.preventDefault();',
+              '      event.stopImmediatePropagation();',
+              '      if (typeof form.requestSubmit === "function") form.requestSubmit(submitButton);',
+              '      else form.dispatchEvent(new SubmitEvent("submit", { bubbles: true, cancelable: true, submitter: submitButton }));',
+              '      return;',
+              '    }',
+              '',
+          ]
+          block = "\n".join(lines) + "\n"
+          if block in text:
+              print("Deterministic submit routing already present")
+          elif marker in text:
+              path.write_text(text.replace(marker, block + marker, 1), encoding="utf-8")
+              print("Applied deterministic submit routing")
+          else:
+              raise SystemExit("Interaction-contract submit insertion point not found")
+          PY
+          if git diff --quiet -- static/interaction-contract.js; then
+            echo "No patch commit required"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add static/interaction-contract.js
+          git commit -m "fix: route form submission through interaction contract"
+          git push origin HEAD:fix/full-desktop-interaction-contract
