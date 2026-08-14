@@ -76,14 +76,25 @@ def lumi_server(data_dir: Path, download_dir: Path, temp_dir: Path):
             process.wait(timeout=3)
 
 
-def wait_for_file(path: Path, expected: bytes, timeout: float = 20.0) -> None:
+def wait_for_file_under(root: Path, filename: str, expected: bytes, timeout: float = 20.0) -> Path:
     deadline = time.monotonic() + timeout
+    last_candidates: list[Path] = []
     while time.monotonic() < deadline:
-        if path.is_file() and path.read_bytes() == expected:
-            return
+        last_candidates = [path for path in root.rglob(filename) if path.is_file()]
+        for path in last_candidates:
+            if path.read_bytes() == expected:
+                resolved_root = root.resolve()
+                resolved_path = path.resolve()
+                if not resolved_path.is_relative_to(resolved_root):
+                    raise AssertionError(f"download escaped requested root: {resolved_path}")
+                return path
         time.sleep(0.15)
+    details = [
+        f"{path.relative_to(root)}:{path.stat().st_size}"
+        for path in last_candidates
+    ]
     raise AssertionError(
-        f"downloaded file mismatch: exists={path.exists()} size={path.stat().st_size if path.exists() else 0}"
+        f"downloaded file mismatch under {root}: candidates={details}"
     )
 
 
@@ -242,7 +253,8 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
 
             expect(page.locator("#new-modal")).to_be_hidden(timeout=15_000)
             expect(page.locator("#view-downloads")).to_have_class(ACTIVE)
-            wait_for_file(download_dir / "fixture.bin", payload, timeout=20.0)
+            final_file = wait_for_file_under(download_dir, "fixture.bin", payload, timeout=20.0)
+            print("FINAL_DOWNLOAD_PATH=", final_file.relative_to(download_dir))
             page.wait_for_timeout(800)
             expect(page.locator("#view-downloads")).to_contain_text("fixture.bin")
 
