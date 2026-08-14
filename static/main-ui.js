@@ -8,6 +8,7 @@
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
     "/static/interaction-contract.js",
+    "/static/toast-contract.js",
   ];
 
   function loadModule(source) {
