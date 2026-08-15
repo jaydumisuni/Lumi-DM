@@ -8,7 +8,7 @@
     loading: false,
     family: sessionStorage.getItem("LUMI.osFamily") || "Windows",
   };
-  let bound = false;
+  let boundView = null;
 
   try {
     viewMeta.operating_systems = [
@@ -18,12 +18,18 @@
   } catch (_) {}
 
   function bindView() {
-    if (bound) return true;
     const view = document.getElementById("view-operating_systems");
     if (!view) return false;
+    if (boundView === view) return true;
+    if (boundView) {
+      boundView.removeEventListener("click", handleClick);
+      boundView.removeEventListener("submit", handleSubmit);
+      delete boundView.dataset.osWorkspaceBound;
+    }
     view.addEventListener("click", handleClick);
     view.addEventListener("submit", handleSubmit);
-    bound = true;
+    view.dataset.osWorkspaceBound = "true";
+    boundView = view;
     return true;
   }
 
