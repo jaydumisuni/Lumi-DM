@@ -1,38 +1,20 @@
 "use strict";
 (() => {
   const UI = window.LumiMainUI = window.LumiMainUI || {};
-  let osLoader = null;
 
-  function loadOperatingSystemsRenderer() {
-    if (window.LumiOperatingSystemsOpen?.open) return Promise.resolve(window.LumiOperatingSystemsOpen);
-    if (osLoader) return osLoader;
-    osLoader = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = "/static/operating-systems-open.js";
-      script.async = false;
-      script.onload = () => {
-        if (window.LumiOperatingSystemsOpen?.open) resolve(window.LumiOperatingSystemsOpen);
-        else reject(new Error("Operating Systems renderer did not initialize"));
-      };
-      script.onerror = () => reject(new Error("Operating Systems renderer could not be loaded"));
-      document.head.appendChild(script);
-    }).catch(error => {
-      osLoader = null;
-      throw error;
-    });
-    return osLoader;
-  }
-
-  function openOperatingSystems(operatingSystems) {
+  async function openOperatingSystems(operatingSystems) {
     const group = operatingSystems?.closest?.(".nav-group");
     const toggle = group?.querySelector(".nav-group-toggle");
     group?.classList.add("open");
     toggle?.setAttribute("aria-expanded", "true");
-    return loadOperatingSystemsRenderer()
-      .then(renderer => renderer.open())
-      .catch(error => {
-        if (typeof toast === "function") toast("Operating Systems unavailable", error.message || String(error), "error");
-      });
+    try {
+      const renderer = window.LumiOperatingSystems;
+      if (!renderer?.open) throw new Error("Operating Systems workspace did not initialize");
+      await renderer.open();
+    } catch (error) {
+      if (typeof toast === "function") toast("Operating Systems unavailable", error.message || String(error), "error");
+      throw error;
+    }
   }
 
   function installDesktopActions() {
