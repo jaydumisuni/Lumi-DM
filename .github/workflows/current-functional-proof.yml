@@ -40,8 +40,7 @@ jobs:
 
       - name: Interaction and current release contract
         run: |
-          python -m pytest -q tests/test_full_desktop_interaction_contract.py \
-            -k "not test_core_renderer_forms_modals_tabs_and_inspector_have_handlers"
+          python -m pytest -q tests/test_full_desktop_interaction_contract.py
           python -m pytest -q \
             tests/test_desktop_release_contract_current.py \
             tests/test_desktop_acceptance_profile.py
