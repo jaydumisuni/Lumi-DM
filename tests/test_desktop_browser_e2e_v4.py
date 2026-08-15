@@ -185,9 +185,11 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             expect(page.locator("#view-operating_systems")).to_have_class(ACTIVE)
             page.locator("#view-operating_systems .os-catalogue-shell").wait_for(state="visible", timeout=10_000)
             expect(technician).to_have_attribute("aria-expanded", "true")
+            assert page.evaluate("Boolean(window.LumiOperatingSystems?.open)"), "canonical OS workspace API is unavailable"
 
             linux = page.locator('#view-operating_systems [data-os-family="Linux"]')
             linux.click()
+            assert page.evaluate("sessionStorage.getItem('LUMI.osFamily')") == "Linux", "Linux click did not reach the OS state handler"
             expect(linux).to_have_class(ACTIVE)
             expect(page.locator('#view-operating_systems input[name="family"]')).to_have_value("Linux")
             click_view(page, "overview")
