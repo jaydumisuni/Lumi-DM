@@ -73,6 +73,27 @@
     return true;
   }
 
+  function openTechnicianView(view, nav) {
+    setTechnicianOpen(true);
+    try {
+      if (view === "firmware" && typeof openFirmwareView === "function") {
+        void Promise.resolve(openFirmwareView()).catch(error => {
+          reportInteractionFailure("Firmware unavailable", error);
+        });
+        return;
+      }
+      if (view === "operating_systems" && typeof UI.openOperatingSystems === "function") {
+        void Promise.resolve(UI.openOperatingSystems(nav)).catch(error => {
+          reportInteractionFailure("Operating Systems unavailable", error);
+        });
+        return;
+      }
+      routeView(view);
+    } catch (error) {
+      reportInteractionFailure(`View ${view} did not open`, error);
+    }
+  }
+
   function handleStaticShellClick(event) {
     const technicianToggle = event.target.closest(".nav-group-toggle");
     if (technicianToggle) {
@@ -89,17 +110,14 @@
       const view = String(nav.dataset.view || "");
       if (!CORE_VIEWS.has(view) && !TECHNICIAN_VIEWS.has(view)) return;
       event.preventDefault();
+      event.stopImmediatePropagation();
 
-      // Firmware and OS scripts own their catalogue loaders. Keep their existing
-      // target listener alive after the reliable route has been selected.
       if (TECHNICIAN_VIEWS.has(view)) {
-        routeView(view);
-        setTechnicianOpen(true);
+        openTechnicianView(view, nav);
         scheduleRepair();
         return;
       }
 
-      event.stopImmediatePropagation();
       routeView(view);
       scheduleRepair();
       return;
