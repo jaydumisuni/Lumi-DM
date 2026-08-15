@@ -8,6 +8,9 @@
     group?.classList.add("open");
     toggle?.setAttribute("aria-expanded", "true");
     try {
+      if (typeof switchView === "function" && state?.view !== "operating_systems") {
+        switchView("operating_systems");
+      }
       const renderer = window.LumiOperatingSystems;
       if (!renderer?.open) throw new Error("Operating Systems workspace did not initialize");
       await renderer.open();
