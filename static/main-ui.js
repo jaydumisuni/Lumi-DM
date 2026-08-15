@@ -22,24 +22,6 @@
     });
   }
 
-  function keepTechnicianOpen(item) {
-    const group = item.closest(".nav-group");
-    const toggle = group?.querySelector(".nav-group-toggle");
-    group?.classList.add("open");
-    toggle?.setAttribute("aria-expanded", "true");
-  }
-
-  function installFirmwareNavigation() {
-    document.addEventListener("click", event => {
-      const firmware = event.target.closest('.nav-item[data-view="firmware"]');
-      if (!firmware) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      keepTechnicianOpen(firmware);
-      if (typeof openFirmwareView === "function") void openFirmwareView();
-    }, true);
-  }
-
   function install() {
     const UI = window.LumiMainUI;
     if (!UI) throw new Error("Lumi primary UI did not initialize");
@@ -60,7 +42,6 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
-    installFirmwareNavigation();
     UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();
