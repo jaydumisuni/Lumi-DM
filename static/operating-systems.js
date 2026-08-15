@@ -8,6 +8,7 @@
     loading: false,
     family: sessionStorage.getItem("LUMI.osFamily") || "Windows",
   };
+  let bound = false;
 
   try {
     viewMeta.operating_systems = [
@@ -16,16 +17,21 @@
     ];
   } catch (_) {}
 
-  window.addEventListener("DOMContentLoaded", () => {
+  function bindView() {
+    if (bound) return true;
     const view = document.getElementById("view-operating_systems");
-    if (!view) return;
+    if (!view) return false;
     view.addEventListener("click", handleClick);
     view.addEventListener("submit", handleSubmit);
-    document.addEventListener("click", event => {
-      if (!event.target.closest?.('.nav-item[data-view="operating_systems"]')) return;
-      setTimeout(() => void renderOsView(), 0);
-    });
-  });
+    bound = true;
+    return true;
+  }
+
+  async function openOperatingSystemsView() {
+    if (!bindView()) return;
+    osState.family = sessionStorage.getItem("LUMI.osFamily") || "Windows";
+    await renderOsView();
+  }
 
   async function loadCatalogue() {
     if (!osState.catalogue) osState.catalogue = await osApi("GET", "/api/v5/os/catalogue");
@@ -251,4 +257,7 @@
   function titleCase(value) { return String(value || "").replace(/_/g, " ").replace(/\b\w/g, character => character.toUpperCase()); }
   function osFmtBytes(value) { const size = Number(value || 0); if (size >= 1073741824) return `${(size / 1073741824).toFixed(2)} GB`; if (size >= 1048576) return `${(size / 1048576).toFixed(1)} MB`; return `${Math.round(size / 1024)} KB`; }
   function osEsc(value) { return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character])); }
+
+  bindView();
+  window.LumiOperatingSystems = Object.freeze({ open: openOperatingSystemsView });
 })();
