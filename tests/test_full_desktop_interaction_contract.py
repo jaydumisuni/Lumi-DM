@@ -75,7 +75,8 @@ def test_core_renderer_forms_modals_tabs_and_inspector_have_handlers():
         'document.getElementById("queue-form")?.addEventListener("submit", createQueue)',
         'document.getElementById("category-form")?.addEventListener("submit", createCategory)',
         'document.getElementById("inspector-tabs")?.addEventListener("click"',
-        'document.getElementById("inspector-body")?.addEventListener("click", handleInspectorClick)',
+        'document.getElementById("inspector-body")?.addEventListener("click", event => {',
+        'void handleTaskAction(button.dataset.action, state.inspector.task.id);',
     ]
     for binding in required:
         assert binding in app
