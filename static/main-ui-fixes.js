@@ -24,11 +24,11 @@
   }
 
   function openOperatingSystems(operatingSystems) {
-    const group = operatingSystems.closest(".nav-group");
+    const group = operatingSystems?.closest?.(".nav-group");
     const toggle = group?.querySelector(".nav-group-toggle");
     group?.classList.add("open");
     toggle?.setAttribute("aria-expanded", "true");
-    void loadOperatingSystemsRenderer()
+    return loadOperatingSystemsRenderer()
       .then(renderer => renderer.open())
       .catch(error => {
         if (typeof toast === "function") toast("Operating Systems unavailable", error.message || String(error), "error");
@@ -37,14 +37,6 @@
 
   function installDesktopActions() {
     document.addEventListener("click", event => {
-      const operatingSystems = event.target.closest('.nav-item[data-view="operating_systems"]');
-      if (operatingSystems) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        openOperatingSystems(operatingSystems);
-        return;
-      }
-
       const openFolder = event.target.closest('[data-action="open-folder"]');
       if (!openFolder) return;
       event.preventDefault();
@@ -105,5 +97,5 @@
       .forEach(view => observer.observe(view, { childList: true, subtree: true }));
   }
 
-  Object.assign(UI, { installDesktopActions, installActualBrandLogos });
+  Object.assign(UI, { installDesktopActions, installActualBrandLogos, openOperatingSystems });
 })();
