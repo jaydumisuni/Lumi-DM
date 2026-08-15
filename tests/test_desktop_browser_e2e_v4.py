@@ -186,6 +186,16 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             page.locator("#view-operating_systems .os-catalogue-shell").wait_for(state="visible", timeout=10_000)
             expect(technician).to_have_attribute("aria-expanded", "true")
 
+            linux = page.locator('#view-operating_systems [data-os-family="Linux"]')
+            linux.click()
+            expect(linux).to_have_class(ACTIVE)
+            expect(page.locator('#view-operating_systems input[name="family"]')).to_have_value("Linux")
+            click_view(page, "overview")
+            page.locator('.nav-item[data-view="operating_systems"]').click()
+            expect(page.locator("#view-operating_systems")).to_have_class(ACTIVE)
+            expect(page.locator('#view-operating_systems [data-os-family="Linux"]')).to_have_class(ACTIVE)
+            expect(page.locator('#view-operating_systems input[name="family"]')).to_have_value("Linux")
+
             click_view(page, "overview")
             page.locator('[data-main-view="settings"]').first.click()
             expect(page.locator("#view-settings")).to_have_class(ACTIVE)
@@ -272,5 +282,7 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             if console_errors:
                 print("BROWSER_CONSOLE_ERRORS=", console_errors)
             assert final_audit == "ready", "interaction contract audit did not finish ready"
+            assert not http_failures, "browser HTTP failures: " + " | ".join(http_failures)
+            assert not console_errors, "browser console errors: " + " | ".join(console_errors)
             assert not page_errors, "renderer page errors: " + " | ".join(page_errors)
             browser.close()
