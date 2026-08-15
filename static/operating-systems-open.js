@@ -51,6 +51,7 @@
   async function open() {
     const view = document.getElementById("view-operating_systems");
     if (!view) return;
+    family = sessionStorage.getItem("LUMI.osFamily") || "Windows";
     claimRoute();
 
     render(
