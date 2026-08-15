@@ -62,7 +62,10 @@ def test_operating_system_workspace_has_one_renderer_and_refreshes_saved_family(
     assert not (STATIC / "operating-systems-open.js").exists()
     assert "window.LumiOperatingSystems = Object.freeze({ open: openOperatingSystemsView });" in operating_systems
     assert 'osState.family = sessionStorage.getItem("LUMI.osFamily") || "Windows";' in operating_systems
-    assert 'view.addEventListener("click", handleClick);' in operating_systems
+    assert 'document.addEventListener("click", handleClick, true);' in operating_systems
+    assert 'document.addEventListener("submit", handleSubmit, true);' in operating_systems
+    assert 'event.target.closest("#view-operating_systems")' in operating_systems
+    assert 'view.dataset.osWorkspaceOwner = "delegated";' in operating_systems
     assert 'const renderer = window.LumiOperatingSystems;' in fixes
     assert "operating-systems-open.js" not in fixes
 
@@ -138,7 +141,7 @@ def test_media_torrent_firmware_and_os_surfaces_have_real_handlers():
     assert 'if (kind === "torrent-start") return startTorrent(form);' in app
     assert 'data-firmware-action="download"' in firmware
     assert 'data-firmware-action="source"' in firmware
-    assert 'view.addEventListener("click", handleClick);' in operating_systems
+    assert 'document.addEventListener("click", handleClick, true);' in operating_systems
     assert 'data-os-action="download"' in operating_systems
     assert 'data-os-action="resolve"' in operating_systems
 
