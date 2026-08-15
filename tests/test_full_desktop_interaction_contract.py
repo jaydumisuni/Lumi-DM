@@ -35,7 +35,28 @@ def test_static_navigation_and_technician_group_are_authoritatively_routed():
     assert "event.stopImmediatePropagation();" in contract
     assert "setTechnicianOpen(!group?.classList.contains(\"open\"));" in contract
     assert 'new Set(["firmware", "operating_systems"])' in contract
-    assert "setTechnicianOpen(TECHNICIAN_VIEWS.has(view));" in contract
+    assert "function openTechnicianView(view, nav)" in contract
+    assert 'view === "firmware" && typeof openFirmwareView === "function"' in contract
+    assert 'view === "operating_systems" && typeof UI.openOperatingSystems === "function"' in contract
+
+
+def test_technician_navigation_has_one_active_capture_owner():
+    loader = read("main-ui.js")
+    fixes = read("main-ui-fixes.js")
+    hardening = read("app-hardening.js")
+    contract = read("interaction-contract.js")
+
+    assert "installFirmwareNavigation" not in loader
+    assert '.nav-item[data-view="operating_systems"]' not in fixes
+    assert '.nav-item[data-view="operating_systems"]' not in hardening
+    assert 'document.addEventListener("click", handleStaticShellClick, true);' in contract
+    assert "event.stopImmediatePropagation();" in contract
+
+
+def test_operating_system_reopen_refreshes_saved_family():
+    opener = read("operating-systems-open.js")
+    assert opener.count('sessionStorage.getItem("LUMI.osFamily") || "Windows"') >= 2
+    assert 'family = sessionStorage.getItem("LUMI.osFamily") || "Windows";' in opener
 
 
 def test_download_views_reset_stale_filters_when_route_changes():
