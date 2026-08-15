@@ -44,19 +44,27 @@ def test_technician_navigation_has_one_active_capture_owner():
     loader = read("main-ui.js")
     fixes = read("main-ui-fixes.js")
     hardening = read("app-hardening.js")
+    operating_systems = read("operating-systems.js")
     contract = read("interaction-contract.js")
 
     assert "installFirmwareNavigation" not in loader
     assert '.nav-item[data-view="operating_systems"]' not in fixes
     assert '.nav-item[data-view="operating_systems"]' not in hardening
+    assert '.nav-item[data-view="operating_systems"]' not in operating_systems
     assert 'document.addEventListener("click", handleStaticShellClick, true);' in contract
     assert "event.stopImmediatePropagation();" in contract
 
 
-def test_operating_system_reopen_refreshes_saved_family():
-    opener = read("operating-systems-open.js")
-    assert opener.count('sessionStorage.getItem("LUMI.osFamily") || "Windows"') >= 2
-    assert 'family = sessionStorage.getItem("LUMI.osFamily") || "Windows";' in opener
+def test_operating_system_workspace_has_one_renderer_and_refreshes_saved_family():
+    operating_systems = read("operating-systems.js")
+    fixes = read("main-ui-fixes.js")
+
+    assert not (STATIC / "operating-systems-open.js").exists()
+    assert "window.LumiOperatingSystems = Object.freeze({ open: openOperatingSystemsView });" in operating_systems
+    assert 'osState.family = sessionStorage.getItem("LUMI.osFamily") || "Windows";' in operating_systems
+    assert 'view.addEventListener("click", handleClick);' in operating_systems
+    assert 'const renderer = window.LumiOperatingSystems;' in fixes
+    assert "operating-systems-open.js" not in fixes
 
 
 def test_download_views_reset_stale_filters_when_route_changes():
