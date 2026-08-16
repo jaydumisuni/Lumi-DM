@@ -117,6 +117,7 @@
       const action = document.createElement("button");
       action.type = "button";
       action.setAttribute("role", "menuitem");
+      action.dataset.contractForward = source.dataset.action;
       action.dataset.action = source.dataset.action;
       action.dataset.id = source.dataset.id || "";
       if (source.dataset.active !== undefined) action.dataset.active = source.dataset.active;
@@ -147,6 +148,10 @@
     if (queueMenu) {
       event.preventDefault();
       toggleQueueMenu(queueMenu);
+      return;
+    }
+    if (event.target.closest(".lumi-card-contract-menu [data-action]")) {
+      closeQueueMenus();
       return;
     }
     if (!event.target.closest(".lumi-card-contract-menu")) closeQueueMenus();
