@@ -12,21 +12,18 @@
     const style = document.createElement("style");
     style.id = "lumi-roadmap-hit-test";
     style.textContent = `
-      .ttg-titlebar-actions,
-      .ttg-titlebar-actions *,
-      .ttg-titlebar-btn,
-      .ttg-shell-menu,
-      .ttg-shell-menu *,
-      .ttg-shell-modal-backdrop,
-      .ttg-shell-modal-backdrop * {
-        -webkit-app-region: no-drag !important;
-        pointer-events: auto !important;
+      .ttg-titlebar-actions,.ttg-titlebar-actions *,.ttg-titlebar-btn,
+      .ttg-shell-menu,.ttg-shell-menu *,
+      .ttg-shell-modal-backdrop,.ttg-shell-modal-backdrop * {
+        -webkit-app-region:no-drag!important;pointer-events:auto!important;
       }
-      .ttg-titlebar-actions { position: relative !important; z-index: 10030 !important; }
-      .ttg-titlebar-btn { position: relative !important; z-index: 10031 !important; }
-      .ttg-shell-menu { z-index: 10035 !important; }
-      .ttg-shell-modal-backdrop { z-index: 10045 !important; }
-      #view-overview:not(.active),#view-downloads:not(.active),#view-unfinished:not(.active),#view-finished:not(.active),#view-queues:not(.active),#view-categories:not(.active),#view-grabber:not(.active),#view-firmware:not(.active),#view-operating_systems:not(.active),#view-settings:not(.active),#view-diagnostics:not(.active){pointer-events:none}
+      .ttg-titlebar-actions{position:relative!important;z-index:10030!important}
+      .ttg-titlebar-btn{position:relative!important;z-index:10031!important}
+      .ttg-shell-menu{z-index:10035!important}.ttg-shell-modal-backdrop{z-index:10045!important}
+      #view-overview:not(.active),#view-downloads:not(.active),#view-unfinished:not(.active),
+      #view-finished:not(.active),#view-queues:not(.active),#view-categories:not(.active),
+      #view-grabber:not(.active),#view-firmware:not(.active),#view-operating_systems:not(.active),
+      #view-settings:not(.active),#view-diagnostics:not(.active){pointer-events:none}
     `;
     document.head.appendChild(style);
   }
@@ -35,14 +32,10 @@
     return [...document.querySelectorAll("button,input,select,a,[role='button']")].filter(element => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden" && style.pointerEvents !== "none";
+      return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
     });
   }
 
-  // The previous contract captured broad click classes and called
-  // stopImmediatePropagation(). That could make a source-level handler look
-  // "bound" while preventing the owning handler from running. The correction
-  // contract is audit/trace only; business actions remain with their owners.
   UI.installInteractionContract = function installInteractionAudit() {
     installHitTestContract();
     if (document.documentElement.dataset.lumiRoadmapInteraction === "1") return;
@@ -63,32 +56,7 @@
     document.documentElement.dataset.lumiInteractionBlocked = String(blocked.length);
     return { controls: controls.length, blocked: blocked.length };
   };
-
   UI.maybeShowExtensionNotice = () => {};
-
-  async function prepareExtension() {
-    if (!window.electronApp?.prepareBrowserExtension) {
-      if (typeof toast === "function") toast("Browser extension unavailable", "This Lumi build does not expose the bundled extension package.", "error");
-      return;
-    }
-    try {
-      const result = await window.electronApp.prepareBrowserExtension();
-      document.getElementById("ttg-gear-menu")?.setAttribute("hidden", "");
-      if (typeof toast === "function") toast("Lumi extension ready", `Load the unpacked extension from ${result.path || "the opened folder"}. It connects to this Lumi automatically.`, "success");
-    } catch (error) {
-      if (typeof toast === "function") toast("Extension package unavailable", error.message || String(error), "error");
-    }
-  }
-
-  // One narrow capture owner is intentional here: it replaces the stale shell
-  // implementation that claimed the bundled extension did not exist.
-  document.addEventListener("click", event => {
-    const button = event.target.closest('[data-main-shell-action="extension"]');
-    if (!button) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void prepareExtension();
-  }, true);
 
   function lockConnectionSetting(root = document) {
     const select = root.querySelector?.('select[name="default_connections"]');
@@ -102,65 +70,50 @@
   new MutationObserver(() => lockConnectionSetting()).observe(document.documentElement, { childList: true, subtree: true });
   lockConnectionSetting();
 
-  function firmwareProviderSupports(provider, brand, deviceProviders) {
+  function providerSupports(provider, brand, exactProviders) {
     if (!provider) return false;
-    if (deviceProviders.has(provider.id)) return true;
+    if (exactProviders.has(provider.id)) return true;
     const brands = Array.isArray(provider.brands) ? provider.brands : [];
     if (brands.includes(brand)) return true;
     if (brand && !["Apple", "Google Pixel"].includes(brand) && brands.includes("Android")) return true;
     return ["Community mirrors", "Community knowledge"].includes(provider.group) && brand !== "Apple";
   }
-
-  function firmwareDeviceLabel(item) {
-    const aliases = [item.name, item.model, item.id, item.codename].filter(Boolean);
-    return [...new Set(aliases)].join(" · ");
+  function deviceLabel(item) {
+    return [...new Set([item.name, item.model, item.id, item.codename].filter(Boolean))].join(" · ");
   }
 
-  function correctedFirmwareHtml() {
+  function firmwareHtml() {
     const catalogue = v5State.catalogue || { brands: [], providers: [] };
-    return `
-      <div class="firmware-shell" data-lumi-firmware-v7="1">
-        <section class="firmware-hero">
-          <h2>Technician Firmware Finder</h2>
-          <p>Choose the device in dependency order. Lumi never guesses a firmware match and every result keeps provider/source provenance visible.</p>
-          <div class="firmware-warning"><span>⚠</span><span>${v5Esc(catalogue.warning || "Verify the exact model, region, bootloader and rollback requirements before flashing.")}</span></div>
-        </section>
-        <form class="firmware-filters" id="firmware-search-form-v7">
-          <label>Brand<select class="select" name="brand" id="lumi-firmware-brand" required><option value="">Select brand</option>${(catalogue.brands || []).map(value => `<option value="${v5Esc(value)}">${v5Esc(value)}</option>`).join("")}</select></label>
-          <label>Model<input class="input" name="device" id="lumi-firmware-model" list="lumi-firmware-model-list" placeholder="Select brand first" autocomplete="off" disabled required><datalist id="lumi-firmware-model-list"></datalist></label>
-          <label>Source<select class="select" name="provider" id="lumi-firmware-source" disabled><option value="all">Select model first</option></select></label>
-          <label>Channel<select class="select" name="channel"><option value="all">Stable + beta</option><option value="stable">Stable</option><option value="beta">Beta / preview</option><option value="nightly">Nightly</option><option value="official">Official</option><option value="community">Community</option></select></label>
-          <label class="firmware-query">Search within results<input class="input" name="query" type="search" placeholder="version, build, region or file type"></label>
-          <label class="firmware-check"><input type="checkbox" name="include_community" checked>Include community sources</label>
-          <div class="firmware-filter-actions"><button class="btn primary" type="submit">⌕ Find firmware</button><button class="btn" type="button" data-lumi-firmware-clear>Clear</button></div>
-        </form>
-        <div id="firmware-results">${firmwareResultsHtml()}</div>
-      </div>`;
+    return `<div class="firmware-shell" data-lumi-firmware-v7="1">
+      <section class="firmware-hero"><h2>Technician Firmware Finder</h2><p>Choose the device in dependency order. Lumi never guesses a firmware match and every result keeps provider/source provenance visible.</p><div class="firmware-warning"><span>⚠</span><span>${v5Esc(catalogue.warning || "Verify the exact model, region, bootloader and rollback requirements before flashing.")}</span></div></section>
+      <form class="firmware-filters" id="firmware-search-form-v7">
+        <label>Brand<select class="select" name="brand" id="lumi-firmware-brand" required><option value="">Select brand</option>${(catalogue.brands || []).map(value => `<option value="${v5Esc(value)}">${v5Esc(value)}</option>`).join("")}</select></label>
+        <label>Model<input class="input" name="device" id="lumi-firmware-model" list="lumi-firmware-model-list" placeholder="Select brand first" autocomplete="off" disabled required><datalist id="lumi-firmware-model-list"></datalist></label>
+        <label>Source<select class="select" name="provider" id="lumi-firmware-source" disabled><option value="all">Select model first</option></select></label>
+        <label>Channel<select class="select" name="channel"><option value="all">Stable + beta</option><option value="stable">Stable</option><option value="beta">Beta / preview</option><option value="nightly">Nightly</option><option value="official">Official</option><option value="community">Community</option></select></label>
+        <label class="firmware-query">Search within results<input class="input" name="query" type="search" placeholder="version, build, region or file type"></label>
+        <label class="firmware-check"><input type="checkbox" name="include_community" checked>Include community sources</label>
+        <div class="firmware-filter-actions"><button class="btn primary" type="submit">⌕ Find firmware</button><button class="btn" type="button" data-lumi-firmware-clear>Clear</button></div>
+      </form><div id="firmware-results">${firmwareResultsHtml()}</div></div>`;
   }
 
   function correctedRenderFirmware() {
     const element = document.getElementById("view-firmware");
     if (!element) return;
-    element.innerHTML = correctedFirmwareHtml();
+    element.innerHTML = firmwareHtml();
     v5State.devices = [];
   }
-
   async function correctedOpenFirmwareView() {
-    try {
-      if (typeof switchView === "function") switchView("firmware");
-    } catch (_) {
-      document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === "view-firmware"));
-    }
+    if (typeof switchView === "function") switchView("firmware");
     await ensureFirmwareCatalogue();
     correctedRenderFirmware();
   }
-
   window.openFirmwareView = correctedOpenFirmwareView;
   window.renderFirmware = correctedRenderFirmware;
   try { openFirmwareView = correctedOpenFirmwareView; } catch (_) {}
   try { renderFirmware = correctedRenderFirmware; } catch (_) {}
 
-  async function loadFirmwareModels(brand) {
+  async function loadModels(brand) {
     const input = document.getElementById("lumi-firmware-model");
     const list = document.getElementById("lumi-firmware-model-list");
     const source = document.getElementById("lumi-firmware-source");
@@ -173,16 +126,17 @@
     v5State.devices = [];
     if (!brand) { list.innerHTML = ""; return; }
     try {
-      const response = await v5Api("GET", `/api/v5/firmware/devices?${new URLSearchParams({ brand, provider: "all", query: "" })}`);
+      const params = new URLSearchParams({ brand, query: "" });
+      const response = await v5Api("GET", `/api/v5/firmware/devices?${params}`);
       v5State.devices = response.devices || [];
-      list.innerHTML = v5State.devices.map(item => `<option value="${v5Esc(item.id)}">${v5Esc(firmwareDeviceLabel(item))}</option>`).join("");
+      list.innerHTML = v5State.devices.map(item => `<option value="${v5Esc(item.id)}">${v5Esc(deviceLabel(item))}</option>`).join("");
     } catch (error) {
       list.innerHTML = "";
       v5Toast("Model catalogue unavailable", error.message, "error");
     }
   }
 
-  function updateFirmwareSources() {
+  function updateSources() {
     const brand = document.getElementById("lumi-firmware-brand")?.value || "";
     const model = document.getElementById("lumi-firmware-model")?.value.trim() || "";
     const source = document.getElementById("lumi-firmware-source");
@@ -193,9 +147,12 @@
       return;
     }
     const needle = model.toLowerCase();
-    const matched = v5State.devices.filter(item => [item.id, item.name, item.model, item.codename].some(value => String(value || "").toLowerCase() === needle || String(value || "").toLowerCase().includes(needle)));
-    const deviceProviders = new Set(matched.map(item => item.provider).filter(Boolean));
-    const providers = (v5State.catalogue?.providers || []).filter(provider => firmwareProviderSupports(provider, brand, deviceProviders));
+    const matched = v5State.devices.filter(item => [item.id, item.name, item.model, item.codename].some(value => {
+      const text = String(value || "").toLowerCase();
+      return text === needle || text.includes(needle);
+    }));
+    const exactProviders = new Set(matched.map(item => item.provider).filter(Boolean));
+    const providers = (v5State.catalogue?.providers || []).filter(provider => providerSupports(provider, brand, exactProviders));
     source.innerHTML = `<option value="all">All available sources</option>${groupProviders(providers)}`;
     source.disabled = false;
   }
@@ -207,27 +164,20 @@
     const data = Object.fromEntries(new FormData(form).entries());
     const brand = String(data.brand || "").trim();
     const device = String(data.device || "").trim();
-    if (!brand || !device) {
-      v5Toast("Choose a device", "Select Brand, then Model, before choosing a source.", "error");
-      return;
-    }
-    data.include_community = form.elements.include_community.checked;
+    if (!brand || !device) return v5Toast("Choose a device", "Select Brand, then Model, before choosing a source.", "error");
     v5State.loading = true;
     document.getElementById("firmware-results").innerHTML = firmwareResultsHtml();
     try {
       const params = new URLSearchParams({
-        provider: data.provider || "all",
-        brand,
-        device,
-        query: data.query || "",
-        channel: data.channel || "all",
-        include_community: data.include_community ? "true" : "false",
+        provider: data.provider || "all", brand, device,
+        query: data.query || "", channel: data.channel || "all",
+        include_community: form.elements.include_community.checked ? "true" : "false",
       });
       const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
       v5State.results = response.results || [];
     } catch (error) {
-      v5Toast("Firmware search failed", error.message, "error");
       v5State.results = [];
+      v5Toast("Firmware search failed", error.message, "error");
     } finally {
       v5State.loading = false;
       document.getElementById("firmware-results").innerHTML = firmwareResultsHtml();
@@ -235,12 +185,10 @@
   }
 
   document.addEventListener("change", event => {
-    if (event.target.id === "lumi-firmware-brand") void loadFirmwareModels(event.target.value);
-    if (event.target.id === "lumi-firmware-model") updateFirmwareSources();
+    if (event.target.id === "lumi-firmware-brand") void loadModels(event.target.value);
+    if (event.target.id === "lumi-firmware-model") updateSources();
   });
-  document.addEventListener("input", event => {
-    if (event.target.id === "lumi-firmware-model") updateFirmwareSources();
-  });
+  document.addEventListener("input", event => { if (event.target.id === "lumi-firmware-model") updateSources(); });
   document.addEventListener("submit", event => void submitFirmware(event), true);
   document.addEventListener("click", event => {
     if (!event.target.closest("[data-lumi-firmware-clear]")) return;
