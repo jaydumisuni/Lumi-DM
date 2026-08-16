@@ -2,11 +2,14 @@
 
 const { app, BrowserWindow } = require("electron");
 const { spawn, spawnSync } = require("child_process");
+const { randomUUID } = require("crypto");
 const http = require("http");
 const path = require("path");
 const { writeStage0Trace } = require("./stage0-trace");
 
+const RUNTIME_SCHEMA = "lumi.runtime.v1";
 let ownedProcess = null;
+let ownedRuntimeInstance = "";
 let quitting = false;
 let consecutiveFailures = 0;
 let restartAttempts = 0;
@@ -14,8 +17,8 @@ let lastRestartAt = 0;
 let wasReady = false;
 let timer = null;
 
-function serverCommand() {
-  const env = { ...process.env };
+function serverCommand(runtimeInstance) {
+  const env = { ...process.env, LUMIDM_RUNTIME_INSTANCE: runtimeInstance };
   if (app.isPackaged) {
     const extension = process.platform === "win32" ? ".exe" : "";
     env.LUMIDM_STATIC_DIR = path.join(process.resourcesPath, "static");
@@ -35,14 +38,34 @@ function serverCommand() {
 
 function checkReady(timeout = 2500) {
   return new Promise(resolve => {
+    const expectedPid = Number(ownedProcess?.pid || 0);
+    const expectedInstance = ownedRuntimeInstance;
+    if (!expectedPid || !expectedInstance || ownedProcess?.killed) {
+      resolve(false);
+      return;
+    }
     const request = http.get({
       hostname: "127.0.0.1",
       port: 7000,
-      path: "/api/downloads?limit=1",
+      path: "/",
       timeout,
+      headers: { "X-Lumi-Client": "electron-runtime-supervisor" },
     }, response => {
       response.resume();
-      resolve((response.statusCode || 500) < 500);
+      const schema = String(response.headers["x-lumi-runtime-schema"] || "");
+      const instance = String(response.headers["x-lumi-runtime-instance"] || "");
+      const pid = Number(response.headers["x-lumi-runtime-pid"] || 0);
+      const ready = response.statusCode === 200
+        && schema === RUNTIME_SCHEMA
+        && instance === expectedInstance
+        && pid === expectedPid;
+      if (!ready) {
+        writeStage0Trace("SIDECAR_IDENTITY_MISMATCH", {
+          pid: expectedPid,
+          reason: `schema=${schema || "none"};instance=${instance ? "different" : "none"};pid=${pid || 0}`,
+        });
+      }
+      resolve(ready);
     });
     request.on("timeout", () => { request.destroy(); resolve(false); });
     request.on("error", () => resolve(false));
@@ -55,35 +78,37 @@ function spawnServer() {
   if (now - lastRestartAt < 2500) return false;
   lastRestartAt = now;
   restartAttempts += 1;
-  const spec = serverCommand();
+  ownedRuntimeInstance = randomUUID();
+  const spec = serverCommand(ownedRuntimeInstance);
   writeStage0Trace("SIDECAR_SPAWN_REQUEST", {
     process: path.basename(spec.command),
     reason: `attempt-${restartAttempts}`,
   });
   try {
-    ownedProcess = spawn(spec.command, spec.args, {
+    const child = spawn(spec.command, spec.args, {
       stdio: "ignore",
       env: spec.env,
       windowsHide: true,
     });
+    ownedProcess = child;
     writeStage0Trace("SIDECAR_SPAWNED", {
       process: path.basename(spec.command),
-      pid: Number(ownedProcess.pid || 0),
+      pid: Number(child.pid || 0),
     });
-    ownedProcess.once("error", error => {
+    child.once("error", error => {
       writeStage0Trace("SIDECAR_PROCESS_ERROR", {
-        pid: Number(ownedProcess?.pid || 0),
+        pid: Number(child.pid || 0),
         reason: String(error?.message || error || "spawn error"),
       });
-      ownedProcess = null;
+      if (ownedProcess === child) ownedProcess = null;
     });
-    ownedProcess.once("exit", (code, signal) => {
+    child.once("exit", (code, signal) => {
       writeStage0Trace("SIDECAR_EXIT", {
-        pid: Number(ownedProcess?.pid || 0),
+        pid: Number(child.pid || 0),
         exit_code: code === null ? -1 : Number(code),
         signal: String(signal || ""),
       });
-      ownedProcess = null;
+      if (ownedProcess === child) ownedProcess = null;
     });
     return true;
   } catch (error) {
@@ -97,7 +122,10 @@ function spawnServer() {
 }
 
 function reconnectWindows() {
-  writeStage0Trace("SIDECAR_RECOVERED", { ready: true });
+  writeStage0Trace("SIDECAR_RECOVERED", {
+    ready: true,
+    pid: Number(ownedProcess?.pid || 0),
+  });
   for (const window of BrowserWindow.getAllWindows()) {
     if (window.isDestroyed()) continue;
     const bounds = window.getBounds();
@@ -106,7 +134,12 @@ function reconnectWindows() {
     if (!url || url.startsWith("file:") || url.startsWith("chrome-error:") || url === "about:blank") {
       void window.loadURL("http://127.0.0.1:7000");
     }
-    window.webContents.send("lumi-server-state", { ready: true, recovered: true });
+    window.webContents.send("lumi-server-state", {
+      ready: true,
+      recovered: true,
+      schema: RUNTIME_SCHEMA,
+      pid: Number(ownedProcess?.pid || 0),
+    });
   }
 }
 
@@ -133,10 +166,11 @@ async function tick() {
       window.webContents.send("lumi-server-state", {
         ready: false,
         failures: consecutiveFailures,
+        schema: RUNTIME_SCHEMA,
       });
     }
   }
-  if (consecutiveFailures >= 3 && restartAttempts < 6) spawnServer();
+  if (consecutiveFailures >= 3 && (!ownedProcess || ownedProcess.killed) && restartAttempts < 6) spawnServer();
   if (restartAttempts >= 6 && Date.now() - lastRestartAt > 60_000) restartAttempts = 0;
   return false;
 }
@@ -155,22 +189,24 @@ function stop() {
     clearInterval(timer);
     timer = null;
   }
-  if (ownedProcess && !ownedProcess.killed) {
+  const child = ownedProcess;
+  if (child && !child.killed) {
     try {
-      writeStage0Trace("SIDECAR_STOP_REQUEST", { pid: Number(ownedProcess.pid || 0) });
+      writeStage0Trace("SIDECAR_STOP_REQUEST", { pid: Number(child.pid || 0) });
       if (process.platform === "win32") {
-        spawnSync("taskkill", ["/PID", String(ownedProcess.pid), "/F", "/T"]);
+        spawnSync("taskkill", ["/PID", String(child.pid), "/F", "/T"]);
       } else {
-        ownedProcess.kill("SIGTERM");
+        child.kill("SIGTERM");
       }
     } catch (error) {
       writeStage0Trace("SIDECAR_STOP_FAILED", {
-        pid: Number(ownedProcess?.pid || 0),
+        pid: Number(child.pid || 0),
         reason: String(error?.message || error || "stop failed"),
       });
     }
   }
   ownedProcess = null;
+  ownedRuntimeInstance = "";
 }
 
 module.exports = { checkReady, start, stop, tick };
