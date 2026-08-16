@@ -57,9 +57,12 @@
   UI.repairInteractionContract = function auditInteractionContract() {
     const controls = visibleControls();
     const blocked = controls.filter(element => getComputedStyle(element).pointerEvents === "none");
-    document.documentElement.dataset.lumiInteractionControls = String(controls.length);
-    document.documentElement.dataset.lumiInteractionBlocked = String(blocked.length);
-    return { controls: controls.length, blocked: blocked.length };
+    const result = { ok: blocked.length === 0, controls: controls.length, blocked: blocked.length };
+    document.documentElement.dataset.lumiInteractionControls = String(result.controls);
+    document.documentElement.dataset.lumiInteractionBlocked = String(result.blocked);
+    document.documentElement.dataset.lumiInteractionContract = result.ok ? "ready" : "failed";
+    window.LumiInteractionAudit = result;
+    return result;
   };
   UI.maybeShowExtensionNotice = () => {};
 
