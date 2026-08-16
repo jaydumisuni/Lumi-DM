@@ -47,8 +47,8 @@ jobs:
 
           payload = json.loads(Path('.sergeant-stage0-review.json').read_text(encoding='utf-8'))
           verdict = str(payload.get('verdict', {}).get('verdict', '')).upper()
-          if verdict != 'PASS':
+          if verdict != 'APPROVE':
               required = payload.get('verdict', {}).get('required_actions', [])
               raise SystemExit(f'Sergeant Stage 0 verdict is {verdict or "UNKNOWN"}: {required}')
-          print('Sergeant Stage 0 verdict PASS')
+          print('Sergeant Stage 0 verdict APPROVE')
           PY
