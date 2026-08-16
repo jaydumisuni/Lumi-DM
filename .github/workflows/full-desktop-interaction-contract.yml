@@ -12,7 +12,7 @@ permissions:
 jobs:
   interaction-and-engine-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 24
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,14 +38,15 @@ jobs:
       - name: JavaScript syntax proof
         run: |
           set -eu
-          for file in static/*.js electron/*.js; do node --check "$file"; done
+          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js; do node --check "$file"; done
 
       - name: Full desktop interaction contract
         run: |
           python -m pytest -q \
             tests/test_full_desktop_interaction_contract.py \
             tests/test_pr7_review_closure.py \
-            tests/test_stage0_packaged_trace_contract.py
+            tests/test_stage0_packaged_trace_contract.py \
+            tests/test_v7_desktop_correction_source.py
           python -m pytest -q \
             tests/test_desktop_release_contract_current.py \
             tests/test_desktop_acceptance_profile.py
@@ -56,7 +57,8 @@ jobs:
             tests/test_download_api_contract.py \
             tests/test_v2_http.py \
             tests/test_v3_media_torrent.py \
-            tests/test_v3_runtime_api.py
+            tests/test_v3_runtime_api.py \
+            tests/test_v7_correction_contract.py
 
       - name: Technician and reliability proof
         run: |
