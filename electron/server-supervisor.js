@@ -4,6 +4,7 @@ const { app, BrowserWindow } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const http = require("http");
 const path = require("path");
+const { writeStage0Trace } = require("./stage0-trace");
 
 let ownedProcess = null;
 let quitting = false;
@@ -55,22 +56,48 @@ function spawnServer() {
   lastRestartAt = now;
   restartAttempts += 1;
   const spec = serverCommand();
+  writeStage0Trace("SIDECAR_SPAWN_REQUEST", {
+    process: path.basename(spec.command),
+    reason: `attempt-${restartAttempts}`,
+  });
   try {
     ownedProcess = spawn(spec.command, spec.args, {
       stdio: "ignore",
       env: spec.env,
       windowsHide: true,
     });
-    ownedProcess.once("error", () => { ownedProcess = null; });
-    ownedProcess.once("exit", () => { ownedProcess = null; });
+    writeStage0Trace("SIDECAR_SPAWNED", {
+      process: path.basename(spec.command),
+      pid: Number(ownedProcess.pid || 0),
+    });
+    ownedProcess.once("error", error => {
+      writeStage0Trace("SIDECAR_PROCESS_ERROR", {
+        pid: Number(ownedProcess?.pid || 0),
+        reason: String(error?.message || error || "spawn error"),
+      });
+      ownedProcess = null;
+    });
+    ownedProcess.once("exit", (code, signal) => {
+      writeStage0Trace("SIDECAR_EXIT", {
+        pid: Number(ownedProcess?.pid || 0),
+        exit_code: code === null ? -1 : Number(code),
+        signal: String(signal || ""),
+      });
+      ownedProcess = null;
+    });
     return true;
-  } catch (_) {
+  } catch (error) {
+    writeStage0Trace("SIDECAR_SPAWN_FAILED", {
+      process: path.basename(spec.command),
+      reason: String(error?.message || error || "spawn failed"),
+    });
     ownedProcess = null;
     return false;
   }
 }
 
 function reconnectWindows() {
+  writeStage0Trace("SIDECAR_RECOVERED", { ready: true });
   for (const window of BrowserWindow.getAllWindows()) {
     if (window.isDestroyed()) continue;
     const bounds = window.getBounds();
@@ -94,6 +121,12 @@ async function tick() {
   }
 
   consecutiveFailures += 1;
+  if (wasReady || consecutiveFailures === 1 || consecutiveFailures === 3) {
+    writeStage0Trace("SIDECAR_NOT_READY", {
+      ready: false,
+      reason: `consecutive-failures-${consecutiveFailures}`,
+    });
+  }
   wasReady = false;
   for (const window of BrowserWindow.getAllWindows()) {
     if (!window.isDestroyed()) {
@@ -110,6 +143,7 @@ async function tick() {
 
 function start() {
   if (quitting) return;
+  writeStage0Trace("SIDECAR_SUPERVISOR_START", { process: app.isPackaged ? "packaged" : "source" });
   spawnServer();
   if (!timer) timer = setInterval(() => void tick(), 2500);
   setTimeout(() => void tick(), 900);
@@ -123,12 +157,18 @@ function stop() {
   }
   if (ownedProcess && !ownedProcess.killed) {
     try {
+      writeStage0Trace("SIDECAR_STOP_REQUEST", { pid: Number(ownedProcess.pid || 0) });
       if (process.platform === "win32") {
         spawnSync("taskkill", ["/PID", String(ownedProcess.pid), "/F", "/T"]);
       } else {
         ownedProcess.kill("SIGTERM");
       }
-    } catch (_) {}
+    } catch (error) {
+      writeStage0Trace("SIDECAR_STOP_FAILED", {
+        pid: Number(ownedProcess?.pid || 0),
+        reason: String(error?.message || error || "stop failed"),
+      });
+    }
   }
   ownedProcess = null;
 }

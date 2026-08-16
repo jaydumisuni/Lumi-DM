@@ -16,6 +16,7 @@ if getattr(sys, "frozen", False):
         sys.stderr = open(os.devnull, "w", encoding="utf-8")
 
 from core.v2.server_app import app, main
+from core.v2.stage0_trace import install_stage0_trace
 from core.v3.api import wave3_api
 from core.v3 import hardening as _wave3_hardening  # noqa: F401
 from core.v4 import install_v4
@@ -30,6 +31,10 @@ from core.v6 import install_reliability
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 if "lumi_wave3" not in app.blueprints:
     app.register_blueprint(wave3_api)
+# Stage-0 diagnostics is installed before the V4 security guard so a traced
+# request can prove whether it reached the packaged Runtime even when auth later
+# rejects it. The trace contains only method/path/status/correlation metadata.
+install_stage0_trace(app)
 install_v4(app)
 install_v5(app)
 install_os_api()
