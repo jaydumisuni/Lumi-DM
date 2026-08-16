@@ -26,41 +26,6 @@ jobs:
       - name: Install Sergeant
         run: python -m pip install --disable-pip-version-check -q sergeant-reviewer==0.4.0
 
-      - name: Diagnose packaged Sergeant assurance detector
-        run: |
-          python - <<'PY'
-          from importlib import metadata
-          from pathlib import Path
-
-          distribution = metadata.distribution('sergeant-reviewer')
-          print('SERGEANT_PACKAGE_VERSION', distribution.version)
-          roots = set()
-          for item in distribution.files or ():
-              path = Path(distribution.locate_file(item))
-              if path.suffix != '.py' or not path.is_file():
-                  continue
-              try:
-                  content = path.read_text(encoding='utf-8', errors='replace')
-              except OSError:
-                  continue
-              lower = content.lower()
-              if 'explicit assurance document' not in lower and 'assurance document' not in lower:
-                  continue
-              roots.add(str(path))
-              print('SERGEANT_ASSURANCE_SOURCE', path)
-              lines = content.splitlines()
-              for index, line in enumerate(lines):
-                  if 'assurance' not in line.lower():
-                      continue
-                  start = max(0, index - 8)
-                  end = min(len(lines), index + 18)
-                  print(f'--- lines {start + 1}-{end} ---')
-                  for number in range(start, end):
-                      print(f'{number + 1}: {lines[number]}')
-          if not roots:
-              raise SystemExit('Packaged Sergeant assurance detector source was not found')
-          PY
-
       - name: Build exact PR changed-file list
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
