@@ -8,6 +8,7 @@ from .runtime_contract import install_correction_campaign as _install_runtime_co
 from .desktop_auth import install_desktop_auth
 from .media_contract import install_media_contract
 from .surface_contract import install_surface_contract
+from .remote_contract import install_remote_contract
 
 
 def install_correction_campaign(app) -> None:
@@ -15,6 +16,7 @@ def install_correction_campaign(app) -> None:
     install_desktop_auth(app)
     install_media_contract(app)
     install_surface_contract(app)
+    install_remote_contract(app)
 
 
 __all__ = ["install_correction_campaign"]
