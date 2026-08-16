@@ -58,9 +58,9 @@ The exact PR head must pass JavaScript syntax plus Stage-0, interaction, release
 
 ### Purpose
 
-This new workflow restores Sergeant as the primary independent review authority for the Stage-0 PR. It builds the exact GitHub PR changed-file list, passes that list to `sergeant pr-review`, records the JSON review packet, and fails the workflow unless Sergeant's final verdict is `PASS`.
+This new workflow restores Sergeant as the primary independent review authority for the Stage-0 PR. It builds the exact GitHub PR changed-file list, passes that list to `sergeant pr-review`, records the JSON review packet, and fails the workflow unless Sergeant's final PR verdict is `APPROVE`.
 
-The workflow exists because the earlier naive invocation omitted changed-file evidence and because Sergeant's CLI can print a non-PASS review while returning process exit code `0`. This workflow closes both proof gaps.
+The workflow exists because the earlier naive invocation omitted changed-file evidence and because Sergeant's CLI can print a non-approving review while returning process exit code `0`. A subsequent exact-head review also proved that Sergeant's final PR vocabulary is `APPROVE` / `COMMENT` / `REQUEST_CHANGES`, while internal sub-review engines use `PASS` / `NEEDS WORK`. The workflow therefore enforces the final PR decision rather than an internal sub-engine vocabulary.
 
 ### Permissions
 
@@ -84,9 +84,9 @@ The workflow must:
 2. show the Stage-0 changed files in that list;
 3. call `sergeant pr-review . --file-list .sergeant-stage0-files.txt --pretty`;
 4. parse Sergeant's JSON result;
-5. fail unless `verdict.verdict == PASS`.
+5. fail unless `verdict.verdict == APPROVE`.
 
-A PASS clears Sergeant's static/adversarial review obligation for that exact source head only. It does not prove packaged Windows behavior. Physical Stage-0 proof remains mandatory before architecture correction or release promotion.
+An `APPROVE` clears Sergeant's static/adversarial review obligation for that exact source head only. It does not prove packaged Windows behavior. Physical Stage-0 proof remains mandatory before architecture correction or release promotion.
 
 ---
 
