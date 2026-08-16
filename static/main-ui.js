@@ -13,31 +13,45 @@
     "/static/toast-contract.js",
   ];
 
-  // Navigation is a shell invariant, so it must not wait for the dynamically
-  // loaded presentation/correction modules. This script is parsed after the
-  // sidebar markup exists; bind the Technician disclosure immediately and mark
-  // it owned so main-ui-core's compatibility binder becomes a no-op.
+  // Technician disclosure is a shell invariant, so it cannot depend on the
+  // identity or lifetime of a renderer-created button. Own it once at document
+  // level and resolve the current group from each click; renderer replacement
+  // therefore cannot silently discard the handler.
   function installEarlyNavigationContract() {
     const group = document.querySelector(".nav-group");
-    const toggle = group?.querySelector(".nav-group-toggle");
-    if (!group || !toggle || group.dataset.bound === "true") return;
+    if (!group || document.documentElement.dataset.lumiNavigationReady === "1") return;
     group.classList.remove("open");
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.addEventListener("click", event => {
-      event.preventDefault();
-      const open = !group.classList.contains("open");
-      group.classList.toggle("open", open);
-      toggle.setAttribute("aria-expanded", String(open));
-    });
-    group.querySelectorAll(".nav-submenu .nav-item").forEach(item => item.addEventListener("click", () => {
-      group.classList.add("open");
-      toggle.setAttribute("aria-expanded", "true");
-    }));
-    document.querySelectorAll(".nav-list > .nav-item").forEach(item => item.addEventListener("click", () => {
-      group.classList.remove("open");
-      toggle.setAttribute("aria-expanded", "false");
-    }));
+    group.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "false");
+    // Prevent main-ui-core's compatibility binder from becoming a second owner.
     group.dataset.bound = "true";
+
+    document.addEventListener("click", event => {
+      const technicianToggle = event.target.closest?.(".nav-group-toggle");
+      if (technicianToggle) {
+        event.preventDefault();
+        const currentGroup = technicianToggle.closest(".nav-group");
+        if (!currentGroup) return;
+        const open = technicianToggle.getAttribute("aria-expanded") !== "true";
+        currentGroup.classList.toggle("open", open);
+        technicianToggle.setAttribute("aria-expanded", String(open));
+        return;
+      }
+
+      const technicianItem = event.target.closest?.(".nav-group .nav-submenu .nav-item[data-view]");
+      if (technicianItem) {
+        const currentGroup = technicianItem.closest(".nav-group");
+        currentGroup?.classList.add("open");
+        currentGroup?.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "true");
+        return;
+      }
+
+      const topLevel = event.target.closest?.(".nav-list > .nav-item[data-view]");
+      if (!topLevel) return;
+      const currentGroup = document.querySelector(".nav-group");
+      currentGroup?.classList.remove("open");
+      currentGroup?.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "false");
+    });
+
     document.documentElement.dataset.lumiNavigationReady = "1";
   }
 
