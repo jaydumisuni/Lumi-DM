@@ -1,32 +1,32 @@
-# Lumi Stage 0 CI assurance
+# Lumi Stage 0 and issue #8 CI assurance
 
-Status: Stage-0 diagnostic/review evidence  
+Status: Stage-0 diagnostic + issue #8 correction/review evidence  
 Execution standard: `ttg.tenfold.v1`  
-Scope: PR #9 — packaged interaction and Runtime trace diagnostics
+Scope: PR #9 Stage-0 diagnostics and stacked PR #10 correction campaign
 
-This document exists to make the high-risk CI changes in the Stage-0 diagnostic change set explicit and reviewable. It does not grant deployment, release, secret, or write authority.
+This is Lumi's canonical repository assurance file for high-risk CI/review changes. It does not grant deployment, release, signing, secret, merge, or external-system authority.
 
 ## `.github/workflows/current-functional-proof.yml`
 
 ### Purpose
 
-The only Stage-0 change to this existing workflow is to add `tests/test_stage0_packaged_trace_contract.py` to the already-existing interaction/current-release pytest invocation. The workflow remains a source/contract proof lane; it does not package, publish, deploy, sign, release, or mutate product state.
+The Stage-0 change adds `tests/test_stage0_packaged_trace_contract.py` to the existing interaction/current-release pytest invocation. The workflow remains a source/contract proof lane; it does not package, publish, deploy, sign, release, or mutate product state.
 
 ### Permissions
 
-Repository permission remains `contents: read`. Checkout uses `persist-credentials: false`. The Stage-0 change does not add write permissions, elevated GitHub permissions, deployment environments, service credentials, or external execution authority.
+Repository permission remains `contents: read`. Checkout uses `persist-credentials: false`. No write, deployment, release, signing, issue/PR mutation, or environment authority is added.
 
 ### Secrets
 
-No new secret is requested, read, printed, persisted, or forwarded. Stage-0 diagnostics explicitly avoid credentials, request bodies, query strings, filenames, browser/media content and session material.
+No new secret is requested or consumed. Stage-0 diagnostics forbid persistence of credentials, request bodies, query strings or private browser/session content.
 
 ### Rollback
 
-Rollback is deterministic: remove `tests/test_stage0_packaged_trace_contract.py` from this workflow's pytest list. No product source, release artifact or external system must be rolled back to undo this CI-only integration.
+Remove `tests/test_stage0_packaged_trace_contract.py` from the workflow's pytest list. No product or external-system rollback is required.
 
 ### Proof
 
-The workflow must execute the Stage-0 regression file on the exact PR head together with the existing JavaScript syntax, desktop interaction, release-contract, download-engine, technician and reliability proofs. A green result proves only those source/contract obligations; it is not physical Windows acceptance.
+The exact PR head must execute the Stage-0 regression together with the existing JavaScript syntax, desktop interaction, release, engine, technician and reliability proofs. Green is source/contract evidence only.
 
 ---
 
@@ -34,23 +34,49 @@ The workflow must execute the Stage-0 regression file on the exact PR head toget
 
 ### Purpose
 
-The only Stage-0 change to this existing workflow is to add `tests/test_stage0_packaged_trace_contract.py` to the established full-desktop interaction contract. This ensures the new diagnostic/privacy contract cannot be omitted while the broader interaction gate remains green.
+Stage 0 originally added `tests/test_stage0_packaged_trace_contract.py`. Issue #8 now extends this already-registered read-only proof workflow so the correction campaign is executable on the current PR head rather than relying on a newly introduced dormant workflow.
+
+The issue #8 additions are bounded to:
+
+1. JavaScript syntax checks for the packaged Chromium extension and the correction Playwright scripts.
+2. `tests/test_v7_correction_contract.py` and `tests/test_v7_desktop_correction_source.py` for the one-Runtime/RPC, exact sidecar identity, native-shell authentication, 32-connection, browser trust/media, widget, geometry, firmware and remote-request contracts.
+3. Pinned Playwright `1.58.2` plus its Chromium runtime, used only after the mechanical tests pass.
+4. One isolated Lumi source Runtime on loopback with runner-temporary storage.
+5. Main-renderer Playwright proof at 920×650 and real fixed-ID Manifest V3 extension/bridge/media-handoff proof.
+6. Upload of job-local screenshots and Runtime logs as review artifacts.
+
+The workflow does not build an installer, publish a package, create a release, deploy a service, mutate repository/product state, run on an owner workstation, or claim native Windows acceptance.
 
 ### Permissions
 
-Repository permission remains `contents: read`. Checkout uses `persist-credentials: false`. No write, deployment, release, package-publish, signing, issue/PR mutation, or environment permission is introduced.
+Repository permission remains exactly `contents: read`. Checkout uses `persist-credentials: false`. `actions/upload-artifact@v4` only persists job-local proof output. No repository-write, pull-request/issue-write, actions-management, package/release, deployment/environment, signing, cloud, or external-system permission is introduced.
 
 ### Secrets
 
-No secret is consumed or added. The workflow runs repository code/tests with normal public test dependencies only. The Stage-0 tracer contract forbids diagnostic persistence of credentials or private browser/session content.
+No repository or external secret is requested or consumed. `LUMIDM_DESKTOP_SECRET` and `LUMIDM_RUNTIME_INSTANCE` are explicit test-only values scoped to the isolated hosted job. Test download/state paths use `$RUNNER_TEMP`. The real MV3 extension receives a token generated by that temporary Runtime; it disappears with the runner. The proof does not read owner credentials, production pairing tokens, browser cookies, signing material or service credentials.
 
 ### Rollback
 
-Rollback is deterministic: remove the Stage-0 regression file from this workflow's pytest list. Existing interaction and engine proof commands remain otherwise unchanged.
+Issue #8 CI rollback is deterministic: remove the v7 test paths, extension/Playwright syntax entries, pinned Playwright install, isolated Runtime steps, Playwright executions and proof-artifact upload. The pre-existing Stage-0/desktop contract remains. No product, release, credential, deployment or external-system rollback is required. Removing this proof before issue #8 completion requires equivalent replacement evidence.
 
 ### Proof
 
-The exact PR head must pass JavaScript syntax plus Stage-0, interaction, release, engine, technician and reliability contract tests. This proof remains source-level and cannot substitute for the packaged Windows Stage-0 trace run.
+On the exact PR head this workflow must prove:
+
+1. all relevant main-renderer, Electron, packaged extension and Playwright JavaScript parses;
+2. established Stage-0, desktop interaction, release, engine, technician and reliability suites remain green;
+3. the live v7 Runtime integration contract passes;
+4. the v7 static architecture/regression contract passes;
+5. the main renderer fits at exactly 920×650 without HTML/body/Overview page scrolling;
+6. titlebar/gear/bell/window controls are physical hit targets and execute their owning bridge actions;
+7. Browser Extension action prepares the actually bundled extension and states that same-PC pairing is not required;
+8. Firmware dependency order is Brand → Model → Source → Channel/qualifiers and model selection activates valid sources;
+9. the actual fixed-ID Manifest V3 extension loads in Chromium;
+10. automatic local extension identity and persistent WebSocket bridge connect to the same Runtime;
+11. browser media enumeration renders at least fourteen variants without nine-item truncation, authentication failure or endless spinner;
+12. selecting a media variant creates one pending canonical-Runtime task in the existing widget queue with the 32-connection contract where HTTP applies.
+
+A green result is mechanical/browser evidence. It does not substitute for Sergeant review, Builder packaging, Electron BrowserWindow/native Windows identity, installer taskbar icon, packaged child-process ownership, or final physical acceptance.
 
 ---
 
@@ -58,40 +84,30 @@ The exact PR head must pass JavaScript syntax plus Stage-0, interaction, release
 
 ### Purpose
 
-This new workflow restores Sergeant as the primary independent review authority for the Stage-0 PR. It builds the exact GitHub PR changed-file list, passes that list to `sergeant pr-review`, records the JSON review packet, and fails the workflow unless Sergeant's final PR verdict is `APPROVE`.
+This workflow is Lumi's primary independent Sergeant gate. It builds the exact PR base→head changed-file list, supplies that list to `sergeant pr-review`, records the JSON review packet, and fails unless Sergeant's final PR verdict is `APPROVE`.
 
-The workflow exists because the earlier naive invocation omitted changed-file evidence and because Sergeant's CLI can print a non-approving review while returning process exit code `0`. A subsequent exact-head review also proved that Sergeant's final PR vocabulary is `APPROVE` / `COMMENT` / `REQUEST_CHANGES`, while internal sub-review engines use `PASS` / `NEEDS WORK`. The workflow therefore enforces the final PR decision rather than an internal sub-engine vocabulary.
+It uses packaged reviewer `sergeant-reviewer==0.4.0`; therefore this known canonical assurance file remains the explicit assurance surface for the high-risk workflow change being reviewed.
 
 ### Permissions
 
-Repository permission is `contents: read` only. Checkout uses `fetch-depth: 0` solely so the PR base/head diff can be computed and uses `persist-credentials: false`. The workflow has no write permission, no issue/PR mutation permission, no package/release permission, no deployment environment, and no shell access outside the hosted read-only review job's normal repository workspace.
-
-Sergeant runs with `SERGEANT_CPL_POLICY=disabled`; this Stage-0 gate relies on deterministic Sergeant evidence rather than requiring an external model endpoint.
+Repository permission is `contents: read` only. Checkout uses `fetch-depth: 0` only to compute the exact PR diff and `persist-credentials: false`. No write, issue/PR mutation, package/release, deployment, environment, signing, or external-system permission is granted. Sergeant runs with `SERGEANT_CPL_POLICY=disabled`, so deterministic Sergeant evidence is authoritative in this gate.
 
 ### Secrets
 
-No repository or external secret is requested by the workflow. The checkout token is handled by the standard GitHub action and is not persisted into repository Git configuration. No secret value is printed, copied into review files, uploaded, or exported.
+No repository or external secret is requested. No secret is printed, copied into review files, uploaded, or exported.
 
 ### Rollback
 
-Rollback is deterministic: delete `.github/workflows/stage0-sergeant-review.yml`. This removes only the Stage-0 independent-review gate and does not mutate product code, Builder state, releases, deployments, credentials, or external systems. Removing it before Stage-0 completion would reduce assurance and therefore requires an explicit replacement review authority.
+Delete this workflow only if an explicit replacement independent-review authority has been accepted. Its removal does not mutate product code, Builder state, releases, deployments, credentials, or external systems.
 
 ### Proof
 
-The workflow must:
-
-1. produce a non-empty file list from the exact PR base SHA to exact PR head SHA;
-2. show the Stage-0 changed files in that list;
-3. call `sergeant pr-review . --file-list .sergeant-stage0-files.txt --pretty`;
-4. parse Sergeant's JSON result;
-5. fail unless `verdict.verdict == APPROVE`.
-
-An `APPROVE` clears Sergeant's static/adversarial review obligation for that exact source head only. It does not prove packaged Windows behavior. Physical Stage-0 proof remains mandatory before architecture correction or release promotion.
+The workflow must produce a non-empty exact changed-file list, invoke `sergeant pr-review` with that list, parse its JSON, and fail unless `verdict.verdict == APPROVE`. An `APPROVE` clears independent static/adversarial review for that exact source head only; it is not native Windows acceptance.
 
 ---
 
 ## Combined assurance boundary
 
-These workflow changes are intentionally limited to **proof and independent review**. They do not grant new mechanical authority. They do not publish or deploy Lumi, do not merge PR #7/#9, do not sign or release artifacts, and do not change the physical acceptance boundary.
+All workflow changes documented here are limited to **proof and independent review**. They do not grant new mechanical authority, do not publish/deploy Lumi, do not merge the correction PR, and do not sign/release artifacts. Builder remains package/installer authority; Sergeant remains independent review authority; native Windows proof remains a separate gate.
 
-If any workflow changes beyond the purpose, permissions, secrets, rollback, or proof boundaries documented here, this assurance must be reviewed again rather than assumed to carry forward.
+If a workflow changes beyond the Purpose, Permissions, Secrets, Rollback or Proof boundaries documented here, this assurance must be reviewed again rather than assumed to carry forward.
