@@ -80,6 +80,18 @@ def test_interaction_correction_is_audit_only_and_titlebar_is_hit_testable() -> 
     assert "window.electronApp.windowControl" in shell
 
 
+def test_technician_disclosure_has_durable_shell_owner_before_async_modules() -> None:
+    loader = text("static/main-ui.js")
+
+    assert "installEarlyNavigationContract();" in loader
+    assert 'document.documentElement.dataset.lumiNavigationReady === "1"' in loader
+    assert 'group.dataset.bound = "true"' in loader
+    assert 'document.addEventListener("click", event =>' in loader
+    assert 'event.target.closest?.(".nav-group-toggle")' in loader
+    assert 'technicianToggle.getAttribute("aria-expanded") !== "true"' in loader
+    assert loader.index("installEarlyNavigationContract();") < loader.index("modules.reduce(")
+
+
 def test_same_pc_extension_is_fixed_identity_auto_trust_and_valid_mv3() -> None:
     manifest = json.loads(text("static/browser-extension/chromium/manifest.json"))
     background = text("static/browser-extension/chromium/background.js")
