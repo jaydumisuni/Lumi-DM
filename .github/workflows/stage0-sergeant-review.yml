@@ -1,0 +1,32 @@
+name: Lumi Stage 0 Sergeant Review
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  sergeant-stage0-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout complete Lumi history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Sergeant
+        run: python -m pip install --disable-pip-version-check -q sergeant-reviewer==0.4.0
+
+      - name: Sergeant primary Stage 0 review
+        env:
+          SERGEANT_CPL_POLICY: disabled
+        run: sergeant pr-review . --pretty
