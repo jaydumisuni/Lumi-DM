@@ -18,9 +18,6 @@ jobs:
       LUMI_PLAYWRIGHT_ARTIFACTS: artifacts
       LUMIDM_DESKTOP_SECRET: playwright-desktop-secret
       LUMIDM_RUNTIME_INSTANCE: playwright-runtime-instance
-      LUMIDM_DATA_DIR: ${{ runner.temp }}/lumi-playwright-data
-      LUMIDM_DOWNLOAD_DIR: ${{ runner.temp }}/lumi-playwright-downloads
-      LUMIDM_TEMP_DIR: ${{ runner.temp }}/lumi-playwright-temporary
       PYTHONUNBUFFERED: "1"
 
     steps:
@@ -95,6 +92,12 @@ jobs:
       - name: Start isolated Lumi source Runtime
         run: |
           set -eu
+          export LUMIDM_DATA_DIR="$RUNNER_TEMP/lumi-playwright-data"
+          export LUMIDM_DOWNLOAD_DIR="$RUNNER_TEMP/lumi-playwright-downloads"
+          export LUMIDM_TEMP_DIR="$RUNNER_TEMP/lumi-playwright-temporary"
+          printf 'LUMIDM_DATA_DIR=%s\n' "$LUMIDM_DATA_DIR" >> "$GITHUB_ENV"
+          printf 'LUMIDM_DOWNLOAD_DIR=%s\n' "$LUMIDM_DOWNLOAD_DIR" >> "$GITHUB_ENV"
+          printf 'LUMIDM_TEMP_DIR=%s\n' "$LUMIDM_TEMP_DIR" >> "$GITHUB_ENV"
           mkdir -p artifacts "$LUMIDM_DATA_DIR" "$LUMIDM_DOWNLOAD_DIR" "$LUMIDM_TEMP_DIR"
           python server.py --host 127.0.0.1 --port 7000 > artifacts/playwright-runtime.log 2>&1 &
           echo $! > artifacts/playwright-runtime.pid
