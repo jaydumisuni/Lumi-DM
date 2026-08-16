@@ -32,6 +32,13 @@ def _path_only() -> str:
     return str(request.path or "")[:180]
 
 
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def trace_event(event: str, *, trace_id: str = "", **details: Any) -> None:
     trace_id = _safe_trace_id(trace_id)
     allowed = {
@@ -94,13 +101,33 @@ def install_stage0_trace(app: Flask) -> None:
     @app.after_request
     def _stage0_response(response):
         trace_id = _safe_trace_id(request.environ.get("lumi.stage0.trace_id", ""))
-        if trace_id:
+        if not trace_id:
+            return response
+
+        status = int(response.status_code or 0)
+        trace_event(
+            "RUNTIME_RESPONSE",
+            trace_id=trace_id,
+            method=request.method,
+            path=_path_only(),
+            status=status,
+            ok=bool(200 <= status < 400),
+        )
+
+        if request.method == "POST" and request.path == "/api/downloads/start":
+            request_data = request.get_json(silent=True)
+            request_data = request_data if isinstance(request_data, dict) else {}
+            response_data = response.get_json(silent=True)
+            response_data = response_data if isinstance(response_data, dict) else {}
             trace_event(
-                "RUNTIME_RESPONSE",
+                "ENGINE_RESULT",
                 trace_id=trace_id,
-                method=request.method,
-                path=_path_only(),
-                status=int(response.status_code or 0),
-                ok=bool(200 <= int(response.status_code or 0) < 400),
+                operation="download.create",
+                status=status,
+                ok=bool(200 <= status < 400),
+                requested_connections=_safe_int(request_data.get("connections"), 0),
+                effective_connections=_safe_int(response_data.get("connections"), 0),
+                mode=str(response_data.get("mode") or ""),
+                range_supported=bool(response_data.get("range_supported", False)),
             )
         return response
