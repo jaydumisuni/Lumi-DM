@@ -25,6 +25,7 @@ from core.v5.browser_api import wave5_browser_api
 from core.v5.desktop_api import wave5_desktop_api
 from core.v5.os_api import install_os_api, wave5_os_api
 from core.v6 import install_reliability
+from core.v7 import install_correction_campaign
 
 # Browser capture is capped at 4 MiB. Keep enough JSON/base64 overhead for a
 # legitimate envelope while rejecting unbounded local API payloads.
@@ -45,6 +46,10 @@ if "lumi_wave5_desktop" not in app.blueprints:
     app.register_blueprint(wave5_desktop_api)
 if "lumi_wave5_os" not in app.blueprints:
     app.register_blueprint(wave5_os_api)
+# The issue #8 correction layer is installed last so every transport converges
+# on the already-created canonical Runtime rather than constructing a sibling
+# backend. It also exposes the authenticated RPC and loopback browser bridge.
+install_correction_campaign(app)
 
 __all__ = ["app", "main"]
 
