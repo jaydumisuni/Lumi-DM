@@ -12,7 +12,17 @@ permissions:
 jobs:
   interaction-and-engine-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 38
+    env:
+      LUMI_PLAYWRIGHT_BASE: http://127.0.0.1:7000
+      LUMI_PLAYWRIGHT_ARTIFACTS: artifacts
+      LUMIDM_DESKTOP_SECRET: playwright-desktop-secret
+      LUMIDM_RUNTIME_INSTANCE: playwright-runtime-instance
+      LUMIDM_DATA_DIR: ${{ runner.temp }}/lumi-playwright-data
+      LUMIDM_DOWNLOAD_DIR: ${{ runner.temp }}/lumi-playwright-downloads
+      LUMIDM_TEMP_DIR: ${{ runner.temp }}/lumi-playwright-temporary
+      PYTHONUNBUFFERED: "1"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +48,7 @@ jobs:
       - name: JavaScript syntax proof
         run: |
           set -eu
-          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js; do node --check "$file"; done
+          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*_correction.js; do node --check "$file"; done
 
       - name: Full desktop interaction contract
         run: |
@@ -76,3 +86,46 @@ jobs:
             -k "os_catalogue_has_windows_macos_linux_and_labelled_providers or windows_search_is_explicit_resolver_plus_official_fallback or ubuntu_results_keep_official_url_and_sha256 or fido_resolution_refuses_non_windows_platform"
           python -m pytest -q tests/test_v6_final_reliability.py \
             -k "pdf_extension_and_rfc5987_filename_are_recovered or final_redirect_url_beats_generic_download_name or user_edited_filename_keeps_name_and_receives_known_extension or invalid_windows_filename_characters_are_sanitized or boot_notifications_use_a_session_transition_baseline or startup_supervisor_reconnects_fallback_windows or about_points_to_the_official_tools_page_and_verified_releases or connection_test_is_manual_bounded_and_blocks_active_downloads"
+
+      - name: Install pinned Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps --no-shell chromium
+
+      - name: Start isolated Lumi source Runtime
+        run: |
+          set -eu
+          mkdir -p artifacts "$LUMIDM_DATA_DIR" "$LUMIDM_DOWNLOAD_DIR" "$LUMIDM_TEMP_DIR"
+          python server.py --host 127.0.0.1 --port 7000 > artifacts/playwright-runtime.log 2>&1 &
+          echo $! > artifacts/playwright-runtime.pid
+          for attempt in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:7000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          cat artifacts/playwright-runtime.log
+          exit 1
+
+      - name: Playwright compact main renderer proof
+        run: node tests/playwright_main_correction.js
+
+      - name: Playwright real MV3 extension proof
+        run: node tests/playwright_extension_correction.js
+
+      - name: Stop isolated Runtime
+        if: always()
+        run: |
+          if [ -f artifacts/playwright-runtime.pid ]; then
+            kill -INT "$(cat artifacts/playwright-runtime.pid)" 2>/dev/null || true
+            sleep 1
+          fi
+
+      - name: Upload Playwright correction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-issue8-playwright-${{ github.event.pull_request.head.sha }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14
