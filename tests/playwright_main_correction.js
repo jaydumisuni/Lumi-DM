@@ -129,7 +129,7 @@ async function main() {
   assert(sourceOptions.some(value => value.includes("Samsung Support")), `Model did not resolve a valid source: ${sourceOptions.join(" | ")}`);
 
   await page.click('[data-view="overview"]'); await page.locator("#view-overview.active").waitFor({ state: "visible" });
-  await page.click("#new-download-btn"); await page.locator("#new-modal").waitFor({ state: "visible" });
+  await page.locator('#view-overview [data-main-open-new]').first().click(); await page.locator("#new-modal").waitFor({ state: "visible" });
   await page.click('#source-tabs [data-source="video"]');
   assert(await page.locator('#source-tabs [data-source="video"]').evaluate(element => element.classList.contains("active")), "New Download source tabs do not respond");
   await page.click('[data-close-modal="new-modal"]');
