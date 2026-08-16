@@ -73,6 +73,8 @@ def test_interaction_correction_is_audit_only_and_titlebar_is_hit_testable() -> 
     assert loader.index('"/static/interaction-contract.js"') < loader.index('"/static/roadmap-corrections.js"')
     assert loader.index('"/static/roadmap-corrections.js"') < loader.index("UI.installInteractionContract()")
     assert "UI.installInteractionContract = function installInteractionAudit" in correction
+    assert 'document.documentElement.dataset.lumiInteractionContract = result.ok ? "ready" : "failed"' in correction
+    assert "window.LumiInteractionAudit = result" in correction
     assert "stopImmediatePropagation" not in correction
     assert "-webkit-app-region:no-drag!important" in correction
     assert "pointer-events:auto!important" in correction
