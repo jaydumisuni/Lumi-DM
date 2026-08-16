@@ -190,13 +190,31 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
                     });
                   };
                   snapshot('before');
+
+                  const originalStop = Event.prototype.stopPropagation;
+                  const originalStopImmediate = Event.prototype.stopImmediatePropagation;
+                  Event.prototype.stopPropagation = function(...args) {
+                    if (this.type === 'click' && this.target?.closest?.('.nav-group-toggle')) {
+                      snapshot('stopPropagation', { stack: new Error('stopPropagation').stack });
+                    }
+                    return originalStop.apply(this, args);
+                  };
+                  Event.prototype.stopImmediatePropagation = function(...args) {
+                    if (this.type === 'click' && this.target?.closest?.('.nav-group-toggle')) {
+                      snapshot('stopImmediatePropagation', { stack: new Error('stopImmediatePropagation').stack });
+                    }
+                    return originalStopImmediate.apply(this, args);
+                  };
+                  window.__lumiRestoreEventStops = () => {
+                    Event.prototype.stopPropagation = originalStop;
+                    Event.prototype.stopImmediatePropagation = originalStopImmediate;
+                  };
+
                   const group = document.querySelector('.nav-group');
                   const toggle = group?.querySelector('.nav-group-toggle');
                   if (group && toggle) {
                     const observer = new MutationObserver(records => {
-                      for (const record of records) {
-                        snapshot(`mutation:${record.attributeName}`, { oldValue: record.oldValue });
-                      }
+                      for (const record of records) snapshot(`mutation:${record.attributeName}`, { oldValue: record.oldValue });
                     });
                     observer.observe(group, { attributes: true, attributeOldValue: true, attributeFilter: ['class'] });
                     observer.observe(toggle, { attributes: true, attributeOldValue: true, attributeFilter: ['aria-expanded'] });
@@ -207,7 +225,9 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
                     document.addEventListener('click', event => {
                       if (event.target.closest?.('.nav-group-toggle')) snapshot('document-capture-late');
                     }, { capture: true, once: true });
-                    toggle.addEventListener('click', () => snapshot('target-late'), { once: true });
+                    group.addEventListener('click', () => snapshot('group-capture-late'), { capture: true, once: true });
+                    toggle.addEventListener('click', () => snapshot('target-capture-late'), { capture: true, once: true });
+                    toggle.addEventListener('click', () => snapshot('target-bubble-late'), { once: true });
                     document.addEventListener('click', event => {
                       if (event.target.closest?.('.nav-group-toggle')) snapshot('document-bubble-late');
                     }, { once: true });
@@ -232,6 +252,7 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
                     bound: group?.dataset.bound ?? null,
                   });
                   window.__lumiTechnicianObserver?.disconnect();
+                  window.__lumiRestoreEventStops?.();
                   return window.__lumiTechnicianProbe || [];
                 }
             """)
