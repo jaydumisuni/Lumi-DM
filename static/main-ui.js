@@ -42,6 +42,12 @@
         const currentGroup = technicianItem.closest(".nav-group");
         currentGroup?.classList.add("open");
         currentGroup?.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "true");
+        // app.js owns view activation; the OS module owns its async catalogue
+        // rendering. Bridge those existing owners explicitly after the click has
+        // activated the view instead of adding OS rendering to generic app.js.
+        if (technicianItem.dataset.view === "operating_systems") {
+          void window.LumiOperatingSystems?.open?.();
+        }
         return;
       }
 
