@@ -30,7 +30,7 @@
       if (browse) { event.preventDefault(); void chooseFolder(browse.dataset.mainBrowse, browse.closest("form")); return; }
       if (event.target.closest("[data-main-health-check]")) { event.preventDefault(); void runToolHealth(); return; }
       const customShell = event.target.closest("[data-main-shell-action]");
-      if (customShell) { event.preventDefault(); event.stopImmediatePropagation(); handleMainShellAction(customShell.dataset.mainShellAction); }
+      if (customShell) { event.preventDefault(); event.stopImmediatePropagation(); void handleMainShellAction(customShell.dataset.mainShellAction); }
     }, true);
     document.addEventListener("change", event => {
       if (event.target.name === "download_notifications") localStorage.setItem(NOTIFY_KEY, String(event.target.checked));
@@ -84,11 +84,23 @@
     menu.querySelector("#lumi-notification-switch")?.addEventListener("change", event => localStorage.setItem(NOTIFY_KEY, String(event.target.checked)));
   }
 
-  function handleMainShellAction(action) {
+  async function handleMainShellAction(action) {
     closeShellMenus();
-    if (action === "extension") return showExtensionNotice(false);
+    if (action === "extension") return prepareBrowserExtension();
     if (action === "help") return showMainModal("Help / Report a Bug", `<h3>Need help with Lumi?</h3><p>Report a bug or ask for help on the official tools page through the Bonny assistant.</p><div class="ttg-modal-actions"><button class="btn primary" id="lumi-open-support">Open Bonny Support</button><button class="btn" id="lumi-modal-close">Close</button></div>`);
     if (action === "about") return showAbout();
+  }
+
+  async function prepareBrowserExtension() {
+    if (!window.electronApp?.prepareBrowserExtension) {
+      return showMainModal("Browser Extension", `<h3>Extension package unavailable</h3><p>This build cannot access its bundled browser-extension package. Repair or reinstall Lumi before trying again.</p><div class="ttg-modal-actions"><button class="btn" id="lumi-modal-close">Close</button></div>`);
+    }
+    try {
+      const result = await window.electronApp.prepareBrowserExtension();
+      showMainModal("Browser Extension", `<h3>Lumi extension folder is ready</h3><p>The verified extension package has been opened at:</p><code class="lumi-health-code">${h(result?.path || "Lumi DM Browser Extension")}</code><p>Load this folder as an unpacked extension in your Chromium browser. No Lumi pairing code is required on this PC—the extension authenticates automatically to the local Lumi Runtime.</p><p>Pairing codes remain for phones, other PCs and other THETECHGUY tools.</p><div class="ttg-modal-actions"><button class="btn" id="lumi-modal-close">Close</button></div>`);
+    } catch (error) {
+      showMainModal("Browser Extension", `<h3>Could not prepare the extension</h3><p>${h(error.message || error)}</p><div class="ttg-modal-actions"><button class="btn" id="lumi-modal-close">Close</button></div>`);
+    }
   }
 
   function showAbout() {
@@ -97,13 +109,8 @@
   }
 
   function maybeShowExtensionNotice() {
-    // Browser Extension remains available from the gear menu. Do not place a
-    // modal over the application on first launch, especially while the
-    // extension package is not bundled in the release.
-  }
-
-  function showExtensionNotice(firstLaunch) {
-    showMainModal("Browser Extension", `<h3>${firstLaunch ? "Browser capture setup" : "Lumi browser extension"}</h3><p>The extension package is not bundled in this build yet. Lumi will not pretend to install it. When the package is published, this control will install or open the verified extension from the official tools page.</p>${firstLaunch ? '<label class="lumi-switch"><span class="lumi-setting-copy"><strong>Don\'t show this again</strong><small>You can open Browser Extension from the gear menu.</small></span><input type="checkbox" id="lumi-extension-dismiss"></label>' : ""}<div class="ttg-modal-actions"><button class="btn primary" id="lumi-open-tools">Open Tools Page</button><button class="btn" id="lumi-modal-close">Close</button></div>`);
+    // The bundled extension is always available from the gear menu. No first-
+    // launch modal or pairing ceremony is required for this same-PC surface.
   }
 
   function showMainModal(title, html) {
@@ -115,7 +122,6 @@
     body.innerHTML = html;
     modal.hidden = false;
     body.querySelector("#lumi-modal-close")?.addEventListener("click", closeMainModal);
-    body.querySelector("#lumi-open-tools")?.addEventListener("click", () => { rememberExtensionDismiss(); openExternal(TOOLS_URL); closeMainModal(); });
     body.querySelector("#lumi-open-support")?.addEventListener("click", () => { openExternal(`${TOOLS_URL}#report-bug`); closeMainModal(); });
   }
 
