@@ -118,9 +118,9 @@ async function main() {
 
   await page.click(".nav-group-toggle"); await page.click('[data-view="firmware"]');
   await page.locator("#firmware-search-form-v7").waitFor({ state: "visible", timeout: 10000 });
-  const firmwareOrder = await page.locator("#firmware-search-form-v7 > label").allInnerTexts();
+  const firmwareOrder = await page.locator("#firmware-search-form-v7 > label").evaluateAll(labels => labels.slice(0, 4).map(label => label.querySelector("select,input")?.name || ""));
   console.log("PLAYWRIGHT_FIRMWARE_ORDER", JSON.stringify(firmwareOrder));
-  assert(firmwareOrder[0].startsWith("Brand") && firmwareOrder[1].startsWith("Model") && firmwareOrder[2].startsWith("Source") && firmwareOrder[3].startsWith("Channel"), "Firmware dependency order is wrong");
+  assert(JSON.stringify(firmwareOrder) === JSON.stringify(["brand", "device", "provider", "channel"]), `Firmware dependency order is wrong: ${firmwareOrder.join(" -> ")}`);
   const model = page.locator("#lumi-firmware-model"); const source = page.locator("#lumi-firmware-source");
   assert(await model.isDisabled(), "Model is selectable before Brand"); assert(await source.isDisabled(), "Source is selectable before Model");
   await page.selectOption("#lumi-firmware-brand", "Samsung"); await page.waitForFunction(() => !document.getElementById("lumi-firmware-model").disabled);
