@@ -2,7 +2,7 @@
 
 const { app, BrowserWindow } = require("electron");
 const { spawn, spawnSync } = require("child_process");
-const { randomUUID } = require("crypto");
+const { randomBytes, randomUUID } = require("crypto");
 const http = require("http");
 const path = require("path");
 const { writeStage0Trace } = require("./stage0-trace");
@@ -10,6 +10,7 @@ const { writeStage0Trace } = require("./stage0-trace");
 const RUNTIME_SCHEMA = "lumi.runtime.v1";
 let ownedProcess = null;
 let ownedRuntimeInstance = "";
+let ownedDesktopSecret = "";
 let quitting = false;
 let consecutiveFailures = 0;
 let restartAttempts = 0;
@@ -17,8 +18,12 @@ let lastRestartAt = 0;
 let wasReady = false;
 let timer = null;
 
-function serverCommand(runtimeInstance) {
-  const env = { ...process.env, LUMIDM_RUNTIME_INSTANCE: runtimeInstance };
+function serverCommand(runtimeInstance, desktopSecret) {
+  const env = {
+    ...process.env,
+    LUMIDM_RUNTIME_INSTANCE: runtimeInstance,
+    LUMIDM_DESKTOP_SECRET: desktopSecret,
+  };
   if (app.isPackaged) {
     const extension = process.platform === "win32" ? ".exe" : "";
     env.LUMIDM_STATIC_DIR = path.join(process.resourcesPath, "static");
@@ -36,11 +41,20 @@ function serverCommand(runtimeInstance) {
   };
 }
 
+function authHeaders() {
+  return ownedDesktopSecret
+    ? {
+        "X-Lumi-Client": "electron-desktop",
+        "X-Lumi-Desktop-Secret": ownedDesktopSecret,
+      }
+    : { "X-Lumi-Client": "electron-desktop" };
+}
+
 function checkReady(timeout = 2500) {
   return new Promise(resolve => {
     const expectedPid = Number(ownedProcess?.pid || 0);
     const expectedInstance = ownedRuntimeInstance;
-    if (!expectedPid || !expectedInstance || ownedProcess?.killed) {
+    if (!expectedPid || !expectedInstance || !ownedDesktopSecret || ownedProcess?.killed) {
       resolve(false);
       return;
     }
@@ -49,7 +63,7 @@ function checkReady(timeout = 2500) {
       port: 7000,
       path: "/",
       timeout,
-      headers: { "X-Lumi-Client": "electron-runtime-supervisor" },
+      headers: authHeaders(),
     }, response => {
       response.resume();
       const schema = String(response.headers["x-lumi-runtime-schema"] || "");
@@ -79,7 +93,8 @@ function spawnServer() {
   lastRestartAt = now;
   restartAttempts += 1;
   ownedRuntimeInstance = randomUUID();
-  const spec = serverCommand(ownedRuntimeInstance);
+  ownedDesktopSecret = randomBytes(32).toString("hex");
+  const spec = serverCommand(ownedRuntimeInstance, ownedDesktopSecret);
   writeStage0Trace("SIDECAR_SPAWN_REQUEST", {
     process: path.basename(spec.command),
     reason: `attempt-${restartAttempts}`,
@@ -100,7 +115,11 @@ function spawnServer() {
         pid: Number(child.pid || 0),
         reason: String(error?.message || error || "spawn error"),
       });
-      if (ownedProcess === child) ownedProcess = null;
+      if (ownedProcess === child) {
+        ownedProcess = null;
+        ownedRuntimeInstance = "";
+        ownedDesktopSecret = "";
+      }
     });
     child.once("exit", (code, signal) => {
       writeStage0Trace("SIDECAR_EXIT", {
@@ -108,7 +127,11 @@ function spawnServer() {
         exit_code: code === null ? -1 : Number(code),
         signal: String(signal || ""),
       });
-      if (ownedProcess === child) ownedProcess = null;
+      if (ownedProcess === child) {
+        ownedProcess = null;
+        ownedRuntimeInstance = "";
+        ownedDesktopSecret = "";
+      }
     });
     return true;
   } catch (error) {
@@ -117,6 +140,8 @@ function spawnServer() {
       reason: String(error?.message || error || "spawn failed"),
     });
     ownedProcess = null;
+    ownedRuntimeInstance = "";
+    ownedDesktopSecret = "";
     return false;
   }
 }
@@ -207,6 +232,7 @@ function stop() {
   }
   ownedProcess = null;
   ownedRuntimeInstance = "";
+  ownedDesktopSecret = "";
 }
 
-module.exports = { checkReady, start, stop, tick };
+module.exports = { authHeaders, checkReady, start, stop, tick };
