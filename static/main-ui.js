@@ -9,8 +9,57 @@
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
     "/static/interaction-contract.js",
+    "/static/roadmap-corrections.js",
     "/static/toast-contract.js",
   ];
+
+  // Technician disclosure is a shell invariant, so it cannot depend on the
+  // identity or lifetime of a renderer-created button. Own it once at document
+  // level and resolve the current group from each click; renderer replacement
+  // therefore cannot silently discard the handler.
+  function installEarlyNavigationContract() {
+    const group = document.querySelector(".nav-group");
+    if (!group || document.documentElement.dataset.lumiNavigationReady === "1") return;
+    group.classList.remove("open");
+    group.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "false");
+    // Prevent main-ui-core's compatibility binder from becoming a second owner.
+    group.dataset.bound = "true";
+
+    document.addEventListener("click", event => {
+      const technicianToggle = event.target.closest?.(".nav-group-toggle");
+      if (technicianToggle) {
+        event.preventDefault();
+        const currentGroup = technicianToggle.closest(".nav-group");
+        if (!currentGroup) return;
+        const open = technicianToggle.getAttribute("aria-expanded") !== "true";
+        currentGroup.classList.toggle("open", open);
+        technicianToggle.setAttribute("aria-expanded", String(open));
+        return;
+      }
+
+      const technicianItem = event.target.closest?.(".nav-group .nav-submenu .nav-item[data-view]");
+      if (technicianItem) {
+        const currentGroup = technicianItem.closest(".nav-group");
+        currentGroup?.classList.add("open");
+        currentGroup?.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "true");
+        // app.js owns view activation; the OS module owns its async catalogue
+        // rendering. Bridge those existing owners explicitly after the click has
+        // activated the view instead of adding OS rendering to generic app.js.
+        if (technicianItem.dataset.view === "operating_systems") {
+          void window.LumiOperatingSystems?.open?.();
+        }
+        return;
+      }
+
+      const topLevel = event.target.closest?.(".nav-list > .nav-item[data-view]");
+      if (!topLevel) return;
+      const currentGroup = document.querySelector(".nav-group");
+      currentGroup?.classList.remove("open");
+      currentGroup?.querySelector(".nav-group-toggle")?.setAttribute("aria-expanded", "false");
+    });
+
+    document.documentElement.dataset.lumiNavigationReady = "1";
+  }
 
   function loadModule(source) {
     return new Promise((resolve, reject) => {
@@ -58,6 +107,7 @@
     }, 0);
   }
 
+  installEarlyNavigationContract();
   modules.reduce((promise, source) => promise.then(() => loadModule(source)), Promise.resolve())
     .then(install)
     .catch(error => {

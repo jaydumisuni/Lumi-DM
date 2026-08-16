@@ -1,5 +1,10 @@
 "use strict";
 
+// Loaded by the Runtime supervisor before the rest of the native shell. The
+// side-effect module patches only 127.0.0.1:7000 Node HTTP calls and injects the
+// per-process secret once the supervisor generates it.
+require("./runtime-http-auth");
+
 const { app } = require("electron");
 const fs = require("fs");
 const path = require("path");

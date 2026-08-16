@@ -1,7 +1,7 @@
 "use strict";
 
-// Independent final-UI guards. Loaded after app-v4.js so the product remains
-// readable while these narrow lifecycle rules are reviewed separately.
+// Independent final-UI guards. Loaded immediately after app.js. These rules do
+// not become new business-logic owners; they enforce narrow safety invariants.
 state.inspectorId = null;
 
 window.openInspector = async function openInspectorGuarded(taskId) {
@@ -61,6 +61,25 @@ function _applyReadOnlyPresentation() {
     element.hidden = !writable;
   });
 }
+
+// Navigation has one owner: app.js::switchView(). If another capture listener,
+// overlay or initialization race consumes a click without producing the state
+// transition, recover *after* event dispatch. Normal navigation therefore runs
+// exactly once; this watchdog executes only when the invariant was violated.
+document.addEventListener("click", event => {
+  const nav = event.target.closest?.(".nav-item[data-view]");
+  if (!nav) return;
+  const requested = String(nav.dataset.view || "");
+  window.setTimeout(() => {
+    const target = document.getElementById(`view-${requested}`);
+    if (target?.classList.contains("active")) return;
+    try {
+      if (typeof switchView === "function") switchView(requested);
+    } catch (error) {
+      console.error("Lumi navigation recovery failed", requested, error);
+    }
+  }, 0);
+}, true);
 
 document.addEventListener("click", event => {
   if (_canWrite()) return;

@@ -191,6 +191,123 @@
 /* Theme selector belongs to the approved Lumi gear menu. */
 .ttg-theme-segment-two{grid-template-columns:repeat(2,1fr)!important}
 
+/* Compact desktop is a bounded dashboard, not the tablet/mobile stacked layout.
+   At the canonical 920x650 window the Overview keeps every approved section in
+   one renderer viewport; genuinely long views retain .content/internal scroll. */
+@media (min-width:760px) and (max-width:980px) and (max-height:720px){
+  .ttg-desktop .topbar{
+    height:58px;
+    min-height:58px;
+    padding-left:16px;
+    padding-right:16px;
+  }
+  .ttg-desktop .content{
+    padding:10px 12px 12px;
+  }
+  .ttg-desktop #view-overview{
+    height:100%;
+    min-height:0;
+  }
+  .ttg-desktop #view-overview .lumi-overview{
+    height:100%;
+    min-height:0;
+    gap:8px;
+    grid-template-rows:auto 84px minmax(0,1.35fr) minmax(0,1fr);
+  }
+  .ttg-desktop #view-overview .lumi-overview-head h2{font-size:16px}
+  .ttg-desktop #view-overview .lumi-overview-head p{margin-top:2px;font-size:8px}
+  .ttg-desktop #view-overview .lumi-stat-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:7px;
+  }
+  .ttg-desktop #view-overview .lumi-stat{
+    min-height:0;
+    height:84px;
+    padding:9px;
+  }
+  .ttg-desktop #view-overview .lumi-stat-top{gap:7px}
+  .ttg-desktop #view-overview .lumi-stat-icon{
+    width:30px;
+    height:30px;
+    border-radius:8px;
+  }
+  .ttg-desktop #view-overview .lumi-stat-icon svg{width:17px;height:17px}
+  .ttg-desktop #view-overview .lumi-stat-copy small{font-size:7px;letter-spacing:0}
+  .ttg-desktop #view-overview .lumi-stat-copy strong{margin-top:2px;font-size:18px}
+  .ttg-desktop #view-overview .lumi-stat-copy span{margin-top:3px;font-size:7px}
+  .ttg-desktop #view-overview .lumi-spark{display:none}
+  .ttg-desktop #view-overview .lumi-overview-row{
+    grid-template-columns:minmax(0,1.18fr) minmax(240px,.82fr);
+    gap:8px;
+    min-height:0;
+  }
+  .ttg-desktop #view-overview .lumi-panel{min-height:0}
+  .ttg-desktop #view-overview .lumi-panel-head{
+    padding:7px 9px 5px;
+    min-height:29px;
+  }
+  .ttg-desktop #view-overview .lumi-panel-head h3{font-size:9px}
+  .ttg-desktop #view-overview .lumi-panel-head .btn{padding:3px 7px;font-size:8px}
+  .ttg-desktop #view-overview .lumi-speed-body{padding:0 9px 7px}
+  .ttg-desktop #view-overview .lumi-speed-value{font-size:19px;line-height:1}
+  .ttg-desktop #view-overview .lumi-speed-sub{font-size:7px}
+  .ttg-desktop #view-overview .lumi-bars{
+    height:54px;
+    gap:3px;
+    margin:5px 0;
+  }
+  .ttg-desktop #view-overview .lumi-speed-metrics{padding-top:5px}
+  .ttg-desktop #view-overview .lumi-speed-metric{gap:4px}
+  .ttg-desktop #view-overview .lumi-speed-metric svg{width:14px;height:14px}
+  .ttg-desktop #view-overview .lumi-speed-metric b{font-size:8px}
+  .ttg-desktop #view-overview .lumi-speed-metric small{font-size:7px;margin-top:1px}
+  .ttg-desktop #view-overview .lumi-status-wrap{
+    grid-template-columns:84px minmax(0,1fr);
+    gap:7px;
+    padding:7px 8px 8px;
+  }
+  .ttg-desktop #view-overview .lumi-donut{width:82px;height:82px}
+  .ttg-desktop #view-overview .lumi-donut::before{width:52px;height:52px}
+  .ttg-desktop #view-overview .lumi-donut-center strong{font-size:16px}
+  .ttg-desktop #view-overview .lumi-donut-center span{font-size:7px}
+  .ttg-desktop #view-overview .lumi-legend{gap:5px}
+  .ttg-desktop #view-overview .lumi-legend-row{
+    grid-template-columns:7px minmax(0,1fr) auto;
+    gap:5px;
+    font-size:7px;
+  }
+  .ttg-desktop #view-overview .lumi-legend-row i{width:6px;height:6px}
+  .ttg-desktop #view-overview .lumi-legend-row strong{font-size:7px}
+  .ttg-desktop #view-overview .lumi-recent{padding:0 8px 6px}
+  .ttg-desktop #view-overview .lumi-recent-row{
+    min-height:32px;
+    grid-template-columns:minmax(0,1fr) 28px 25px;
+    gap:5px;
+  }
+  .ttg-desktop #view-overview .lumi-file{gap:6px}
+  .ttg-desktop #view-overview .lumi-file-logo{width:24px;height:24px;padding:2px}
+  .ttg-desktop #view-overview .lumi-file-copy strong{font-size:8px}
+  .ttg-desktop #view-overview .lumi-file-copy small{font-size:7px;margin-top:1px}
+  .ttg-desktop #view-overview .lumi-recent-pct{font-size:8px}
+  .ttg-desktop #view-overview .lumi-recent-row .lumi-row-action{
+    width:23px;
+    height:23px;
+    font-size:9px;
+  }
+  .ttg-desktop #view-overview .lumi-quick-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:4px;
+    padding:2px 8px 7px;
+  }
+  .ttg-desktop #view-overview .lumi-quick{
+    min-height:42px;
+    gap:3px;
+    border-radius:8px;
+  }
+  .ttg-desktop #view-overview .lumi-quick svg{width:15px;height:15px}
+  .ttg-desktop #view-overview .lumi-quick span{font-size:7px}
+}
+
 @media(max-width:900px){
   :root{--lumi-sidebar-width:238px}
   .ttg-desktop .brand-block{padding-left:18px}

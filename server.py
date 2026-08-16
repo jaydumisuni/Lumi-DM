@@ -25,6 +25,12 @@ from core.v5.browser_api import wave5_browser_api
 from core.v5.desktop_api import wave5_desktop_api
 from core.v5.os_api import install_os_api, wave5_os_api
 from core.v6 import install_reliability
+from core.v7.runtime_contract import install_correction_campaign as install_v7_runtime_contract
+from core.v7.desktop_auth import install_desktop_auth
+from core.v7.connection_contract import install_connection_contract
+from core.v7.media_contract import install_media_contract
+from core.v7.surface_contract import install_surface_contract
+from core.v7.remote_contract import install_remote_contract
 
 # Browser capture is capped at 4 MiB. Keep enough JSON/base64 overhead for a
 # legitimate envelope while rejecting unbounded local API payloads.
@@ -45,6 +51,15 @@ if "lumi_wave5_desktop" not in app.blueprints:
     app.register_blueprint(wave5_desktop_api)
 if "lumi_wave5_os" not in app.blueprints:
     app.register_blueprint(wave5_os_api)
+# Issue #8 is installed last and in explicit ownership order. Keeping the
+# composition here avoids turning package __init__ into a high-blast-radius
+# service locator while every correction still converges on the one Runtime.
+install_v7_runtime_contract(app)
+install_desktop_auth(app)
+install_connection_contract(app)
+install_media_contract(app)
+install_surface_contract(app)
+install_remote_contract(app)
 
 __all__ = ["app", "main"]
 
