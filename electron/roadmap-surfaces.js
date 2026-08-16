@@ -10,6 +10,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const http = require("http");
 
 let forcedPendingExpansion = false;
+let surfaceExpanded = false;
 let lastPendingId = "";
 let pollTimer = null;
 
@@ -52,18 +53,23 @@ function widgetWindow() {
     if (window.isDestroyed()) return false;
     const url = String(window.webContents.getURL() || "");
     const bounds = window.getBounds();
-    return url.includes("widget.html") || (window.isAlwaysOnTop() && bounds.width <= 520 && bounds.height <= 420);
+    return url.includes("widget.html") || (window.isAlwaysOnTop() && bounds.width <= 520 && bounds.height <= 440);
   }) || null;
 }
 
-function mainWindowVisible() {
-  return BrowserWindow.getAllWindows().some(window => {
+function mainWindow() {
+  return BrowserWindow.getAllWindows().find(window => {
     if (window.isDestroyed()) return false;
     const url = String(window.webContents.getURL() || "");
     if (url.includes("widget.html") || url.includes("confirm.html")) return false;
     const bounds = window.getBounds();
-    return bounds.width >= 650 && bounds.height >= 430 && window.isVisible() && !window.isMinimized();
-  });
+    return bounds.width >= 650 && bounds.height >= 430;
+  }) || null;
+}
+
+function mainWindowVisible() {
+  const window = mainWindow();
+  return Boolean(window && window.isVisible() && !window.isMinimized());
 }
 
 function scaleFromBounds(bounds, expanded) {
@@ -89,6 +95,17 @@ function resizeAnchored(window, expand) {
   else window.showInactive();
 }
 
+function effectiveExpanded() {
+  return forcedPendingExpansion || surfaceExpanded;
+}
+
+function publishExpanded() {
+  const window = widgetWindow();
+  if (window && !window.isDestroyed()) {
+    window.webContents.send("v5-expanded", effectiveExpanded());
+  }
+}
+
 function publishPending(task) {
   const window = widgetWindow();
   if (!window || window.isDestroyed()) return;
@@ -101,22 +118,31 @@ async function rpc(method, params = {}) {
   return response.result;
 }
 
+async function pendingTask(taskId = "") {
+  const state = await request("GET", "/api/v7/runtime/state");
+  return (state.tasks || []).find(task => (
+    task.metadata?.browser_capture_pending === true
+    && (!taskId || String(task.id) === String(taskId))
+  )) || null;
+}
+
 async function pollPending() {
   try {
-    const state = await request("GET", "/api/v7/runtime/state");
-    const pending = (state.tasks || []).find(task => task.metadata?.browser_capture_pending === true) || null;
+    const pending = await pendingTask();
     const pendingId = String(pending?.id || "");
     if (pending) {
       const window = widgetWindow();
       if (window && !mainWindowVisible()) {
-        resizeAnchored(window, true);
         forcedPendingExpansion = true;
+        resizeAnchored(window, true);
+        publishExpanded();
       }
       if (pendingId !== lastPendingId) publishPending(pending);
     } else if (forcedPendingExpansion) {
-      const window = widgetWindow();
-      resizeAnchored(window, false);
       forcedPendingExpansion = false;
+      const window = widgetWindow();
+      resizeAnchored(window, surfaceExpanded);
+      publishExpanded();
       publishPending(null);
     }
     lastPendingId = pendingId;
@@ -126,44 +152,125 @@ async function pollPending() {
   }
 }
 
-function installIpc() {
-  if (!ipcMain.listenerCount("v7-widget-confirm")) {
-    ipcMain.handle("v7-widget-confirm", async (_event, value) => {
-      const params = value && typeof value === "object" ? value : {};
-      const result = await rpc("browser.confirm", params);
-      const window = widgetWindow();
-      resizeAnchored(window, false);
+async function normalWidgetAction(action, taskId = "") {
+  if (action === "pause-all") return request("POST", "/api/downloads/pause-all", {});
+  if (action === "resume-all") return request("POST", "/api/downloads/resume-all", {});
+  if (action === "pause" && taskId) return request("POST", `/api/downloads/${encodeURIComponent(taskId)}/pause`, {});
+  if (action === "resume" && taskId) return request("POST", `/api/downloads/${encodeURIComponent(taskId)}/resume`, {});
+  if (action === "cancel" && taskId) return request("POST", `/api/downloads/${encodeURIComponent(taskId)}/cancel`, {});
+  if (action === "open" && taskId) return request("POST", `/api/downloads/${encodeURIComponent(taskId)}/open`, {});
+  if (action === "main") {
+    const window = mainWindow();
+    if (window) {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+    }
+    return { ok: Boolean(window) };
+  }
+  return { ok: false };
+}
+
+async function widgetAction(action, taskId = "") {
+  if (taskId && ["resume", "cancel"].includes(action)) {
+    const pending = await pendingTask(taskId);
+    if (pending) {
+      if (action === "cancel") {
+        const result = await rpc("browser.release", { task_id: taskId });
+        forcedPendingExpansion = false;
+        lastPendingId = "";
+        resizeAnchored(widgetWindow(), surfaceExpanded);
+        publishExpanded();
+        publishPending(null);
+        return result;
+      }
+      const result = await rpc("browser.confirm", {
+        task_id: taskId,
+        filename: pending.filename || "download.bin",
+        target_dir: pending.target_dir || "",
+        queue_id: pending.metadata?.browser_requested_queue || "default",
+        start_mode: "now",
+        connections: 32,
+      });
       forcedPendingExpansion = false;
       lastPendingId = "";
+      surfaceExpanded = false;
+      resizeAnchored(widgetWindow(), false);
+      publishExpanded();
       publishPending(null);
       return result;
-    });
+    }
   }
-  if (!ipcMain.listenerCount("v7-widget-release")) {
-    ipcMain.handle("v7-widget-release", async (_event, taskId) => {
-      const result = await rpc("browser.release", { task_id: String(taskId || "") });
-      const window = widgetWindow();
-      resizeAnchored(window, false);
-      forcedPendingExpansion = false;
-      lastPendingId = "";
-      publishPending(null);
-      return result;
-    });
-  }
-  if (!ipcMain.listenerCount("v7-widget-pending")) {
-    ipcMain.handle("v7-widget-pending", async () => {
-      const state = await request("GET", "/api/v7/runtime/state");
-      return (state.tasks || []).find(task => task.metadata?.browser_capture_pending === true) || null;
-    });
-  }
+  return normalWidgetAction(action, taskId);
+}
+
+function installUniqueIpc() {
+  ipcMain.removeHandler("v7-widget-confirm");
+  ipcMain.handle("v7-widget-confirm", async (_event, value) => {
+    const params = value && typeof value === "object" ? value : {};
+    const result = await rpc("browser.confirm", params);
+    forcedPendingExpansion = false;
+    surfaceExpanded = false;
+    lastPendingId = "";
+    resizeAnchored(widgetWindow(), false);
+    publishExpanded();
+    publishPending(null);
+    return result;
+  });
+  ipcMain.removeHandler("v7-widget-release");
+  ipcMain.handle("v7-widget-release", async (_event, taskId) => widgetAction("cancel", taskId));
+  ipcMain.removeHandler("v7-widget-pending");
+  ipcMain.handle("v7-widget-pending", async () => pendingTask());
+}
+
+function replaceLegacyWidgetHandlers() {
+  // main.js registers these during the same app-ready turn. Replacing them on
+  // the next task removes the competing private widgetExpanded owner and lets
+  // this module own native widget geometry while Runtime remains data authority.
+  ipcMain.removeHandler("v5-widget-toggle");
+  ipcMain.handle("v5-widget-toggle", () => {
+    if (forcedPendingExpansion) return true;
+    surfaceExpanded = !surfaceExpanded;
+    resizeAnchored(widgetWindow(), surfaceExpanded);
+    publishExpanded();
+    return surfaceExpanded;
+  });
+
+  ipcMain.removeHandler("v5-widget-snapshot");
+  ipcMain.handle("v5-widget-snapshot", async () => {
+    try {
+      const [downloads, net] = await Promise.all([
+        request("GET", "/api/downloads?limit=100"),
+        request("GET", "/api/netstats").catch(() => ({})),
+      ]);
+      return {
+        online: true,
+        downloads: downloads.downloads || [],
+        net,
+        expanded: effectiveExpanded(),
+      };
+    } catch (error) {
+      return {
+        online: false,
+        error: String(error.message || error),
+        downloads: [],
+        net: {},
+        expanded: effectiveExpanded(),
+      };
+    }
+  });
+
+  ipcMain.removeHandler("v5-widget-action");
+  ipcMain.handle("v5-widget-action", (_event, action, taskId = "") => widgetAction(action, taskId));
 }
 
 app.whenReady().then(() => {
-  installIpc();
+  installUniqueIpc();
   setTimeout(() => {
+    replaceLegacyWidgetHandlers();
     void pollPending();
     if (!pollTimer) pollTimer = setInterval(() => void pollPending(), 650);
-  }, 1200);
+  }, 0);
 });
 app.on("before-quit", () => {
   if (pollTimer) clearInterval(pollTimer);
