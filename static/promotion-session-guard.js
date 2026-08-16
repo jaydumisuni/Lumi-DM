@@ -1,22 +1,48 @@
 "use strict";
 
 /* The technician workspace registers its optional promotion lookup during
-   DOMContentLoaded. Wrap that lookup before DOMContentLoaded fires so it waits
-   for Lumi's authenticated session instead of producing a harmless startup
-   401. Endpoint authentication remains unchanged. */
+   DOMContentLoaded. Wrap both the session bootstrap and promotion lookup so the
+   promotion waits for the real authenticated-session boundary, including a
+   delayed remote-pair flow, instead of relying on a fixed polling window. */
 (() => {
-  if (typeof loadPromotion !== "function") return;
+  if (typeof loadPromotion !== "function" || typeof establishSession !== "function") return;
+
   const loadPromotionAuthenticated = loadPromotion;
+  const establishSessionPrimary = establishSession;
+  let sessionReadyResolved = false;
+  let resolveSessionReady;
+  const sessionReady = new Promise(resolve => { resolveSessionReady = resolve; });
+
+  function hasAuthenticatedSession() {
+    try {
+      return typeof state !== "undefined" && Boolean(state.auth);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function completeSessionReady() {
+    if (sessionReadyResolved) return;
+    sessionReadyResolved = true;
+    resolveSessionReady(hasAuthenticatedSession());
+  }
+
+  establishSession = async function establishSessionWithPromotionReady(...args) {
+    try {
+      const result = await establishSessionPrimary.apply(this, args);
+      completeSessionReady();
+      return result;
+    } catch (error) {
+      completeSessionReady();
+      throw error;
+    }
+  };
 
   loadPromotion = async function loadPromotionAfterSession() {
-    for (let attempt = 0; attempt < 200; attempt += 1) {
-      try {
-        if (typeof state !== "undefined" && state.auth) {
-          return await loadPromotionAuthenticated();
-        }
-      } catch (_) {}
-      await new Promise(resolve => window.setTimeout(resolve, 50));
+    if (!hasAuthenticatedSession()) {
+      const authenticated = await sessionReady;
+      if (!authenticated) return undefined;
     }
-    return undefined;
+    return loadPromotionAuthenticated();
   };
 })();

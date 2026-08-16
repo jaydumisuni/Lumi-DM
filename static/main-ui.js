@@ -51,7 +51,9 @@
       try {
         if (typeof renderCurrentView === "function") renderCurrentView();
         UI.repairInteractionContract();
-      } catch (_) {}
+      } catch (error) {
+        console.error("Lumi interaction contract initialization failed", error);
+      }
     }, 0);
   }
 
