@@ -89,6 +89,8 @@ def test_technician_disclosure_has_durable_shell_owner_before_async_modules() ->
     assert 'document.addEventListener("click", event =>' in loader
     assert 'event.target.closest?.(".nav-group-toggle")' in loader
     assert 'technicianToggle.getAttribute("aria-expanded") !== "true"' in loader
+    assert 'technicianItem.dataset.view === "operating_systems"' in loader
+    assert "window.LumiOperatingSystems?.open?.()" in loader
     assert loader.index("installEarlyNavigationContract();") < loader.index("modules.reduce(")
 
 
