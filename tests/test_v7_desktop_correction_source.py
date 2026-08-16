@@ -92,6 +92,14 @@ def test_technician_disclosure_has_durable_shell_owner_before_async_modules() ->
     assert loader.index("installEarlyNavigationContract();") < loader.index("modules.reduce(")
 
 
+def test_theme_capture_only_owns_explicit_theme_buttons() -> None:
+    theme = text("static/lumi-theme.js")
+
+    assert 'document.querySelectorAll("button[data-lumi-theme]")' in theme
+    assert 'event.target.closest("button[data-lumi-theme]")' in theme
+    assert 'event.target.closest("[data-lumi-theme]")' not in theme
+
+
 def test_same_pc_extension_is_fixed_identity_auto_trust_and_valid_mv3() -> None:
     manifest = json.loads(text("static/browser-extension/chromium/manifest.json"))
     background = text("static/browser-extension/chromium/background.js")
