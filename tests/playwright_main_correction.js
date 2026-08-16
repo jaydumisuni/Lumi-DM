@@ -6,6 +6,7 @@ const path = require("path");
 
 const BASE = process.env.LUMI_PLAYWRIGHT_BASE || "http://127.0.0.1:7000";
 const ARTIFACTS = path.resolve(process.env.LUMI_PLAYWRIGHT_ARTIFACTS || "artifacts");
+let activeBrowser = null;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -25,7 +26,7 @@ async function waitServer(page) {
 
 async function main() {
   fs.mkdirSync(ARTIFACTS, { recursive: true });
-  const browser = await chromium.launch({ headless: true, channel: "chromium" });
+  const browser = activeBrowser = await chromium.launch({ headless: true, channel: "chromium" });
   const context = await browser.newContext({ viewport: { width: 920, height: 650 }, deviceScaleFactor: 1 });
 
   await context.addInitScript(() => {
@@ -138,6 +139,12 @@ async function main() {
   console.log("PLAYWRIGHT_MAIN_RESULT", JSON.stringify({ geometry, actions, finalState }));
   assert(Number(finalState.interactionBlocked || 0) === 0, `Visible controls remain pointer-blocked: ${finalState.interactionBlocked}`);
   await browser.close();
+  activeBrowser = null;
 }
 
-main().catch(error => { console.error("PLAYWRIGHT_MAIN_FAILURE", error.stack || error); process.exitCode = 1; });
+main().catch(async error => {
+  console.error("PLAYWRIGHT_MAIN_FAILURE", error.stack || error);
+  try { await activeBrowser?.close(); } catch (_) {}
+  activeBrowser = null;
+  process.exitCode = 1;
+});
