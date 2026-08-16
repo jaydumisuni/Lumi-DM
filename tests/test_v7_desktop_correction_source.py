@@ -109,6 +109,7 @@ def test_queue_action_menu_has_focused_owner_without_reactivating_legacy_capture
     assert 'button.dataset.contractReady = "queue-menu"' in correction
     assert 'document.getElementById("view-queues")' in correction
     assert 'event.target.closest(\'.lumi-card-menu[data-contract-ready="queue-menu"]\')' in correction
+    assert 'action.dataset.contractForward = source.dataset.action' in correction
     assert 'action.dataset.action = source.dataset.action' in correction
     assert 'action.dataset.id = source.dataset.id || ""' in correction
     assert "stopImmediatePropagation" not in correction
