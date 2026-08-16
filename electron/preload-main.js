@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('electronApp', {
   pickFolder: () => invokeWithTrace('pick-folder'),
   openPath: value => invokeWithTrace('ttg-open-path', value),
   openExternal: value => invokeWithTrace('ttg-open-external', value),
+  prepareBrowserExtension: () => invokeWithTrace('ttg-prepare-browser-extension'),
   isElectron: true,
   getDesktopSettings: () => invokeWithTrace('v5-desktop-settings-get'),
   saveDesktopSettings: value => invokeWithTrace('v5-desktop-settings-save', value),
