@@ -19,6 +19,8 @@ let wasReady = false;
 let timer = null;
 
 function serverCommand(runtimeInstance, desktopSecret) {
+  process.env.LUMIDM_DESKTOP_SECRET = desktopSecret;
+  process.env.LUMIDM_RUNTIME_INSTANCE = runtimeInstance;
   const env = {
     ...process.env,
     LUMIDM_RUNTIME_INSTANCE: runtimeInstance,
@@ -86,6 +88,14 @@ function checkReady(timeout = 2500) {
   });
 }
 
+function clearOwnedIdentity() {
+  ownedProcess = null;
+  ownedRuntimeInstance = "";
+  ownedDesktopSecret = "";
+  delete process.env.LUMIDM_DESKTOP_SECRET;
+  delete process.env.LUMIDM_RUNTIME_INSTANCE;
+}
+
 function spawnServer() {
   if (quitting || (ownedProcess && !ownedProcess.killed)) return false;
   const now = Date.now();
@@ -115,11 +125,7 @@ function spawnServer() {
         pid: Number(child.pid || 0),
         reason: String(error?.message || error || "spawn error"),
       });
-      if (ownedProcess === child) {
-        ownedProcess = null;
-        ownedRuntimeInstance = "";
-        ownedDesktopSecret = "";
-      }
+      if (ownedProcess === child) clearOwnedIdentity();
     });
     child.once("exit", (code, signal) => {
       writeStage0Trace("SIDECAR_EXIT", {
@@ -127,11 +133,7 @@ function spawnServer() {
         exit_code: code === null ? -1 : Number(code),
         signal: String(signal || ""),
       });
-      if (ownedProcess === child) {
-        ownedProcess = null;
-        ownedRuntimeInstance = "";
-        ownedDesktopSecret = "";
-      }
+      if (ownedProcess === child) clearOwnedIdentity();
     });
     return true;
   } catch (error) {
@@ -139,9 +141,7 @@ function spawnServer() {
       process: path.basename(spec.command),
       reason: String(error?.message || error || "spawn failed"),
     });
-    ownedProcess = null;
-    ownedRuntimeInstance = "";
-    ownedDesktopSecret = "";
+    clearOwnedIdentity();
     return false;
   }
 }
@@ -230,9 +230,7 @@ function stop() {
       });
     }
   }
-  ownedProcess = null;
-  ownedRuntimeInstance = "";
-  ownedDesktopSecret = "";
+  clearOwnedIdentity();
 }
 
 module.exports = { authHeaders, checkReady, start, stop, tick };
