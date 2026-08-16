@@ -1,5 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 const { randomUUID } = require('crypto');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
 let lastTraceId = '';
 let traceExpiresAt = 0;
@@ -13,15 +16,41 @@ function currentTraceId() {
   return '';
 }
 
+function stage0TracePath() {
+  if (process.env.LUMIDM_STAGE0_ELECTRON_TRACE) return process.env.LUMIDM_STAGE0_ELECTRON_TRACE;
+  let root;
+  if (process.platform === 'win32') root = process.env.APPDATA || process.env.LOCALAPPDATA;
+  else if (process.platform === 'darwin') root = path.join(os.homedir(), 'Library', 'Application Support');
+  else root = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
+  return path.join(root || os.tmpdir(), 'Lumi DM', 'LUMIDM-stage0-electron-trace.jsonl');
+}
+
+function persistTrace(payload) {
+  try {
+    const target = stage0TracePath();
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.appendFileSync(target, `${JSON.stringify({ timestamp: new Date().toISOString(), process: 'preload-main', ...payload })}\n`, 'utf8');
+  } catch (_) {
+    // Diagnostic evidence must never become an availability dependency.
+  }
+}
+
 function traceStage0(value = {}) {
   const traceId = String(value.trace_id || currentTraceId() || nextTraceId());
   lastTraceId = traceId;
   traceExpiresAt = Date.now() + 5000;
-  ipcRenderer.send('lumi-stage0-trace', {
-    ...value,
+  const payload = {
+    event: String(value.event || 'TRACE').slice(0, 120),
     trace_id: traceId,
-    source: value.source || 'preload-main',
-  });
+    source: String(value.source || 'preload-main').slice(0, 80),
+  };
+  for (const key of ['action', 'channel', 'method', 'path', 'reason']) {
+    if (value[key] !== undefined && value[key] !== null) payload[key] = String(value[key]).replace(/[\r\n\t]+/g, ' ').slice(0, 180);
+  }
+  for (const key of ['status', 'ok']) {
+    if (value[key] !== undefined && value[key] !== null) payload[key] = value[key];
+  }
+  persistTrace(payload);
   return traceId;
 }
 
