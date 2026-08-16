@@ -27,7 +27,11 @@ def test_renderer_trace_correlates_physical_actions_and_same_origin_api() -> Non
     assert 'headers.set("X-Lumi-Trace-Id", traceId)' in trace
     assert 'parsed.pathname.startsWith("/api/")' in trace
     assert 'parsed.origin === location.origin' in trace
-    assert "request body" in trace.lower()
+    # Correlation may forward the original fetch unchanged, but diagnostic
+    # records must never copy request payloads into emitted trace metadata.
+    assert "body: init.body" not in trace
+    assert "body: input.body" not in trace
+    assert "request bodies" in trace.lower()
 
 
 def test_preload_persists_ipc_boundary_success_and_failure_without_payloads() -> None:
