@@ -16,15 +16,10 @@
     ];
   } catch (_) {}
 
-  window.addEventListener("DOMContentLoaded", () => {
-    const view = document.getElementById("view-operating_systems");
-    if (!view) return;
-    view.addEventListener("click", handleClick);
-    view.addEventListener("submit", handleSubmit);
-    document.querySelector('[data-view="operating_systems"]')?.addEventListener("click", () => {
-      setTimeout(() => void renderOsView(), 0);
-    });
-  });
+  async function openOperatingSystemsView() {
+    osState.family = sessionStorage.getItem("LUMI.osFamily") || "Windows";
+    await renderOsView();
+  }
 
   async function loadCatalogue() {
     if (!osState.catalogue) osState.catalogue = await osApi("GET", "/api/v5/os/catalogue");
@@ -34,6 +29,7 @@
   async function renderOsView() {
     const view = document.getElementById("view-operating_systems");
     if (!view) return;
+    view.dataset.osWorkspaceOwner = "delegated";
     let catalogue;
     try {
       catalogue = await loadCatalogue();
@@ -84,8 +80,11 @@
   }
 
   async function handleClick(event) {
+    if (!event.target.closest("#view-operating_systems")) return;
     const familyButton = event.target.closest("[data-os-family]");
     if (familyButton) {
+      event.preventDefault();
+      event.stopPropagation();
       osState.family = familyButton.dataset.osFamily;
       sessionStorage.setItem("LUMI.osFamily", osState.family);
       osState.results = [];
@@ -94,6 +93,8 @@
     }
     const actionButton = event.target.closest("[data-os-action]");
     if (!actionButton) return;
+    event.preventDefault();
+    event.stopPropagation();
     const action = actionButton.dataset.osAction;
     if (action === "clear") {
       osState.results = [];
@@ -111,6 +112,7 @@
   async function handleSubmit(event) {
     if (event.target.id !== "os-catalogue-form") return;
     event.preventDefault();
+    event.stopPropagation();
     const data = Object.fromEntries(new FormData(event.target).entries());
     osState.loading = true;
     updateResults();
@@ -250,4 +252,8 @@
   function titleCase(value) { return String(value || "").replace(/_/g, " ").replace(/\b\w/g, character => character.toUpperCase()); }
   function osFmtBytes(value) { const size = Number(value || 0); if (size >= 1073741824) return `${(size / 1073741824).toFixed(2)} GB`; if (size >= 1048576) return `${(size / 1048576).toFixed(1)} MB`; return `${Math.round(size / 1024)} KB`; }
   function osEsc(value) { return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character])); }
+
+  document.addEventListener("click", handleClick, true);
+  document.addEventListener("submit", handleSubmit, true);
+  window.LumiOperatingSystems = Object.freeze({ open: openOperatingSystemsView });
 })();

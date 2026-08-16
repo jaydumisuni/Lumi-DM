@@ -97,8 +97,9 @@
   }
 
   function maybeShowExtensionNotice() {
-    if (!window.electronApp?.isElectron || localStorage.getItem(EXTENSION_PROMPT_KEY) === "true") return;
-    setTimeout(() => showExtensionNotice(true), 900);
+    // Browser Extension remains available from the gear menu. Do not place a
+    // modal over the application on first launch, especially while the
+    // extension package is not bundled in the release.
   }
 
   function showExtensionNotice(firstLaunch) {

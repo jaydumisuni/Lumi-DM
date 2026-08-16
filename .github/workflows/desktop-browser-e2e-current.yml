@@ -1,0 +1,36 @@
+name: Lumi Desktop Browser E2E Current
+
+on:
+  push:
+    branches:
+      - fix/full-desktop-interaction-contract
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-e2e-current:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Lumi and Chromium proof dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest playwright
+          python -m pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Full desktop browser interaction sweep
+        run: |
+          python -m pytest -q tests/test_desktop_browser_e2e_v4.py -s
