@@ -1,24 +1,5 @@
-"""Lumi correction campaign runtime layer.
+"""Lumi issue-#8 correction modules.
 
-This package owns the post-RC architectural corrections from issue #8. It is
-installed after the existing V4/V5/V6 services so it can converge old surfaces
-onto one Runtime without forking another engine.
+Composition is intentionally owned by ``server.py`` so this package initializer
+stays side-effect free and cannot become a high-blast-radius service locator.
 """
-from .runtime_contract import install_correction_campaign as _install_runtime_contract
-from .desktop_auth import install_desktop_auth
-from .connection_contract import install_connection_contract
-from .media_contract import install_media_contract
-from .surface_contract import install_surface_contract
-from .remote_contract import install_remote_contract
-
-
-def install_correction_campaign(app) -> None:
-    _install_runtime_contract(app)
-    install_desktop_auth(app)
-    install_connection_contract(app)
-    install_media_contract(app)
-    install_surface_contract(app)
-    install_remote_contract(app)
-
-
-__all__ = ["install_correction_campaign"]
