@@ -150,7 +150,8 @@ def test_browser_capture_uses_existing_widget_and_inactive_runtime_queue() -> No
     assert "active=False" in surface
     assert "browser.capture.widget_pending" in surface
     assert 'task.status = TaskStatus.QUEUED.value' in surface
-    assert 'document.querySelector(\'[data-tab="queued"]\')?.click()' in native
+    assert "executeJavaScript" in native
+    assert 'data-tab="queued"' in native
     assert "forcedPendingExpansion" in native
     assert "surfaceExpanded = false" in native
     # Legacy setup code may remain for old clients, but the canonical v7 path
