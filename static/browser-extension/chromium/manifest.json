@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Lumi Download Manager",
-  "version": "1.2.0",
-  "description": "Safely stage browser downloads and detected media in Lumi DM before they start.",
+  "version": "2.0.0",
+  "description": "Browser capture surface for the local Lumi Runtime.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8zkdhhC2jXsGkcfN5E4nnj1lZQ1pRNKbs6Zg8koeCRZVTyUOtgokeklAK2+pKOQsyQ93OyjfvVuRWT78y009KSY4XWJAHOAWPRMEbB1hN5gMKxzDhp7P4jDFOtGRwaOJ9XuH0jGATT5Z4Osn1gO7LHsFDqGPqmy1pa6CdDyINDHN8mIOrBLILjSQf4xPOThl0psAPnpY+QoNW/bwWEoeRsPUpXvRK8mMxD5+CqqstSIGy2D7oljEi4d+GEfeOwAf5iNZOYEwFSh7Rs+t48J4/8fTEkfL4y2WbzvRIPRlZAYrTUauhLPmRRNYWsyzJNC9kEdqj73GJhaj8f9VvNmwIDAQAB",
   "permissions": [
     "activeTab",
     "downloads",
@@ -13,6 +14,8 @@
   "host_permissions": [
     "http://127.0.0.1:7000/*",
     "http://localhost:7000/*",
+    "ws://127.0.0.1:7001/*",
+    "ws://localhost:7001/*",
     "http://*/*",
     "https://*/*"
   ],
@@ -22,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
+      "js": ["content-v2.js"],
       "run_at": "document_idle",
       "all_frames": false
     }
