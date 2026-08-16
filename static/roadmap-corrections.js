@@ -24,6 +24,11 @@
       #view-finished:not(.active),#view-queues:not(.active),#view-categories:not(.active),
       #view-grabber:not(.active),#view-firmware:not(.active),#view-operating_systems:not(.active),
       #view-settings:not(.active),#view-diagnostics:not(.active){pointer-events:none}
+      .lumi-card{position:relative}
+      .lumi-card-contract-menu{position:absolute;z-index:40;right:14px;top:50px;min-width:150px;padding:6px;border:1px solid var(--lumi-line,rgba(116,135,166,.2));border-radius:9px;background:var(--lumi-panel,#08111d);box-shadow:0 16px 38px rgba(0,0,0,.28);display:grid;gap:3px}
+      .lumi-card-contract-menu button{border:0;border-radius:7px;background:transparent;color:inherit;text-align:left;padding:8px 10px;cursor:pointer}
+      .lumi-card-contract-menu button:hover{background:rgba(126,53,220,.12)}
+      .lumi-card-contract-menu button.danger{color:var(--lumi-red,#ff5360)}
     `;
     document.head.appendChild(style);
   }
@@ -69,6 +74,84 @@
   }
   new MutationObserver(() => lockConnectionSetting()).observe(document.documentElement, { childList: true, subtree: true });
   lockConnectionSetting();
+
+  function closeQueueMenus() {
+    document.querySelectorAll(".lumi-card-contract-menu").forEach(menu => menu.remove());
+    document.querySelectorAll('.lumi-card-menu[data-contract-ready="queue-menu"]')
+      .forEach(button => button.setAttribute("aria-expanded", "false"));
+  }
+
+  function decorateQueueMenus(root = document) {
+    const buttons = [];
+    if (root.matches?.(".lumi-card .lumi-card-menu")) buttons.push(root);
+    root.querySelectorAll?.(".lumi-card .lumi-card-menu").forEach(button => buttons.push(button));
+    buttons.forEach(button => {
+      if (button.dataset.action || button.dataset.contractReady === "queue-menu") return;
+      const card = button.closest(".lumi-card");
+      if (!card?.querySelector('[data-action="toggle-queue"]')) return;
+      button.type = "button";
+      button.dataset.contractReady = "queue-menu";
+      button.setAttribute("aria-haspopup", "menu");
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-label", "Queue actions");
+    });
+  }
+
+  function toggleQueueMenu(button) {
+    const card = button.closest(".lumi-card");
+    if (!card) return;
+    const existing = card.querySelector(".lumi-card-contract-menu");
+    const opening = !existing;
+    closeQueueMenus();
+    if (!opening) return;
+
+    const toggle = card.querySelector('[data-action="toggle-queue"]');
+    if (!toggle) return;
+    const remove = card.querySelector('[data-action="delete-queue"]');
+    const menu = document.createElement("div");
+    menu.className = "lumi-card-contract-menu";
+    menu.setAttribute("role", "menu");
+
+    const addAction = (source, label, danger = false) => {
+      if (!source) return;
+      const action = document.createElement("button");
+      action.type = "button";
+      action.setAttribute("role", "menuitem");
+      action.dataset.action = source.dataset.action;
+      action.dataset.id = source.dataset.id || "";
+      if (source.dataset.active !== undefined) action.dataset.active = source.dataset.active;
+      action.textContent = label;
+      if (danger) action.classList.add("danger");
+      menu.appendChild(action);
+    };
+
+    addAction(toggle, toggle.dataset.active === "true" ? "Pause queue" : "Resume queue");
+    addAction(remove, "Delete queue", true);
+    card.appendChild(menu);
+    button.setAttribute("aria-expanded", "true");
+  }
+
+  const queueHost = document.getElementById("view-queues");
+  if (queueHost) {
+    new MutationObserver(records => {
+      for (const record of records) {
+        record.addedNodes.forEach(node => {
+          if (node instanceof Element) decorateQueueMenus(node);
+        });
+      }
+    }).observe(queueHost, { childList: true, subtree: true });
+    decorateQueueMenus(queueHost);
+  }
+  document.addEventListener("click", event => {
+    const queueMenu = event.target.closest('.lumi-card-menu[data-contract-ready="queue-menu"]');
+    if (queueMenu) {
+      event.preventDefault();
+      toggleQueueMenu(queueMenu);
+      return;
+    }
+    if (!event.target.closest(".lumi-card-contract-menu")) closeQueueMenus();
+  });
+  document.addEventListener("keydown", event => { if (event.key === "Escape") closeQueueMenus(); });
 
   function providerSupports(provider, brand, exactProviders) {
     if (!provider) return false;
