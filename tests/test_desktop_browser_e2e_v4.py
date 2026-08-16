@@ -172,7 +172,74 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
                 click_view(page, view)
 
             technician = page.locator(".nav-group-toggle")
+            page.evaluate("""
+                () => {
+                  const probe = [];
+                  window.__lumiTechnicianProbe = probe;
+                  const snapshot = (phase, extra = {}) => {
+                    const group = document.querySelector('.nav-group');
+                    const toggle = group?.querySelector('.nav-group-toggle');
+                    probe.push({
+                      phase,
+                      aria: toggle?.getAttribute('aria-expanded') ?? null,
+                      groupClass: group?.className ?? null,
+                      navigationReady: document.documentElement.dataset.lumiNavigationReady ?? null,
+                      roadmapInteraction: document.documentElement.dataset.lumiRoadmapInteraction ?? null,
+                      bound: group?.dataset.bound ?? null,
+                      ...extra,
+                    });
+                  };
+                  snapshot('before');
+                  const group = document.querySelector('.nav-group');
+                  const toggle = group?.querySelector('.nav-group-toggle');
+                  if (group && toggle) {
+                    const observer = new MutationObserver(records => {
+                      for (const record of records) {
+                        snapshot(`mutation:${record.attributeName}`, { oldValue: record.oldValue });
+                      }
+                    });
+                    observer.observe(group, { attributes: true, attributeOldValue: true, attributeFilter: ['class'] });
+                    observer.observe(toggle, { attributes: true, attributeOldValue: true, attributeFilter: ['aria-expanded'] });
+                    window.__lumiTechnicianObserver = observer;
+                    window.addEventListener('click', event => {
+                      if (event.target.closest?.('.nav-group-toggle')) snapshot('window-capture');
+                    }, { capture: true, once: true });
+                    document.addEventListener('click', event => {
+                      if (event.target.closest?.('.nav-group-toggle')) snapshot('document-capture-late');
+                    }, { capture: true, once: true });
+                    toggle.addEventListener('click', () => snapshot('target-late'), { once: true });
+                    document.addEventListener('click', event => {
+                      if (event.target.closest?.('.nav-group-toggle')) snapshot('document-bubble-late');
+                    }, { once: true });
+                    window.addEventListener('click', event => {
+                      if (event.target.closest?.('.nav-group-toggle')) snapshot('window-bubble-late');
+                    }, { once: true });
+                  }
+                }
+            """)
             technician.click()
+            page.wait_for_timeout(50)
+            probe = page.evaluate("""
+                () => {
+                  const group = document.querySelector('.nav-group');
+                  const toggle = group?.querySelector('.nav-group-toggle');
+                  window.__lumiTechnicianProbe?.push({
+                    phase: 'post-click-task',
+                    aria: toggle?.getAttribute('aria-expanded') ?? null,
+                    groupClass: group?.className ?? null,
+                    navigationReady: document.documentElement.dataset.lumiNavigationReady ?? null,
+                    roadmapInteraction: document.documentElement.dataset.lumiRoadmapInteraction ?? null,
+                    bound: group?.dataset.bound ?? null,
+                  });
+                  window.__lumiTechnicianObserver?.disconnect();
+                  return window.__lumiTechnicianProbe || [];
+                }
+            """)
+            print("TECHNICIAN_EVENT_PROBE=", probe)
+            if page_errors:
+                print("TECHNICIAN_PAGE_ERRORS=", page_errors)
+            if console_errors:
+                print("TECHNICIAN_CONSOLE_ERRORS=", console_errors)
             expect(technician).to_have_attribute("aria-expanded", "true")
             expect(page.locator(".nav-group .nav-submenu")).to_be_visible()
 
