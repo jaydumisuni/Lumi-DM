@@ -13,6 +13,34 @@
     "/static/toast-contract.js",
   ];
 
+  // Navigation is a shell invariant, so it must not wait for the dynamically
+  // loaded presentation/correction modules. This script is parsed after the
+  // sidebar markup exists; bind the Technician disclosure immediately and mark
+  // it owned so main-ui-core's compatibility binder becomes a no-op.
+  function installEarlyNavigationContract() {
+    const group = document.querySelector(".nav-group");
+    const toggle = group?.querySelector(".nav-group-toggle");
+    if (!group || !toggle || group.dataset.bound === "true") return;
+    group.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.addEventListener("click", event => {
+      event.preventDefault();
+      const open = !group.classList.contains("open");
+      group.classList.toggle("open", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    group.querySelectorAll(".nav-submenu .nav-item").forEach(item => item.addEventListener("click", () => {
+      group.classList.add("open");
+      toggle.setAttribute("aria-expanded", "true");
+    }));
+    document.querySelectorAll(".nav-list > .nav-item").forEach(item => item.addEventListener("click", () => {
+      group.classList.remove("open");
+      toggle.setAttribute("aria-expanded", "false");
+    }));
+    group.dataset.bound = "true";
+    document.documentElement.dataset.lumiNavigationReady = "1";
+  }
+
   function loadModule(source) {
     return new Promise((resolve, reject) => {
       const script = document.createElement("script");
@@ -59,6 +87,7 @@
     }, 0);
   }
 
+  installEarlyNavigationContract();
   modules.reduce((promise, source) => promise.then(() => loadModule(source)), Promise.resolve())
     .then(install)
     .catch(error => {
