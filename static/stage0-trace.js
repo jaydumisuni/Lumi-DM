@@ -3,9 +3,9 @@
 /*
  * Lumi Stage-0 physical interaction tracer.
  *
- * This file is diagnostic-only. It records action boundaries and correlation IDs;
- * it deliberately does not record URLs, form values, credentials, filenames,
- * browser content, or media/session data.
+ * Diagnostic-only: records action boundaries and correlation IDs. It does not
+ * record URLs with query strings, form values, credentials, filenames, browser
+ * content, request bodies, media data, or session material.
  */
 (() => {
   let activeTraceId = "";
@@ -72,10 +72,8 @@
 
   function transportSent(method, route) {
     const traceId = current() || newTraceId();
-    if (!activeTraceId) {
-      activeTraceId = traceId;
-      activeUntil = Date.now() + 5000;
-    }
+    activeTraceId = traceId;
+    activeUntil = Date.now() + 5000;
     emit("TRANSPORT_SENT", { method: String(method || "GET"), path: pathOnly(route) }, traceId);
     return traceId;
   }
@@ -87,6 +85,36 @@
       traceId,
     );
   }
+
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async function stage0Fetch(input, init = {}) {
+    const requestUrl = typeof input === "string" || input instanceof URL ? String(input) : String(input?.url || "");
+    let parsed;
+    try { parsed = new URL(requestUrl, location.href); }
+    catch (_) { return nativeFetch(input, init); }
+
+    const sameOriginApi = parsed.origin === location.origin && parsed.pathname.startsWith("/api/");
+    if (!sameOriginApi) return nativeFetch(input, init);
+
+    const method = String(init.method || input?.method || "GET").toUpperCase();
+    const traceId = transportSent(method, parsed.pathname);
+    const headers = new Headers(input instanceof Request ? input.headers : undefined);
+    new Headers(init.headers || {}).forEach((value, key) => headers.set(key, value));
+    headers.set("X-Lumi-Trace-Id", traceId);
+
+    try {
+      const response = await nativeFetch(input, { ...init, headers });
+      responseReceived(method, parsed.pathname, response.status, response.ok, traceId);
+      return response;
+    } catch (error) {
+      emit(
+        "TRANSPORT_ERROR",
+        { method, path: parsed.pathname, ok: false, reason: String(error?.message || error || "fetch failed") },
+        traceId,
+      );
+      throw error;
+    }
+  };
 
   document.addEventListener("click", event => {
     if (!event.isTrusted) return;
