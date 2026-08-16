@@ -2,6 +2,7 @@
 
 const { app, BrowserWindow } = require("electron");
 const http = require("http");
+require("./roadmap-surfaces");
 
 function request(method, route, body = null) {
   return new Promise((resolve, reject) => {
