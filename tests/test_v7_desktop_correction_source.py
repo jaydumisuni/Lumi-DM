@@ -102,6 +102,18 @@ def test_theme_capture_only_owns_explicit_theme_buttons() -> None:
     assert 'event.target.closest("[data-lumi-theme]")' not in theme
 
 
+def test_queue_action_menu_has_focused_owner_without_reactivating_legacy_capture() -> None:
+    correction = text("static/roadmap-corrections.js")
+
+    assert "function decorateQueueMenus" in correction
+    assert 'button.dataset.contractReady = "queue-menu"' in correction
+    assert 'document.getElementById("view-queues")' in correction
+    assert 'event.target.closest(\'.lumi-card-menu[data-contract-ready="queue-menu"]\')' in correction
+    assert 'action.dataset.action = source.dataset.action' in correction
+    assert 'action.dataset.id = source.dataset.id || ""' in correction
+    assert "stopImmediatePropagation" not in correction
+
+
 def test_same_pc_extension_is_fixed_identity_auto_trust_and_valid_mv3() -> None:
     manifest = json.loads(text("static/browser-extension/chromium/manifest.json"))
     background = text("static/browser-extension/chromium/background.js")
