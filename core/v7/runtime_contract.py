@@ -11,13 +11,12 @@ import ipaddress
 import os
 from pathlib import Path
 import secrets
-import types
 from typing import Any
 import uuid
 
 from flask import Blueprint, Flask, jsonify, request
 
-from core.v2.models import TaskStatus, TaskType, utc_now
+from core.v2.models import RequestEnvelope, TaskStatus, TaskType, utc_now
 from core.v2.wave2 import services as wave2_services
 from core.v4.api import services as v4_services
 from core.v5.api import V5Services
@@ -179,14 +178,51 @@ def _handoffs(app: Flask):
     return services.handoffs
 
 
+def _browser_request_envelope(
+    source: str,
+    params: dict[str, Any],
+    browser: dict[str, Any],
+) -> RequestEnvelope:
+    """Build replay evidence from the active extension, never a desktop profile.
+
+    The extension already owns the signed-in/dynamic browser session. Asking the
+    desktop Runtime to reload a named browser profile would split authority and
+    is exactly what caused the physical RC to report authentication required.
+    Explicit replay headers/references may be supplied by a trusted browser
+    surface, but `browser_profile` is always cleared for this same-PC path.
+    """
+    supplied = params.get("request_envelope")
+    supplied = supplied if isinstance(supplied, dict) else {}
+    envelope = RequestEnvelope.from_dict({
+        **supplied,
+        "url": source,
+        "final_url": str(params.get("final_url") or supplied.get("final_url") or source),
+        "original_page": str(
+            browser.get("url")
+            or params.get("referrer")
+            or supplied.get("original_page")
+            or ""
+        ),
+        "suggested_filename": str(
+            params.get("filename")
+            or supplied.get("suggested_filename")
+            or ""
+        ),
+        "browser_profile": "",
+    })
+    envelope.browser_profile = ""
+    return envelope
+
+
 def _browser_capture(app: Flask, params: dict[str, Any]) -> dict[str, Any]:
-    active = wave2_services()
-    runtime = active.runtime
+    runtime = _runtime()
     source = str(params.get("source") or params.get("url") or "").strip()
     if not source.startswith(("http://", "https://")):
         raise ValueError("browser capture requires an HTTP or HTTPS source")
     target = Path(str(params.get("target_dir") or _default_target(runtime)))
     target.mkdir(parents=True, exist_ok=True)
+    temporary = Path(str(params.get("temp_dir") or runtime.data_dir / "temporary"))
+    temporary.mkdir(parents=True, exist_ok=True)
     kind = str(params.get("type") or "auto").lower()
     browser = params.get("browser") if isinstance(params.get("browser"), dict) else {}
     media = params.get("media") if isinstance(params.get("media"), dict) else {}
@@ -211,28 +247,22 @@ def _browser_capture(app: Flask, params: dict[str, Any]) -> dict[str, Any]:
             start_paused=True,
         )
     else:
-        result = active.start_http(
+        # Browser-session truth has already been observed by the extension. Go
+        # directly to the canonical Runtime with that replay envelope instead of
+        # invoking V2's saved-browser-profile capture service.
+        task = runtime.create_http_task(
             source,
             target_dir=target,
-            temp_dir=Path(str(params.get("temp_dir") or runtime.data_dir / "temporary")),
+            temp_dir=temporary,
             filename=str(params.get("filename") or ""),
             connections=CANONICAL_HTTP_CONNECTIONS,
             max_speed_bps=int(params.get("max_speed_bps") or 0),
             queue_id=str(params.get("queue_id") or "default"),
             priority=int(params.get("priority") or 0),
             start_paused=True,
-            request_envelope={
-                "url": source,
-                "final_url": str(params.get("final_url") or source),
-                "original_page": str(browser.get("url") or params.get("referrer") or ""),
-                "browser_profile": "chromium",
-                "suggested_filename": str(params.get("filename") or ""),
-            },
+            request_envelope=_browser_request_envelope(source, params, browser),
             duplicate_policy="rename",
         )
-        task = runtime.get_task(str(result.get("id") or ""))
-        if task is None:
-            raise RuntimeError("Runtime did not persist the browser capture")
 
     task.status = TaskStatus.STAGED.value
     task.metadata.update({
@@ -300,7 +330,10 @@ def _browser_release(app: Flask, params: dict[str, Any]) -> dict[str, Any]:
     handoff_id = str(task.metadata.get("browser_handoff_id") or "")
     if handoff_id:
         _handoffs(app).decide(handoff_id, "browser", "Browser retained the download")
-    if task.status in {TaskStatus.STAGED.value, TaskStatus.PAUSED.value}:
+    # A canonical pending capture is deliberately represented as QUEUED in an
+    # inactive Runtime queue so the existing widget can display it. Pending
+    # metadata, not a legacy status string, is therefore the deletion authority.
+    if task.metadata.get("browser_capture_pending"):
         runtime.store.delete_task(task.id)
     return {"ok": True, "handoff_id": handoff_id}
 
