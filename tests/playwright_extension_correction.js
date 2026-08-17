@@ -146,11 +146,14 @@ async function main() {
     const rows = host.locator("button.row");
     await rows.first().waitFor({ state: "visible", timeout: 20000 });
     const count = await rows.count();
-    console.log("PLAYWRIGHT_EXTENSION_VARIANTS", count);
-    assert(count >= 14, `Media UI truncated or failed to resolve browser variants: ${count}`);
+    const rowTexts = await rows.allInnerTexts();
+    console.log("PLAYWRIGHT_EXTENSION_VARIANTS", count, JSON.stringify(rowTexts));
+    assert(count === 14, `Media UI must render exactly the 14 fixture media resources, got ${count}: ${JSON.stringify(rowTexts)}`);
+    assert(new Set(rowTexts).size === rowTexts.length, `Media UI contains duplicate visible rows: ${JSON.stringify(rowTexts)}`);
     const panelText = await host.locator(".panel").innerText();
     assert(!panelText.includes("authentication required"), "Media panel is still hitting the Runtime as an unauthenticated app");
     assert(!panelText.includes("Finding downloadable media…"), "Media panel remained in a non-terminal spinner state");
+    assert(panelText.includes("14 downloadable variants · 1 subtitle track"), `Media summary is not truthful: ${panelText}`);
 
     await page.screenshot({ path: path.join(ARTIFACTS, "lumi-extension-media-panel.png"), fullPage: false });
     await rows.first().click();
