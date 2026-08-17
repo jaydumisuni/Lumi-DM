@@ -9,6 +9,9 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from typing import Any
 import hashlib
+import re
+from urllib.parse import urlparse
+from pathlib import PurePosixPath
 
 from core.v3.media import MediaInspector
 
@@ -21,6 +24,8 @@ TERMINAL_STATES = {
     "unsupported_protected",
     "error",
 }
+_QUALITY_TOKEN = re.compile(r"(?<!\d)(\d{3,4})p(?!\d)", re.IGNORECASE)
+_DIMENSION_TOKEN = re.compile(r"(?<!\d)(\d{3,4})[xX](\d{3,4})(?!\d)")
 
 
 def _number(value: Any) -> float:
@@ -38,6 +43,41 @@ def _variant_id(value: dict[str, Any]) -> str:
     return hashlib.sha1(raw.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
 
+def _url_quality(url: str) -> tuple[int, int]:
+    """Recover explicit per-source dimensions without inventing metadata.
+
+    HTML <source> alternatives share one parent <video>, so the browser's
+    ``videoHeight`` describes only the active stream. If an alternative URL
+    explicitly names its own 720p/1080p or WxH quality, that source-local token
+    is stronger evidence than the parent's active dimensions. Otherwise the
+    caller keeps the observed values unchanged.
+    """
+    try:
+        path = urlparse(url).path
+    except Exception:
+        path = url
+    dimension = _DIMENSION_TOKEN.search(path)
+    if dimension:
+        width = int(dimension.group(1))
+        height = int(dimension.group(2))
+        if 120 <= height <= 4320 and 160 <= width <= 8192:
+            return width, height
+    quality = _QUALITY_TOKEN.search(path)
+    if quality:
+        height = int(quality.group(1))
+        if 120 <= height <= 4320:
+            return 0, height
+    return 0, 0
+
+
+def _url_container(url: str) -> str:
+    try:
+        suffix = PurePosixPath(urlparse(url).path).suffix.lower().lstrip(".")
+    except Exception:
+        suffix = ""
+    return suffix if suffix in {"mp4", "webm", "m4v", "mov", "mkv", "m4a", "mp3", "aac", "ogg", "opus", "wav", "m3u8", "mpd"} else ""
+
+
 def _browser_variant(item: dict[str, Any]) -> dict[str, Any] | None:
     url = str(item.get("url") or "").strip()
     if not url.startswith(("http://", "https://")):
@@ -45,14 +85,20 @@ def _browser_variant(item: dict[str, Any]) -> dict[str, Any] | None:
     kind = str(item.get("kind") or "direct").lower()
     width = int(_number(item.get("width")))
     height = int(_number(item.get("height")))
+    source_width, source_height = _url_quality(url)
+    if source_height:
+        height = source_height
+        if source_width:
+            width = source_width
     fps = _number(item.get("fps"))
     bitrate = int(_number(item.get("bitrate") or item.get("bandwidth")))
+    container = str(item.get("container") or item.get("ext") or "").lower() or _url_container(url)
     value = {
         "source": "browser",
         "format_id": str(item.get("format_id") or ""),
         "kind": kind,
         "url": url,
-        "container": str(item.get("container") or item.get("ext") or "").lower(),
+        "container": container,
         "width": width,
         "height": height,
         "fps": fps,
@@ -66,6 +112,12 @@ def _browser_variant(item: dict[str, Any]) -> dict[str, Any] | None:
         "video_only": bool(item.get("video_only")),
         "hdr": str(item.get("hdr") or item.get("dynamic_range") or ""),
     }
+    # If the browser supplied a generic parent-video label, keep the normalized
+    # source-local quality visible instead of perpetuating the active stream's
+    # dimensions across every alternative.
+    label = value["label"].lower()
+    if source_height and ("page video" in label or "browser resource" in label):
+        value["label"] = f"{source_height}p"
     value["id"] = _variant_id(value)
     return value
 
