@@ -6,6 +6,7 @@ const path = require("path");
 
 const BASE = process.env.LUMI_PLAYWRIGHT_BASE || "http://127.0.0.1:7000";
 const ARTIFACTS = path.resolve(process.env.LUMI_PLAYWRIGHT_ARTIFACTS || "artifacts");
+const TARGET = { width: 920, height: 560 };
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -21,16 +22,26 @@ async function assertShell(page, label) {
     body: document.body.scrollHeight - document.body.clientHeight,
     viewport: [innerWidth, innerHeight],
   }));
-  assert(geometry.viewport[0] === 920 && geometry.viewport[1] === 650, `${label}: wrong viewport ${geometry.viewport}`);
+  assert(geometry.viewport[0] === TARGET.width && geometry.viewport[1] === TARGET.height, `${label}: wrong viewport ${geometry.viewport}`);
   assert(geometry.html <= 1, `${label}: document scroll ${geometry.html}px`);
   assert(geometry.body <= 1, `${label}: body scroll ${geometry.body}px`);
+}
+
+async function assertSidebarFits(page, label) {
+  const result = await page.locator(".nav-list").evaluate(nav => ({
+    overflow: nav.scrollHeight - nav.clientHeight,
+    top: Math.round(nav.getBoundingClientRect().top),
+    bottom: Math.round(nav.getBoundingClientRect().bottom),
+  }));
+  assert(result.overflow <= 1, `${label}: sidebar navigation requires ${result.overflow}px of hidden scrolling`);
+  return result;
 }
 
 async function main() {
   fs.mkdirSync(ARTIFACTS, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: "chromium" });
   try {
-    const context = await browser.newContext({ viewport: { width: 920, height: 650 }, deviceScaleFactor: 1 });
+    const context = await browser.newContext({ viewport: TARGET, deviceScaleFactor: 1 });
     await context.addInitScript(() => {
       window.__lumiVisualActions = [];
       Object.defineProperty(window, "electronApp", {
@@ -42,8 +53,8 @@ async function main() {
           openPath: async value => ({ ok: true, value }),
           openExternal: async value => ({ ok: true, value }),
           prepareBrowserExtension: async () => ({ ok: true, path: "C:\\Users\\Lumi\\Documents\\Lumi DM Browser Extension" }),
-          getDesktopSettings: async () => ({ corner: "bottom-right", displayId: "primary", margin: 12, scale: 1, visible: true, showUpload: false, displays: [{ id: "primary", label: "Primary · 920×650" }] }),
-          saveDesktopSettings: async value => ({ ...value, displays: [{ id: "primary", label: "Primary · 920×650" }] }),
+          getDesktopSettings: async () => ({ corner: "bottom-right", displayId: "primary", margin: 12, scale: 1, visible: true, showUpload: false, displays: [{ id: "primary", label: "Primary · 920×560" }] }),
+          saveDesktopSettings: async value => ({ ...value, displays: [{ id: "primary", label: "Primary · 920×560" }] }),
           showWidget: () => window.__lumiVisualActions.push("show-widget"),
           checkForUpdates: async () => ({ available: false, message: "Visual sweep" }),
           getConnectionCapacity: async () => ({ state: "complete", result: { download_mbps: 100, upload_mbps: 40, latency_ms: 6, provider: "fixture" } }),
@@ -60,8 +71,12 @@ async function main() {
     await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.locator("#app-shell").waitFor({ state: "visible", timeout: 20000 });
     await page.waitForFunction(() => document.documentElement.dataset.lumiRoadmapInteraction === "1");
+    await page.waitForFunction(() => Boolean(document.querySelector('link[data-lumi-compact-desktop="1"]')));
 
     await assertShell(page, "overview");
+    const overviewContent = await page.locator("#content").evaluate(content => content.scrollHeight - content.clientHeight);
+    assert(overviewContent <= 2, `overview: content requires ${overviewContent}px of scrolling`);
+    await assertSidebarFits(page, "sidebar collapsed");
     await screenshot(page, "visual-01-overview.png");
 
     const topTargets = ["#ttg-bell", "#ttg-gear", '[data-window-action="minimize"]', '[data-window-action="maximize"]', '[data-window-action="close"]'];
@@ -105,6 +120,11 @@ async function main() {
     const technician = page.locator(".nav-group-toggle");
     await technician.click();
     await page.locator(".nav-group .nav-submenu").waitFor({ state: "visible" });
+    const expandedSidebar = await assertSidebarFits(page, "sidebar technician expanded");
+    for (const selector of ['[data-view="firmware"]', '[data-view="operating_systems"]']) {
+      const box = await page.locator(`.nav-submenu ${selector}`).boundingBox();
+      assert(box && box.y >= expandedSidebar.top && box.y + box.height <= expandedSidebar.bottom + 1, `${selector} is outside the visible sidebar`);
+    }
     await screenshot(page, "visual-11-technician-menu.png");
 
     await page.click('[data-view="firmware"]');
@@ -133,7 +153,7 @@ async function main() {
     const actions = await page.evaluate(() => window.__lumiVisualActions.slice());
     assert(actions.includes("minimize") && actions.includes("maximize") && actions.includes("close"), `native bridge actions missing: ${actions}`);
 
-    console.log("LUMI_VISUAL_SWEEP_PASS", JSON.stringify({ screenshots: 14, actions }));
+    console.log("LUMI_VISUAL_SWEEP_PASS", JSON.stringify({ viewport: TARGET, screenshots: 14, actions }));
   } finally {
     await browser.close();
   }
