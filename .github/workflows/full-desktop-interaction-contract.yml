@@ -45,7 +45,7 @@ jobs:
       - name: JavaScript syntax proof
         run: |
           set -eu
-          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*_correction.js; do node --check "$file"; done
+          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*_correction.js tests/playwright_visual_sweep.js; do node --check "$file"; done
 
       - name: Full desktop interaction contract
         run: |
@@ -53,7 +53,8 @@ jobs:
             tests/test_full_desktop_interaction_contract.py \
             tests/test_pr7_review_closure.py \
             tests/test_stage0_packaged_trace_contract.py \
-            tests/test_v7_desktop_correction_source.py
+            tests/test_v7_desktop_correction_source.py \
+            tests/test_issue8_physical_recovery_source.py
           python -m pytest -q \
             tests/test_desktop_release_contract_current.py \
             tests/test_desktop_acceptance_profile.py
@@ -112,6 +113,9 @@ jobs:
 
       - name: Playwright compact main renderer proof
         run: node tests/playwright_main_correction.js
+
+      - name: Playwright visual and button interaction sweep
+        run: node tests/playwright_visual_sweep.js
 
       - name: Playwright real MV3 extension proof
         run: node tests/playwright_extension_correction.js
