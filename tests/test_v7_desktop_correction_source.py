@@ -55,7 +55,7 @@ def test_main_window_is_compact_and_geometry_has_one_native_owner() -> None:
     contract = text("electron/window-contract.js")
 
     assert "width: 920" in main
-    assert "height: 650" in main
+    assert "height: 560" in main
     assert "minWidth: 720" in main
     assert "minHeight: 500" in main
     assert "setMinimumSize(1024" not in contract
