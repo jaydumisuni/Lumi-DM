@@ -1,0 +1,108 @@
+/* Lumi issue #8 compact desktop contract.
+   The 920x560 default matches the manager-class footprint established from the
+   physical IDM reference. CSS alone owns renderer geometry; long result views
+   may scroll inside .content, while the shell/sidebar and Overview do not. */
+@media (min-width:760px) and (max-width:980px) and (max-height:620px){
+  :root{--lumi-sidebar-width:190px}
+
+  .ttg-desktop .app-shell{grid-template-columns:var(--lumi-sidebar-width) minmax(0,1fr)}
+  .ttg-desktop .sidebar{width:var(--lumi-sidebar-width);min-width:var(--lumi-sidebar-width)}
+  .ttg-desktop .brand-block{
+    height:72px;min-height:72px;padding:3px 10px 2px 14px;gap:7px;
+  }
+  .ttg-desktop .brand-logo{width:38px;height:58px}
+  .ttg-desktop .brand-name{font-size:27px;line-height:.94}
+  .ttg-desktop .brand-sub{margin-top:4px;font-size:7px;letter-spacing:.01em}
+
+  .ttg-desktop .nav-list{
+    padding:2px 8px 3px;overflow:hidden;min-height:0;
+  }
+  .ttg-desktop .nav-item{
+    min-height:29px;height:29px;padding:3px 8px;gap:7px;border-radius:7px;font-size:10px;
+  }
+  .ttg-desktop .nav-item .lumi-nav-icon{width:16px;min-width:16px}
+  .ttg-desktop .nav-item .lumi-nav-icon svg{width:15px;height:15px}
+  .ttg-desktop .nav-item b{min-width:16px;padding:1px 4px;font-size:7px}
+  .ttg-desktop .nav-submenu{
+    padding-left:10px;margin-left:17px;border-left-color:rgba(121,137,168,.18);
+  }
+  .ttg-desktop .nav-submenu .nav-item{min-height:28px;height:28px}
+
+  .ttg-desktop .sidebar-footer{padding:4px 8px 6px}
+  .ttg-desktop .lumi-storage-card{padding:6px 8px 7px;border-radius:8px}
+  .ttg-desktop .lumi-storage-drive{
+    min-width:90px;height:25px;padding:0 23px 0 7px;border-radius:6px;font-size:9px;
+  }
+  .ttg-desktop .lumi-storage-body{
+    grid-template-columns:minmax(0,1fr) 46px;gap:7px;margin-top:5px;
+  }
+  .ttg-desktop .lumi-storage-label{font-size:7px}
+  .ttg-desktop .lumi-storage-free{margin-top:3px;font-size:17px}
+  .ttg-desktop .lumi-storage-total{margin-top:2px;font-size:7px}
+  .ttg-desktop .lumi-storage-ring{width:44px;height:44px}
+  .ttg-desktop .lumi-storage-ring::before{width:30px;height:30px}
+  .ttg-desktop .lumi-storage-ring strong{font-size:10px}
+  .ttg-desktop .lumi-storage-best{gap:5px;margin-top:5px;font-size:7px}
+
+  .ttg-desktop .topbar{
+    height:44px;min-height:44px;padding:0 10px;
+  }
+  .ttg-desktop .search-box{
+    width:230px;height:29px;padding:4px 8px;border-radius:8px;font-size:9px;
+  }
+  .ttg-desktop .content{padding:7px 8px 8px}
+
+  .ttg-desktop #view-overview{height:100%;min-height:0}
+  .ttg-desktop #view-overview .lumi-overview{
+    height:100%;min-height:0;gap:6px;
+    grid-template-rows:auto 64px minmax(0,1.2fr) minmax(0,.9fr);
+  }
+  .ttg-desktop #view-overview .lumi-overview-head h2{font-size:14px}
+  .ttg-desktop #view-overview .lumi-overview-head p{margin-top:1px;font-size:7px}
+  .ttg-desktop #view-overview .lumi-stat-grid{gap:5px}
+  .ttg-desktop #view-overview .lumi-stat{height:64px;padding:6px}
+  .ttg-desktop #view-overview .lumi-stat-icon{width:24px;height:24px;border-radius:6px}
+  .ttg-desktop #view-overview .lumi-stat-icon svg{width:14px;height:14px}
+  .ttg-desktop #view-overview .lumi-stat-copy small{font-size:6px}
+  .ttg-desktop #view-overview .lumi-stat-copy strong{margin-top:1px;font-size:15px}
+  .ttg-desktop #view-overview .lumi-stat-copy span{margin-top:1px;font-size:6px}
+  .ttg-desktop #view-overview .lumi-overview-row{gap:6px;grid-template-columns:minmax(0,1.15fr) minmax(205px,.85fr)}
+  .ttg-desktop #view-overview .lumi-panel-head{min-height:24px;padding:4px 7px 3px}
+  .ttg-desktop #view-overview .lumi-panel-head h3{font-size:8px}
+  .ttg-desktop #view-overview .lumi-panel-head .btn{padding:2px 5px;font-size:7px}
+  .ttg-desktop #view-overview .lumi-speed-body{padding:0 7px 4px}
+  .ttg-desktop #view-overview .lumi-speed-value{font-size:16px}
+  .ttg-desktop #view-overview .lumi-speed-sub{font-size:6px}
+  .ttg-desktop #view-overview .lumi-bars{height:36px;gap:2px;margin:3px 0}
+  .ttg-desktop #view-overview .lumi-speed-metrics{padding-top:3px}
+  .ttg-desktop #view-overview .lumi-speed-metric{gap:3px}
+  .ttg-desktop #view-overview .lumi-speed-metric svg{width:11px;height:11px}
+  .ttg-desktop #view-overview .lumi-speed-metric b{font-size:7px}
+  .ttg-desktop #view-overview .lumi-speed-metric small{font-size:6px}
+  .ttg-desktop #view-overview .lumi-status-wrap{grid-template-columns:65px minmax(0,1fr);gap:5px;padding:5px 6px}
+  .ttg-desktop #view-overview .lumi-donut{width:62px;height:62px}
+  .ttg-desktop #view-overview .lumi-donut::before{width:40px;height:40px}
+  .ttg-desktop #view-overview .lumi-donut-center strong{font-size:12px}
+  .ttg-desktop #view-overview .lumi-donut-center span{font-size:6px}
+  .ttg-desktop #view-overview .lumi-legend{gap:3px}
+  .ttg-desktop #view-overview .lumi-legend-row{grid-template-columns:6px minmax(0,1fr) auto;gap:3px;font-size:6px}
+  .ttg-desktop #view-overview .lumi-legend-row i{width:5px;height:5px}
+  .ttg-desktop #view-overview .lumi-legend-row strong{font-size:6px}
+  .ttg-desktop #view-overview .lumi-recent{padding:0 6px 4px}
+  .ttg-desktop #view-overview .lumi-recent-row{min-height:27px;grid-template-columns:minmax(0,1fr) 24px 22px;gap:4px}
+  .ttg-desktop #view-overview .lumi-file{gap:4px}
+  .ttg-desktop #view-overview .lumi-file-logo{width:20px;height:20px;padding:2px}
+  .ttg-desktop #view-overview .lumi-file-copy strong{font-size:7px}
+  .ttg-desktop #view-overview .lumi-file-copy small{font-size:6px}
+  .ttg-desktop #view-overview .lumi-recent-pct{font-size:7px}
+  .ttg-desktop #view-overview .lumi-recent-row .lumi-row-action{width:20px;height:20px;font-size:8px}
+  .ttg-desktop #view-overview .lumi-quick-grid{gap:3px;padding:1px 6px 4px}
+  .ttg-desktop #view-overview .lumi-quick{min-height:34px;gap:2px;border-radius:6px}
+  .ttg-desktop #view-overview .lumi-quick svg{width:12px;height:12px}
+  .ttg-desktop #view-overview .lumi-quick span{font-size:6px}
+
+  /* Scroll belongs to long workspaces only. The shell and sidebar never need a
+     hidden scroll gesture simply to reach their primary controls. */
+  .ttg-desktop .workspace{min-height:0}
+  .ttg-desktop .content{min-height:0}
+}
