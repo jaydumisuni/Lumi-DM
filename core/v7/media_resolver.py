@@ -88,8 +88,11 @@ def _browser_variant(item: dict[str, Any]) -> dict[str, Any] | None:
     source_width, source_height = _url_quality(url)
     if source_height:
         height = source_height
-        if source_width:
-            width = source_width
+        # A parent <video> element's rendered/intrinsic width belongs to the
+        # active source, not every alternate <source>. If the alternate URL
+        # declares only its own height, discard that inherited width rather
+        # than using it to make the same URL look like a distinct stream.
+        width = source_width
     fps = _number(item.get("fps"))
     bitrate = int(_number(item.get("bitrate") or item.get("bandwidth")))
     container = str(item.get("container") or item.get("ext") or "").lower() or _url_container(url)
@@ -160,12 +163,24 @@ def _deduplicate(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
     seen: set[tuple[Any, ...]] = set()
     result: list[dict[str, Any]] = []
     for item in values:
-        key = (
-            item.get("source"), item.get("format_id"), item.get("url"),
-            item.get("kind"), item.get("width"), item.get("height"),
-            item.get("fps"), item.get("vcodec"), item.get("acodec"),
-            item.get("container"), item.get("bitrate"), item.get("language"),
-        )
+        # Browser observation can report the same network URL from both an
+        # element/source scan and the Performance API. A URL is the actual
+        # downloadable resource identity; incidental parent layout metadata must
+        # never create duplicate rows for it. Resolver-only formats have no URL
+        # and retain their richer format identity below.
+        if item.get("source") == "browser" and item.get("url"):
+            key = (
+                "browser-url",
+                item.get("url"),
+                item.get("language"),
+            )
+        else:
+            key = (
+                item.get("source"), item.get("format_id"), item.get("url"),
+                item.get("kind"), item.get("width"), item.get("height"),
+                item.get("fps"), item.get("vcodec"), item.get("acodec"),
+                item.get("container"), item.get("bitrate"), item.get("language"),
+            )
         if key in seen:
             continue
         seen.add(key)
