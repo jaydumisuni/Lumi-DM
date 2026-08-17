@@ -49,6 +49,8 @@ function cleanDetails(value) {
 }
 
 function tracePath() {
+  const override = String(process.env.LUMIDM_STAGE0_ELECTRON_TRACE || "").trim();
+  if (override) return path.resolve(override);
   return path.join(app.getPath("userData"), TRACE_FILENAME);
 }
 
