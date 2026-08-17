@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from core.v7.media_contract import _browser_has_downloadable_observation
 from core.v7.media_resolver import discover_media
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -98,3 +99,17 @@ def test_same_browser_resource_url_is_one_visible_media_row() -> None:
     assert result["variants"][0]["height"] == 1080
     assert result["variants"][0]["width"] == 0
     assert result["variants"][0]["label"] == "1080p"
+
+
+def test_desktop_resolver_is_fallback_only_when_browser_has_no_media() -> None:
+    assert _browser_has_downloadable_observation({
+        "observations": [{"kind": "direct", "url": "https://fixture.test/video.mp4"}],
+    }) is True
+    assert _browser_has_downloadable_observation({
+        "observations": [{"kind": "subtitle", "url": "https://fixture.test/en.vtt"}],
+    }) is False
+    assert _browser_has_downloadable_observation({"observations": []}) is False
+
+    contract = (ROOT / "core" / "v7" / "media_contract.py").read_text(encoding="utf-8")
+    assert 'payload["resolver_fallback"] = False' in contract
+    assert "browser already identified downloadable media" in contract
