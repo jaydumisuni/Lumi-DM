@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lumi DM · Runtime recovery</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif;background:#070a11;color:#f7f8ff}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#070a11}
+    body{display:grid;place-items:center;padding:28px;border:1px solid #442475}
+    .card{width:min(520px,100%);padding:28px;border:1px solid #26314c;border-radius:18px;background:#0b101b;box-shadow:0 24px 70px rgba(0,0,0,.35)}
+    .brand{display:flex;align-items:center;gap:14px;margin-bottom:20px}.mark{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(135deg,#5a16c9,#0d7dda);font-weight:800;font-size:22px}
+    h1{margin:0;font-size:24px}.sub{margin:4px 0 0;color:#8b96ae;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+    .status{margin-top:22px;padding:16px 18px;border:1px solid #293550;border-radius:14px;background:#080d16}
+    .status strong{display:block;font-size:15px}.status p{margin:8px 0 0;color:#9ba7bf;line-height:1.5;font-size:13px}
+    .pulse{display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#8c39ff;box-shadow:0 0 18px #8c39ff;animation:p 1.2s ease-in-out infinite}
+    @keyframes p{50%{opacity:.3;transform:scale(.75)}}
+    .foot{margin-top:18px;color:#62708b;font-size:11px}
+  </style>
+</head>
+<body>
+  <main class="card" role="status" aria-live="polite">
+    <div class="brand"><div class="mark">L</div><div><h1>Lumi Download Manager</h1><p class="sub">THETECHGUY TOOL</p></div></div>
+    <div class="status"><strong><span class="pulse"></span>Local Runtime is recovering</strong><p>Lumi could not establish its owned local Runtime yet. The supervisor is retrying automatically. The manager will reconnect here as soon as the Runtime identity is verified.</p></div>
+    <div class="foot">No fallback application has been started. This window remains part of the same Lumi process.</div>
+  </main>
+</body>
+</html>
