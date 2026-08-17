@@ -66,11 +66,22 @@
 
     document.querySelectorAll("video,audio").forEach(element => {
       const rect = element.getBoundingClientRect();
-      for (const source of [
-        { url: element.currentSrc, type: element.type || "" },
-        { url: element.src, type: element.type || "" },
-        ...[...element.querySelectorAll("source")].map(node => ({ url: node.src, type: node.type || "" })),
-      ]) {
+      const explicitSources = [...element.querySelectorAll("source")]
+        .map(node => ({ url: node.src, type: node.type || "" }))
+        .filter(source => String(source.url || "").trim());
+      const directAttribute = String(element.getAttribute("src") || "").trim();
+      const candidates = explicitSources.length
+        ? explicitSources
+        : directAttribute
+          ? [{ url: element.src, type: element.type || "" }]
+          : [{ url: element.currentSrc, type: element.type || "" }];
+
+      // An element with explicit <source> children already declares its
+      // candidate set. currentSrc is merely the browser-selected member of that
+      // set and must not become a second generic row with parent display-box
+      // dimensions. Direct video/audio src remains supported when no child
+      // sources exist.
+      for (const source of candidates) {
         if (String(source.url || "").startsWith("blob:")) { hasBlob = true; continue; }
         add({
           kind: mediaKind(source.url, source.type),
