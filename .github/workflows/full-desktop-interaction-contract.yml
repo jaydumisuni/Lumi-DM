@@ -145,6 +145,9 @@ jobs:
       - name: Playwright real MV3 extension proof
         run: node tests/playwright_extension_correction.js
 
+      - name: Playwright exact extension variant identity proof
+        run: node tests/playwright_extension_variant_identity.js
+
       - name: Stop isolated Runtime
         if: always()
         run: |
