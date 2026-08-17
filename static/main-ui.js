@@ -1,6 +1,7 @@
 "use strict";
 (() => {
   const modules = [
+    "/static/compact-desktop.js",
     "/static/stage0-trace.js",
     "/static/main-ui-core.js",
     "/static/main-ui-views.js",
