@@ -7,35 +7,23 @@
 
   .ttg-desktop .app-shell{grid-template-columns:var(--lumi-sidebar-width) minmax(0,1fr)}
   .ttg-desktop .sidebar{width:var(--lumi-sidebar-width);min-width:var(--lumi-sidebar-width)}
-  .ttg-desktop .brand-block{
-    height:72px;min-height:72px;padding:3px 10px 2px 14px;gap:7px;
-  }
+  .ttg-desktop .brand-block{height:72px;min-height:72px;padding:3px 10px 2px 14px;gap:7px}
   .ttg-desktop .brand-logo{width:38px;height:58px}
   .ttg-desktop .brand-name{font-size:27px;line-height:.94}
   .ttg-desktop .brand-sub{margin-top:4px;font-size:7px;letter-spacing:.01em}
 
-  .ttg-desktop .nav-list{
-    padding:2px 8px 3px;overflow:hidden;min-height:0;
-  }
-  .ttg-desktop .nav-item{
-    min-height:29px;height:29px;padding:3px 8px;gap:7px;border-radius:7px;font-size:10px;
-  }
+  .ttg-desktop .nav-list{padding:2px 8px 3px;overflow:hidden;min-height:0}
+  .ttg-desktop .nav-item{min-height:29px;height:29px;padding:3px 8px;gap:7px;border-radius:7px;font-size:10px}
   .ttg-desktop .nav-item .lumi-nav-icon{width:16px;min-width:16px}
   .ttg-desktop .nav-item .lumi-nav-icon svg{width:15px;height:15px}
   .ttg-desktop .nav-item b{min-width:16px;padding:1px 4px;font-size:7px}
-  .ttg-desktop .nav-submenu{
-    padding-left:10px;margin-left:17px;border-left-color:rgba(121,137,168,.18);
-  }
+  .ttg-desktop .nav-submenu{padding-left:10px;margin-left:17px;border-left-color:rgba(121,137,168,.18)}
   .ttg-desktop .nav-submenu .nav-item{min-height:28px;height:28px}
 
   .ttg-desktop .sidebar-footer{padding:4px 8px 6px}
   .ttg-desktop .lumi-storage-card{padding:6px 8px 7px;border-radius:8px}
-  .ttg-desktop .lumi-storage-drive{
-    min-width:90px;height:25px;padding:0 23px 0 7px;border-radius:6px;font-size:9px;
-  }
-  .ttg-desktop .lumi-storage-body{
-    grid-template-columns:minmax(0,1fr) 46px;gap:7px;margin-top:5px;
-  }
+  .ttg-desktop .lumi-storage-drive{min-width:90px;height:25px;padding:0 23px 0 7px;border-radius:6px;font-size:9px}
+  .ttg-desktop .lumi-storage-body{grid-template-columns:minmax(0,1fr) 46px;gap:7px;margin-top:5px}
   .ttg-desktop .lumi-storage-label{font-size:7px}
   .ttg-desktop .lumi-storage-free{margin-top:3px;font-size:17px}
   .ttg-desktop .lumi-storage-total{margin-top:2px;font-size:7px}
@@ -44,19 +32,12 @@
   .ttg-desktop .lumi-storage-ring strong{font-size:10px}
   .ttg-desktop .lumi-storage-best{gap:5px;margin-top:5px;font-size:7px}
 
-  .ttg-desktop .topbar{
-    height:44px;min-height:44px;padding:0 10px;
-  }
-  .ttg-desktop .search-box{
-    width:230px;height:29px;padding:4px 8px;border-radius:8px;font-size:9px;
-  }
+  .ttg-desktop .topbar{height:44px;min-height:44px;padding:0 10px}
+  .ttg-desktop .search-box{width:230px;height:29px;padding:4px 8px;border-radius:8px;font-size:9px}
   .ttg-desktop .content{padding:7px 8px 8px}
 
   .ttg-desktop #view-overview{height:100%;min-height:0}
-  .ttg-desktop #view-overview .lumi-overview{
-    height:100%;min-height:0;gap:6px;
-    grid-template-rows:auto 64px minmax(0,1.2fr) minmax(0,.9fr);
-  }
+  .ttg-desktop #view-overview .lumi-overview{height:100%;min-height:0;gap:6px;grid-template-rows:auto 64px minmax(0,1.2fr) minmax(0,.9fr)}
   .ttg-desktop #view-overview .lumi-overview-head h2{font-size:14px}
   .ttg-desktop #view-overview .lumi-overview-head p{margin-top:1px;font-size:7px}
   .ttg-desktop #view-overview .lumi-stat-grid{gap:5px}
@@ -100,6 +81,22 @@
   .ttg-desktop #view-overview .lumi-quick{min-height:34px;gap:2px;border-radius:6px}
   .ttg-desktop #view-overview .lumi-quick svg{width:12px;height:12px}
   .ttg-desktop #view-overview .lumi-quick span{font-size:6px}
+
+  /* Modal chrome must remain fully actionable at the native default height. */
+  .ttg-desktop .modal-backdrop{padding:7px}
+  .ttg-desktop .modal{max-height:calc(100vh - 57px)}
+  .ttg-desktop .modal-head{padding:8px 11px}
+  .ttg-desktop .modal-head h2{font-size:13px}
+  .ttg-desktop .modal-tabs{padding:5px 8px;gap:3px}
+  .ttg-desktop .modal-tabs button{padding:5px 8px;font-size:9px}
+  .ttg-desktop .modal-body{padding:8px 10px}
+  .ttg-desktop .source-options,.ttg-desktop .form-stack{gap:7px}
+  .ttg-desktop .field-row{gap:7px}
+  .ttg-desktop .field{gap:4px;font-size:9px}
+  .ttg-desktop .textarea{min-height:58px;max-height:78px;padding:7px 8px}
+  .ttg-desktop .input,.ttg-desktop .select{padding:6px 8px}
+  .ttg-desktop .form-actions{gap:6px}
+  .ttg-desktop .source-session summary,.ttg-desktop .check{font-size:9px}
 
   /* Scroll belongs to long workspaces only. The shell and sidebar never need a
      hidden scroll gesture simply to reach their primary controls. */
