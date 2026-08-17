@@ -67,3 +67,34 @@ def test_explicit_source_quality_beats_parent_video_dimensions() -> None:
     assert [item["height"] for item in result["variants"]] == [1080, 720, 360]
     assert [item["label"] for item in result["variants"]] == ["1080p", "720p", "360p"]
     assert all(item["container"] == "mp4" for item in result["variants"])
+
+
+def test_same_browser_resource_url_is_one_visible_media_row() -> None:
+    url = "https://fixture.test/video-1080p.mp4"
+    result = discover_media({
+        "url": "",
+        "resolver_fallback": False,
+        "observations": [
+            {
+                "kind": "direct",
+                "url": url,
+                "width": 640,
+                "height": 360,
+                "label": "360p page video",
+            },
+            {
+                "kind": "resource",
+                "url": url,
+                "width": 0,
+                "height": 0,
+                "label": "browser resource",
+            },
+        ],
+    })
+
+    assert result["state"] == "variants_found"
+    assert len(result["variants"]) == 1
+    assert result["variants"][0]["url"] == url
+    assert result["variants"][0]["height"] == 1080
+    assert result["variants"][0]["width"] == 0
+    assert result["variants"][0]["label"] == "1080p"
