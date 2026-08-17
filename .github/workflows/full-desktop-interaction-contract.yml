@@ -154,3 +154,50 @@ jobs:
           path: artifacts/
           if-no-files-found: warn
           retention-days: 14
+
+  windows-source-shell-proof:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    env:
+      LUMI_PLAYWRIGHT_ARTIFACTS: artifacts-windows
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Windows source proof dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          npm.cmd install --no-save playwright@1.61.1 electron@43.2.0
+          $python = (Get-Command python.exe -ErrorAction Stop).Source
+          "LUMIDM_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Playwright real Electron Windows source-shell proof
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts-windows | Out-Null
+          node.exe tests/playwright_electron_source_shell.js
+
+      - name: Upload Windows source-shell evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-issue8-windows-source-${{ github.event.pull_request.head.sha }}
+          path: artifacts-windows/
+          if-no-files-found: warn
+          retention-days: 14
