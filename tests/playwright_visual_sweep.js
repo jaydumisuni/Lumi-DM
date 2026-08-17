@@ -37,6 +37,20 @@ async function assertSidebarFits(page, label) {
   return result;
 }
 
+async function assertHitAndVisible(page, selector, label) {
+  const result = await page.locator(selector).evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+    return {
+      hit: Boolean(hit && (hit === element || element.contains(hit))),
+      left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      viewportWidth: innerWidth, viewportHeight: innerHeight,
+    };
+  });
+  assert(result.left >= 0 && result.top >= 0 && result.right <= result.viewportWidth + 1 && result.bottom <= result.viewportHeight + 1, `${label}: control is clipped (${JSON.stringify(result)})`);
+  assert(result.hit, `${label}: control is not the actual hit target`);
+}
+
 async function main() {
   fs.mkdirSync(ARTIFACTS, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: "chromium" });
@@ -80,14 +94,7 @@ async function main() {
     await screenshot(page, "visual-01-overview.png");
 
     const topTargets = ["#ttg-bell", "#ttg-gear", '[data-window-action="minimize"]', '[data-window-action="maximize"]', '[data-window-action="close"]'];
-    for (const selector of topTargets) {
-      const hit = await page.locator(selector).evaluate(element => {
-        const rect = element.getBoundingClientRect();
-        const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-        return Boolean(target && (target === element || element.contains(target)));
-      });
-      assert(hit, `${selector} is not the actual hit target`);
-    }
+    for (const selector of topTargets) await assertHitAndVisible(page, selector, selector);
 
     await page.click("#ttg-bell");
     await page.locator("#ttg-notification-menu").waitFor({ state: "visible" });
@@ -142,6 +149,9 @@ async function main() {
     await page.click('[data-view="overview"]');
     await page.locator('#view-overview [data-main-open-new]').first().click();
     await page.locator("#new-modal").waitFor({ state: "visible" });
+    await page.locator('#source-body form[data-source-form="direct"] button[type="submit"]').waitFor({ state: "visible" });
+    await assertHitAndVisible(page, '#source-body form[data-source-form="direct"] button[type="submit"]', "Start Download");
+    await assertHitAndVisible(page, '#source-body form[data-source-form="direct"] [data-close-source]', "New Download Cancel");
     await screenshot(page, "visual-14-new-download.png");
     for (const source of ["direct", "video", "torrent", "archive"]) {
       await page.click(`#source-tabs [data-source="${source}"]`);
