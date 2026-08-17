@@ -16,15 +16,15 @@
           <small>Browser Capture</small>
         </div>
       </div>
-      <span class="version">v1.2</span>
+      <span class="version">v2.0</span>
     </header>
 
     <section class="connection-card" id="connection-card">
       <div class="status-orb" aria-hidden="true"><span></span></div>
       <div class="connection-copy">
-        <span class="eyebrow">Desktop connection</span>
+        <span class="eyebrow">Local Lumi Runtime</span>
         <strong id="connection-title">Checking Lumi…</strong>
-        <small id="connection-message">Looking for the Lumi desktop app.</small>
+        <small id="connection-message">Connecting automatically to Lumi on this computer.</small>
       </div>
       <button class="icon-button" id="refresh" type="button" title="Check again" aria-label="Check connection again">↻</button>
     </section>
@@ -33,7 +33,7 @@
       <label class="switch-row">
         <span>
           <strong>Capture browser downloads</strong>
-          <small>Pause safely, stage in Lumi, then ask before taking over.</small>
+          <small>Lumi persists a handoff first; the browser pauses only after the Runtime accepts it.</small>
         </span>
         <input id="enabled" type="checkbox" checked aria-label="Capture browser downloads">
       </label>
@@ -43,35 +43,21 @@
       <div class="page-icon">▶</div>
       <div class="page-copy">
         <span class="eyebrow">Current page</span>
-        <strong id="page-title">Video detected</strong>
-        <small id="page-message">Choose a quality through Lumi.</small>
+        <strong id="page-title">Media detected</strong>
+        <small id="page-message">Choose from browser-observed and resolved variants.</small>
       </div>
       <button class="small-button" id="open-media" type="button">Choose quality</button>
     </section>
 
-    <section class="paired-panel" id="paired-panel" hidden>
+    <section class="paired-panel" id="paired-panel">
       <div class="safe-note">
         <span class="shield">✓</span>
-        <p><strong>Safe handoff is active</strong><small>The browser keeps its copy until you approve the corner setup popup.</small></p>
+        <p><strong>One Lumi application</strong><small>This extension is a local Lumi surface. Pairing codes remain for phones, other PCs and other THETECHGUY tools.</small></p>
       </div>
       <button class="primary-button" id="open-lumi" type="button"><span>Open Lumi</span><b>↗</b></button>
-      <button class="secondary-button danger" id="forget" type="button">Forget this pairing</button>
     </section>
 
-    <form class="pair-panel" id="pair-form">
-      <div class="pair-heading">
-        <span class="eyebrow">Secure pairing</span>
-        <strong>Connect this browser to Lumi</strong>
-        <small>Generate a one-time code in Lumi → Settings → Security → Pair another device.</small>
-      </div>
-      <label class="code-field">
-        <span>Pairing code</span>
-        <input id="code" name="code" autocomplete="one-time-code" placeholder="ABCD-2345" maxlength="9" required>
-      </label>
-      <button class="primary-button" type="submit"><span>Pair with Lumi</span><b>→</b></button>
-    </form>
-
-    <footer><span>THETECHGUY DIGITAL SOLUTIONS</span><i></i><span>Local connection</span></footer>
+    <footer><span>THETECHGUY DIGITAL SOLUTIONS</span><i></i><span>Automatic local trust</span></footer>
   </main>
   <script src="popup.js"></script>
 </body>

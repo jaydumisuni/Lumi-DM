@@ -28,7 +28,7 @@
     document.documentElement.dataset.ttgThemeChoice = selected;
     document.documentElement.dataset.lumiThemeChoice = selected;
 
-    document.querySelectorAll("[data-lumi-theme]").forEach(button => {
+    document.querySelectorAll("button[data-lumi-theme]").forEach(button => {
       const active = button.dataset.lumiTheme === selected;
       button.classList.toggle("active", active);
       button.setAttribute("aria-pressed", String(active));
@@ -48,7 +48,10 @@
   applyTheme(readTheme());
 
   document.addEventListener("click", event => {
-    const button = event.target.closest("[data-lumi-theme]");
+    // Theme owns only its explicit segmented buttons. The selected theme is also
+    // reflected on <html data-lumi-theme>, so an unscoped closest() would match
+    // the document root for every click and consume unrelated app interactions.
+    const button = event.target.closest("button[data-lumi-theme]");
     if (!button) return;
     event.preventDefault();
     event.stopPropagation();

@@ -22,7 +22,12 @@ if (process.platform === "win32") app.setAppUserModelId("com.lumi.dm");
 if (app.isPackaged) process.env.LUMIDM_BRANDING_DIR = path.join(process.resourcesPath, "Resouces");
 else process.env.LUMIDM_BRANDING_DIR = path.resolve(__dirname, "..", "Resouces");
 
-require("./native-session");
+// Native geometry/file-shell policy and loopback Runtime auth are explicit.
+// The legacy cookie-bootstrap shim is intentionally not loaded here: Electron
+// owns a per-process secret for native Runtime calls, while the renderer owns
+// its normal HttpOnly browser session.
+require("./window-contract");
+require("./runtime-http-auth");
 const serverSupervisor = require("./server-supervisor");
 require("./connection-capacity");
 require("./desktop-command-poller");
@@ -37,20 +42,14 @@ const ACTIVE_STATES = new Set(["queued", "resolving", "running", "pausing", "pos
 
 let mainWindow = null;
 let widgetWindow = null;
-let setupWindow = null;
 let tray = null;
 let updater = null;
 let isQuitting = false;
-let widgetExpanded = false;
-let setupResolved = false;
 let pollingTimer = null;
-let setupTimer = null;
 let baselineReady = false;
 let lastSpeed = 0;
 let lastActive = 0;
 const taskBaseline = new Map();
-const setupData = new Map();
-const shownHandoffs = new Set();
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) app.quit();
@@ -176,19 +175,34 @@ function requestJson(method, route, body = null, timeout = 8000) {
         resolve(data);
       });
     });
-    request.on("timeout", () => request.destroy(new Error("Lumi server timed out")));
+    request.on("timeout", () => request.destroy(new Error("Lumi Runtime timed out")));
     request.on("error", reject);
     if (payload) request.write(payload);
     request.end();
   });
 }
 
-async function waitForServer(timeoutMs = 30000) {
+async function waitForServer(timeoutMs = 12000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await serverSupervisor.checkReady(1800)) return true;
-    await new Promise(resolve => setTimeout(resolve, 300));
+    if (await serverSupervisor.checkReady(1500)) return true;
+    await new Promise(resolve => setTimeout(resolve, 250));
   }
+  return false;
+}
+
+function runtimeErrorPath() {
+  return path.join(__dirname, "runtime-error.html");
+}
+
+async function loadOwnedRuntime(window) {
+  const ready = await waitForServer();
+  if (!window || window.isDestroyed()) return false;
+  if (ready) {
+    await window.loadURL(API_ORIGIN);
+    return true;
+  }
+  await window.loadFile(runtimeErrorPath());
   return false;
 }
 
@@ -196,7 +210,7 @@ function createMainWindow(startHidden = false) {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
   mainWindow = new BrowserWindow({
     width: 920,
-    height: 650,
+    height: 560,
     minWidth: 720,
     minHeight: 500,
     center: true,
@@ -225,15 +239,9 @@ function createMainWindow(startHidden = false) {
   mainWindow.on("focus", broadcastWindowState);
   mainWindow.on("blur", broadcastWindowState);
 
-  const staticIndex = app.isPackaged
-    ? path.join(process.resourcesPath, "static", "index.html")
-    : path.resolve(__dirname, "..", "static", "index.html");
   void (async () => {
-    const ready = await waitForServer();
-    if (mainWindow?.isDestroyed()) return;
-    if (ready) await mainWindow.loadURL(API_ORIGIN);
-    else await mainWindow.loadFile(staticIndex);
-    if (!startHidden) mainWindow.show();
+    await loadOwnedRuntime(mainWindow);
+    if (!startHidden && mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   })();
   return mainWindow;
 }
@@ -251,22 +259,29 @@ function broadcastWindowState() {
   });
 }
 
-function applyWidgetBounds() {
-  if (!widgetWindow || widgetWindow.isDestroyed()) return;
-  const settings = readDesktopPrefs();
+function initialWidgetBounds(settings = readDesktopPrefs()) {
   const scale = Math.max(0.75, Math.min(1.35, Number(settings.scale || 1)));
-  widgetWindow.setBounds(cornerBounds(
-    Math.round((widgetExpanded ? 360 : 240) * scale),
-    Math.round((widgetExpanded ? 320 : 66) * scale),
-    settings,
-  ), true);
+  return cornerBounds(Math.round(240 * scale), Math.round(66 * scale), settings);
+}
+function repositionWidgetPreservingSize(settings = readDesktopPrefs()) {
+  if (!widgetWindow || widgetWindow.isDestroyed()) return;
+  const bounds = widgetWindow.getBounds();
+  const area = displayFor(settings).workArea;
+  const margin = Math.max(4, Math.min(80, Number(settings.margin || 12)));
+  const left = String(settings.corner).endsWith("left");
+  const top = String(settings.corner).startsWith("top");
+  widgetWindow.setBounds({
+    x: Math.round(left ? area.x + margin : area.x + area.width - bounds.width - margin),
+    y: Math.round(top ? area.y + margin : area.y + area.height - bounds.height - margin),
+    width: bounds.width,
+    height: bounds.height,
+  }, true);
 }
 function createWidget() {
   const settings = readDesktopPrefs();
   if (widgetWindow && !widgetWindow.isDestroyed()) return widgetWindow;
-  const scale = Math.max(0.75, Math.min(1.35, Number(settings.scale || 1)));
   widgetWindow = new BrowserWindow({
-    ...cornerBounds(Math.round(240 * scale), Math.round(66 * scale), settings),
+    ...initialWidgetBounds(settings),
     frame: false,
     transparent: true,
     hasShadow: false,
@@ -285,86 +300,19 @@ function createWidget() {
   void widgetWindow.loadFile(path.join(__dirname, "widget.html"));
   widgetWindow.on("closed", () => { widgetWindow = null; });
   widgetWindow.once("ready-to-show", () => {
-    if (settings.visible !== false && !setupWindow) widgetWindow.showInactive();
+    if (settings.visible !== false) widgetWindow.showInactive();
   });
   return widgetWindow;
 }
 function showWidget() {
   const settings = readDesktopPrefs();
-  if (settings.visible === false || setupWindow) return;
+  if (settings.visible === false) return;
   createWidget();
-  applyWidgetBounds();
+  repositionWidgetPreservingSize(settings);
   widgetWindow.showInactive();
 }
 function hideWidget() {
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.hide();
-}
-async function widgetSnapshot() {
-  try {
-    const [downloads, net] = await Promise.all([
-      requestJson("GET", "/api/downloads?limit=100"),
-      requestJson("GET", "/api/netstats").catch(() => ({})),
-    ]);
-    return { online: true, downloads: downloads.downloads || [], net, settings: readDesktopPrefs(), expanded: widgetExpanded };
-  } catch (error) {
-    return { online: false, error: String(error.message || error), downloads: [], net: {}, settings: readDesktopPrefs(), expanded: widgetExpanded };
-  }
-}
-
-async function setupOptions(task) {
-  const [settings, queues, categories] = await Promise.all([
-    requestJson("GET", "/api/settings").catch(() => ({})),
-    requestJson("GET", "/api/queues").catch(() => ({ queues: [] })),
-    requestJson("GET", "/api/categories").catch(() => ({ categories: [] })),
-  ]);
-  return { task, settings, queues: queues.queues || [], categories: categories.categories || [] };
-}
-async function showSetupPopup(task) {
-  if (setupWindow && !setupWindow.isDestroyed()) return;
-  const handoffId = String(task.metadata?.browser_handoff_id || "");
-  if (!handoffId || shownHandoffs.has(handoffId)) return;
-  shownHandoffs.add(handoffId);
-  setupResolved = false;
-  hideWidget();
-  const scale = Math.max(0.85, Math.min(1.2, Number(readDesktopPrefs().scale || 1)));
-  setupWindow = new BrowserWindow({
-    ...cornerBounds(Math.round(450 * scale), Math.round(485 * scale), readDesktopPrefs()),
-    frame: false,
-    transparent: true,
-    hasShadow: true,
-    resizable: false,
-    skipTaskbar: true,
-    alwaysOnTop: true,
-    focusable: true,
-    show: false,
-    webPreferences: { contextIsolation: true, preload: path.join(__dirname, "preload-confirm.js") },
-  });
-  setupWindow.setAlwaysOnTop(true, "floating");
-  const webContentsId = setupWindow.webContents.id;
-  setupData.set(webContentsId, { handoffId, ...(await setupOptions(task)) });
-  void setupWindow.loadFile(path.join(__dirname, "confirm.html"));
-  setupWindow.once("ready-to-show", () => { setupWindow?.show(); setupWindow?.focus(); });
-  setupWindow.on("closed", () => {
-    const data = setupData.get(webContentsId);
-    setupData.delete(webContentsId);
-    setupWindow = null;
-    if (!setupResolved && data?.handoffId) {
-      void requestJson("POST", `/api/v5/browser/handoffs/${encodeURIComponent(data.handoffId)}/browser`, {}).catch(() => {});
-    }
-    showWidget();
-  });
-}
-async function scanPendingSetups() {
-  if (setupWindow) return;
-  try {
-    const result = await requestJson("GET", "/api/downloads?limit=200");
-    const pending = (result.downloads || []).find(task => task.status === "browser_pending" && task.metadata?.browser_handoff_id);
-    if (pending) await showSetupPopup(pending);
-  } catch (_) {}
-}
-function closeSetup(resolved = true) {
-  setupResolved = resolved;
-  if (setupWindow && !setupWindow.isDestroyed()) setupWindow.close();
 }
 
 function formatSpeed(value) {
@@ -482,64 +430,17 @@ function registerIpc() {
   ipcMain.handle("v5-desktop-settings-get", () => ({ ...readDesktopPrefs(), displays: displaysForUi() }));
   ipcMain.handle("v5-desktop-settings-save", (_event, value) => {
     const next = writeDesktopPrefs(value);
-    widgetExpanded = false;
-    if (next.visible === false) hideWidget(); else showWidget();
+    if (next.visible === false) hideWidget();
+    else {
+      createWidget();
+      repositionWidgetPreservingSize(next);
+      widgetWindow?.showInactive();
+    }
     widgetWindow?.webContents.send("v5-settings-changed", next);
     return { ...next, displays: displaysForUi() };
   });
   ipcMain.on("v5-widget-show", showWidget);
   ipcMain.on("v5-widget-show-main", showMainWindow);
-  ipcMain.handle("v5-widget-snapshot", widgetSnapshot);
-  ipcMain.handle("v5-widget-toggle", () => {
-    widgetExpanded = !widgetExpanded;
-    if (widgetWindow && !widgetWindow.isDestroyed()) {
-      widgetWindow.setFocusable(widgetExpanded);
-      applyWidgetBounds();
-      widgetWindow.webContents.send("v5-expanded", widgetExpanded);
-      widgetExpanded ? widgetWindow.show() : widgetWindow.showInactive();
-    }
-    return widgetExpanded;
-  });
-  ipcMain.handle("v5-widget-action", async (_event, action, taskId = "") => {
-    if (action === "pause-all") return requestJson("POST", "/api/downloads/pause-all", {});
-    if (action === "resume-all") return requestJson("POST", "/api/downloads/resume-all", {});
-    if (action === "pause" && taskId) return requestJson("POST", `/api/downloads/${encodeURIComponent(taskId)}/pause`, {});
-    if (action === "resume" && taskId) return requestJson("POST", `/api/downloads/${encodeURIComponent(taskId)}/resume`, {});
-    if (action === "cancel" && taskId) return requestJson("POST", `/api/downloads/${encodeURIComponent(taskId)}/cancel`, {});
-    if (action === "open" && taskId) return requestJson("POST", `/api/downloads/${encodeURIComponent(taskId)}/open`, {});
-    if (action === "main") { showMainWindow(); return { ok: true }; }
-    return { ok: false };
-  });
-  ipcMain.handle("v5-setup-data", event => setupData.get(event.sender.id) || null);
-  ipcMain.handle("v5-setup-pick-folder", async event => {
-    const owner = BrowserWindow.fromWebContents(event.sender) || setupWindow;
-    const result = await dialog.showOpenDialog(owner, {
-      title: "Choose download folder",
-      properties: ["openDirectory", "createDirectory"],
-    });
-    return result.canceled ? null : result.filePaths[0];
-  });
-  ipcMain.handle("v5-setup-confirm", async (event, value) => {
-    const data = setupData.get(event.sender.id);
-    if (!data?.handoffId) throw new Error("Setup handoff unavailable");
-    const result = await requestJson("POST", `/api/v5/browser/handoffs/${encodeURIComponent(data.handoffId)}/confirm`, value || {});
-    closeSetup(true);
-    return result;
-  });
-  ipcMain.handle("v5-setup-browser", async event => {
-    const data = setupData.get(event.sender.id);
-    if (!data?.handoffId) throw new Error("Setup handoff unavailable");
-    const result = await requestJson("POST", `/api/v5/browser/handoffs/${encodeURIComponent(data.handoffId)}/browser`, {});
-    closeSetup(true);
-    return result;
-  });
-  ipcMain.handle("v5-setup-cancel", async event => {
-    const data = setupData.get(event.sender.id);
-    if (!data?.handoffId) throw new Error("Setup handoff unavailable");
-    const result = await requestJson("POST", `/api/v5/browser/handoffs/${encodeURIComponent(data.handoffId)}/cancel`, {});
-    closeSetup(true);
-    return result;
-  });
 }
 
 app.on("second-instance", (_event, argv) => { if (!isHiddenLaunch(argv)) showMainWindow(); });
@@ -562,15 +463,12 @@ app.whenReady().then(() => {
   ipcMain.handle("v5-update-check", (_event, manual) => updater.check(Boolean(manual)));
   void updater.check(false);
   pollingTimer = setInterval(() => void pollTasks(), 1800);
-  setupTimer = setInterval(() => void scanPendingSetups(), 700);
   void pollTasks();
 });
 app.on("before-quit", () => {
   isQuitting = true;
   if (pollingTimer) clearInterval(pollingTimer);
-  if (setupTimer) clearInterval(setupTimer);
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.destroy();
-  if (setupWindow && !setupWindow.isDestroyed()) setupWindow.destroy();
   serverSupervisor.stop();
 });
 app.on("window-all-closed", () => {});

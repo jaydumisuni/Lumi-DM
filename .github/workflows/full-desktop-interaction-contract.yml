@@ -12,7 +12,14 @@ permissions:
 jobs:
   interaction-and-engine-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 46
+    env:
+      LUMI_PLAYWRIGHT_BASE: http://127.0.0.1:7000
+      LUMI_PLAYWRIGHT_ARTIFACTS: artifacts
+      LUMIDM_DESKTOP_SECRET: playwright-desktop-secret
+      LUMIDM_RUNTIME_INSTANCE: playwright-runtime-instance
+      PYTHONUNBUFFERED: "1"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,14 +45,16 @@ jobs:
       - name: JavaScript syntax proof
         run: |
           set -eu
-          for file in static/*.js electron/*.js; do node --check "$file"; done
+          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*.js; do node --check "$file"; done
 
       - name: Full desktop interaction contract
         run: |
           python -m pytest -q \
             tests/test_full_desktop_interaction_contract.py \
             tests/test_pr7_review_closure.py \
-            tests/test_stage0_packaged_trace_contract.py
+            tests/test_stage0_packaged_trace_contract.py \
+            tests/test_v7_desktop_correction_source.py \
+            tests/test_issue8_physical_recovery_source.py
           python -m pytest -q \
             tests/test_desktop_release_contract_current.py \
             tests/test_desktop_acceptance_profile.py
@@ -56,7 +65,8 @@ jobs:
             tests/test_download_api_contract.py \
             tests/test_v2_http.py \
             tests/test_v3_media_torrent.py \
-            tests/test_v3_runtime_api.py
+            tests/test_v3_runtime_api.py \
+            tests/test_v7_correction_contract.py
 
       - name: Technician and reliability proof
         run: |
@@ -74,3 +84,135 @@ jobs:
             -k "os_catalogue_has_windows_macos_linux_and_labelled_providers or windows_search_is_explicit_resolver_plus_official_fallback or ubuntu_results_keep_official_url_and_sha256 or fido_resolution_refuses_non_windows_platform"
           python -m pytest -q tests/test_v6_final_reliability.py \
             -k "pdf_extension_and_rfc5987_filename_are_recovered or final_redirect_url_beats_generic_download_name or user_edited_filename_keeps_name_and_receives_known_extension or invalid_windows_filename_characters_are_sanitized or boot_notifications_use_a_session_transition_baseline or startup_supervisor_reconnects_fallback_windows or about_points_to_the_official_tools_page_and_verified_releases or connection_test_is_manual_bounded_and_blocks_active_downloads"
+
+      - name: Install pinned Playwright Chromium and Electron source-shell runtime
+        run: |
+          npm install --no-save playwright@1.61.1 electron@43.2.0
+          npx playwright install --with-deps --no-shell chromium
+          printf 'LUMIDM_PYTHON=%s\n' "$(command -v python)" >> "$GITHUB_ENV"
+
+      - name: Playwright real Electron source-shell proof
+        run: |
+          mkdir -p artifacts
+          xvfb-run -a node tests/playwright_electron_source_shell.js
+
+      - name: Playwright real widget browser-handoff lifecycle
+        run: |
+          xvfb-run -a node tests/playwright_widget_handoff_lifecycle.js
+
+      - name: Assert Electron source shell released Runtime port
+        run: |
+          set -eu
+          for attempt in $(seq 1 40); do
+            if ! curl -fsS --max-time 1 http://127.0.0.1:7000/ >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "Electron source shell left port 7000 active"
+          exit 1
+
+      - name: Start isolated Lumi source Runtime
+        run: |
+          set -eu
+          export LUMIDM_DATA_DIR="$RUNNER_TEMP/lumi-playwright-data"
+          export LUMIDM_DOWNLOAD_DIR="$RUNNER_TEMP/lumi-playwright-downloads"
+          export LUMIDM_TEMP_DIR="$RUNNER_TEMP/lumi-playwright-temporary"
+          printf 'LUMIDM_DATA_DIR=%s\n' "$LUMIDM_DATA_DIR" >> "$GITHUB_ENV"
+          printf 'LUMIDM_DOWNLOAD_DIR=%s\n' "$LUMIDM_DOWNLOAD_DIR" >> "$GITHUB_ENV"
+          printf 'LUMIDM_TEMP_DIR=%s\n' "$LUMIDM_TEMP_DIR" >> "$GITHUB_ENV"
+          mkdir -p artifacts "$LUMIDM_DATA_DIR" "$LUMIDM_DOWNLOAD_DIR" "$LUMIDM_TEMP_DIR"
+          python server.py --host 127.0.0.1 --port 7000 > artifacts/playwright-runtime.log 2>&1 &
+          echo $! > artifacts/playwright-runtime.pid
+          for attempt in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:7000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          cat artifacts/playwright-runtime.log
+          exit 1
+
+      - name: Playwright compact main renderer proof
+        run: node tests/playwright_main_correction.js
+
+      - name: Playwright visual and button interaction sweep
+        run: node tests/playwright_visual_sweep.js
+
+      - name: Playwright settled compact-view screenshots
+        run: node tests/playwright_settled_views.js
+
+      - name: Playwright real MV3 extension proof
+        run: node tests/playwright_extension_correction.js
+
+      - name: Playwright exact extension variant identity proof
+        run: node tests/playwright_extension_variant_identity.js
+
+      - name: Stop isolated Runtime
+        if: always()
+        run: |
+          if [ -f artifacts/playwright-runtime.pid ]; then
+            kill -INT "$(cat artifacts/playwright-runtime.pid)" 2>/dev/null || true
+            sleep 1
+          fi
+
+      - name: Upload Playwright correction evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-issue8-playwright-${{ github.event.pull_request.head.sha }}
+          path: artifacts/
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows-source-shell-proof:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      LUMI_PLAYWRIGHT_ARTIFACTS: artifacts-windows
+      PYTHONUNBUFFERED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Windows source proof dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          npm.cmd install --no-save playwright@1.61.1 electron@43.2.0
+          $python = (Get-Command python.exe -ErrorAction Stop).Source
+          "LUMIDM_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Playwright real Electron Windows source-shell proof
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts-windows | Out-Null
+          node.exe tests/playwright_electron_source_shell.js
+
+      - name: Playwright real Windows widget browser-handoff lifecycle
+        shell: pwsh
+        run: |
+          node.exe tests/playwright_widget_handoff_lifecycle.js
+
+      - name: Upload Windows source-shell evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi-issue8-windows-source-${{ github.event.pull_request.head.sha }}
+          path: artifacts-windows/
+          if-no-files-found: warn
+          retention-days: 14

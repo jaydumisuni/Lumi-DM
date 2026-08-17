@@ -1,0 +1,115 @@
+from pathlib import Path
+
+from core.v7.media_contract import _browser_has_downloadable_observation
+from core.v7.media_resolver import discover_media
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_electron_main_has_one_runtime_surface_path() -> None:
+    main = (ROOT / "electron" / "main.js").read_text(encoding="utf-8")
+    assert 'require("./runtime-http-auth")' in main
+    assert 'require("./window-contract")' in main
+    assert 'require("./native-session")' not in main
+    assert "loadFile(staticIndex)" not in main
+    assert 'loadFile(runtimeErrorPath())' in main
+    assert 'loadURL(API_ORIGIN)' in main
+
+
+def test_browser_handoff_does_not_create_second_confirmation_window() -> None:
+    main = (ROOT / "electron" / "main.js").read_text(encoding="utf-8")
+    assert "setupWindow" not in main
+    assert "showSetupPopup" not in main
+    assert "scanPendingSetups" not in main
+    assert "v5-setup-confirm" not in main
+    assert "v5-setup-browser" not in main
+    assert "v5-setup-cancel" not in main
+    assert "confirm.html" not in main
+    surfaces = (ROOT / "electron" / "roadmap-surfaces.js").read_text(encoding="utf-8")
+    assert "No confirmation window or second app identity is created" in surfaces
+    assert 'window.webContents.send("v7-browser-pending"' in surfaces
+
+
+def test_runtime_recovery_surface_is_self_contained() -> None:
+    page = (ROOT / "electron" / "runtime-error.html").read_text(encoding="utf-8")
+    assert "Local Runtime is recovering" in page
+    assert "No fallback application has been started" in page
+    assert "/static/" not in page
+    assert "<script" not in page.lower()
+
+
+def test_explicit_source_quality_beats_parent_video_dimensions() -> None:
+    result = discover_media({
+        "url": "",
+        "resolver_fallback": False,
+        "observations": [
+            {
+                "kind": "direct",
+                "url": "https://fixture.test/video-1080p.mp4",
+                "height": 360,
+                "label": "360p page video",
+            },
+            {
+                "kind": "direct",
+                "url": "https://fixture.test/video-720p.mp4",
+                "height": 360,
+                "label": "360p page video",
+            },
+            {
+                "kind": "direct",
+                "url": "https://fixture.test/video-360p.mp4",
+                "height": 360,
+                "label": "360p page video",
+            },
+        ],
+    })
+
+    assert result["state"] == "variants_found"
+    assert [item["height"] for item in result["variants"]] == [1080, 720, 360]
+    assert [item["label"] for item in result["variants"]] == ["1080p", "720p", "360p"]
+    assert all(item["container"] == "mp4" for item in result["variants"])
+
+
+def test_same_browser_resource_url_is_one_visible_media_row() -> None:
+    url = "https://fixture.test/video-1080p.mp4"
+    result = discover_media({
+        "url": "",
+        "resolver_fallback": False,
+        "observations": [
+            {
+                "kind": "direct",
+                "url": url,
+                "width": 640,
+                "height": 360,
+                "label": "360p page video",
+            },
+            {
+                "kind": "resource",
+                "url": url,
+                "width": 0,
+                "height": 0,
+                "label": "browser resource",
+            },
+        ],
+    })
+
+    assert result["state"] == "variants_found"
+    assert len(result["variants"]) == 1
+    assert result["variants"][0]["url"] == url
+    assert result["variants"][0]["height"] == 1080
+    assert result["variants"][0]["width"] == 0
+    assert result["variants"][0]["label"] == "1080p"
+
+
+def test_desktop_resolver_is_fallback_only_when_browser_has_no_media() -> None:
+    assert _browser_has_downloadable_observation({
+        "observations": [{"kind": "direct", "url": "https://fixture.test/video.mp4"}],
+    }) is True
+    assert _browser_has_downloadable_observation({
+        "observations": [{"kind": "subtitle", "url": "https://fixture.test/en.vtt"}],
+    }) is False
+    assert _browser_has_downloadable_observation({"observations": []}) is False
+
+    contract = (ROOT / "core" / "v7" / "media_contract.py").read_text(encoding="utf-8")
+    assert 'payload["resolver_fallback"] = False' in contract
+    assert "browser already identified downloadable media" in contract

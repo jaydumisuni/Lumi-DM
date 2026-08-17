@@ -1,6 +1,11 @@
 "use strict";
 
-const { app } = require("electron");
+// Loaded by the Runtime supervisor before the rest of the native shell. The
+// side-effect module patches only 127.0.0.1:7000 Node HTTP calls and injects the
+// per-process secret once the supervisor generates it.
+require("./runtime-http-auth");
+
+const { app, ipcMain } = require("electron");
 const fs = require("fs");
 const path = require("path");
 
@@ -44,6 +49,8 @@ function cleanDetails(value) {
 }
 
 function tracePath() {
+  const override = String(process.env.LUMIDM_STAGE0_ELECTRON_TRACE || "").trim();
+  if (override) return path.resolve(override);
   return path.join(app.getPath("userData"), TRACE_FILENAME);
 }
 
@@ -61,6 +68,27 @@ function writeStage0Trace(event, details = {}) {
   } catch (_) {
     // Diagnostics must never become an application availability dependency.
   }
+}
+
+// Modern Electron sandboxes preload scripts by default. Keep filesystem and
+// path ownership in the main process: preload forwards bounded correlation
+// metadata only, and this filter is the sole persistence boundary.
+if (!ipcMain.__lumiStage0TraceForwarder) {
+  ipcMain.__lumiStage0TraceForwarder = true;
+  ipcMain.on("ttg-stage0-trace", (_event, payload = {}) => {
+    const value = payload && typeof payload === "object" ? payload : {};
+    writeStage0Trace(value.event || "TRACE", {
+      trace_id: value.trace_id,
+      source: "preload-main",
+      action: value.action,
+      channel: value.channel,
+      method: value.method,
+      path: value.path,
+      reason: value.reason,
+      status: value.status,
+      ok: value.ok,
+    });
+  });
 }
 
 module.exports = { TRACE_FILENAME, writeStage0Trace };

@@ -34,9 +34,14 @@ def test_renderer_trace_correlates_physical_actions_and_same_origin_api() -> Non
     assert "request bodies" in trace.lower()
 
 
-def test_preload_persists_ipc_boundary_success_and_failure_without_payloads() -> None:
+def test_sandboxed_preload_forwards_trace_and_main_process_persists_it() -> None:
     preload = read("electron/preload-main.js")
-    assert "LUMIDM-stage0-electron-trace.jsonl" in preload
+    main_trace = read("electron/stage0-trace.js")
+
+    assert 'const { contextBridge, ipcRenderer } = require("electron")' in preload
+    for forbidden in ('require("fs")', 'require("path")', 'require("os")', 'require("crypto")'):
+        assert forbidden not in preload
+    assert 'ipcRenderer.send("ttg-stage0-trace", payload)' in preload
     assert "invokeWithTrace(channel" in preload
     assert "TRANSPORT_SENT" in preload
     assert "RESPONSE_RECEIVED" in preload
@@ -44,6 +49,12 @@ def test_preload_persists_ipc_boundary_success_and_failure_without_payloads() ->
     assert "ttg-open-path" in preload
     assert "ttg-open-external" in preload
     assert "body:" not in preload
+
+    assert 'const { app, ipcMain } = require("electron")' in main_trace
+    assert 'ipcMain.on("ttg-stage0-trace"' in main_trace
+    assert "LUMIDM-stage0-electron-trace.jsonl" in main_trace
+    assert "writeStage0Trace(value.event" in main_trace
+    assert "ALLOWED_DETAIL_KEYS" in main_trace
 
 
 def test_runtime_trace_is_installed_before_security_and_excludes_sensitive_content() -> None:
