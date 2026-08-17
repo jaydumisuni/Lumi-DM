@@ -40,7 +40,7 @@ The issue #8 / physical-recovery additions are bounded to:
 
 1. JavaScript syntax checks for the renderer, Electron source files, packaged Chromium extension, and all Playwright proof scripts.
 2. `tests/test_v7_correction_contract.py`, `tests/test_v7_desktop_correction_source.py`, and `tests/test_issue8_physical_recovery_source.py` for the one-Runtime/RPC, exact sidecar identity, native-shell authentication, 32-connection, browser trust/media, widget, startup-fallback, compact-geometry, firmware and remote-request contracts.
-3. Pinned Playwright `1.58.2`, Chromium, and test-only Electron `43.2.0`. Electron 43.2.0 is used only as a source-shell proof runtime; Builder remains the packaging/runtime-version authority for release artifacts.
+3. Pinned Playwright `1.61.1`, Chromium, and test-only Electron `43.2.0`. Electron 43.2.0 is used only as a source-shell proof runtime; Builder remains the packaging/runtime-version authority for release artifacts.
 4. One real Electron source-shell launch under Xvfb. It starts Lumi's actual `electron/main.js`, which in turn starts its own isolated Python Runtime through the production supervisor path.
 5. Native source-shell assertions covering exact 920×560 BrowserWindow geometry, owned Runtime URL, absence of `confirm.html`, two-surface main+widget topology, main-visible/widget-hidden exclusivity, real preload/IPC minimize/maximize/close behavior, and close-to-widget lifecycle.
 6. After Electron closes and port 7000 is proven released, one isolated browser-only Lumi Runtime on loopback with runner-temporary storage.
