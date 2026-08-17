@@ -191,11 +191,14 @@ def test_browser_capture_uses_existing_widget_and_inactive_runtime_queue() -> No
     assert 'data-tab="queued"' in native
     assert "forcedPendingExpansion" in native
     assert "surfaceExpanded = false" in native
-    # Legacy setup code may remain for old clients, but the canonical v7 path
-    # must never emit the legacy status that main.js scans for.
     assert 'task.status = TaskStatus.QUEUED.value' in surface
     assert 'task.status = _BROWSER_PENDING' not in surface
-    assert 'task.status === "browser_pending"' in main
+    # The native shell must not retain the old browser_pending scanner or a
+    # separate confirmation BrowserWindow. Pending metadata is consumed only by
+    # roadmap-surfaces.js and displayed in the existing widget.
+    assert 'task.status === "browser_pending"' not in main
+    assert "setupWindow" not in main
+    assert "showSetupPopup" not in main
 
 
 def test_firmware_dependency_order_and_real_bundled_extension_action() -> None:
