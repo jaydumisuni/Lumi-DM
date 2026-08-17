@@ -12,7 +12,7 @@ permissions:
 jobs:
   interaction-and-engine-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 42
+    timeout-minutes: 46
     env:
       LUMI_PLAYWRIGHT_BASE: http://127.0.0.1:7000
       LUMI_PLAYWRIGHT_ARTIFACTS: artifacts
@@ -96,6 +96,10 @@ jobs:
           mkdir -p artifacts
           xvfb-run -a node tests/playwright_electron_source_shell.js
 
+      - name: Playwright real widget browser-handoff lifecycle
+        run: |
+          xvfb-run -a node tests/playwright_widget_handoff_lifecycle.js
+
       - name: Assert Electron source shell released Runtime port
         run: |
           set -eu
@@ -135,6 +139,9 @@ jobs:
       - name: Playwright visual and button interaction sweep
         run: node tests/playwright_visual_sweep.js
 
+      - name: Playwright settled compact-view screenshots
+        run: node tests/playwright_settled_views.js
+
       - name: Playwright real MV3 extension proof
         run: node tests/playwright_extension_correction.js
 
@@ -157,7 +164,7 @@ jobs:
 
   windows-source-shell-proof:
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       LUMI_PLAYWRIGHT_ARTIFACTS: artifacts-windows
       PYTHONUNBUFFERED: "1"
@@ -192,6 +199,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifacts-windows | Out-Null
           node.exe tests/playwright_electron_source_shell.js
+
+      - name: Playwright real Windows widget browser-handoff lifecycle
+        shell: pwsh
+        run: |
+          node.exe tests/playwright_widget_handoff_lifecycle.js
 
       - name: Upload Windows source-shell evidence
         if: always()
