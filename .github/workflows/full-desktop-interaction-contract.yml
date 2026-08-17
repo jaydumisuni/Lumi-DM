@@ -12,7 +12,7 @@ permissions:
 jobs:
   interaction-and-engine-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 38
+    timeout-minutes: 42
     env:
       LUMI_PLAYWRIGHT_BASE: http://127.0.0.1:7000
       LUMI_PLAYWRIGHT_ARTIFACTS: artifacts
@@ -45,7 +45,7 @@ jobs:
       - name: JavaScript syntax proof
         run: |
           set -eu
-          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*_correction.js tests/playwright_visual_sweep.js; do node --check "$file"; done
+          for file in static/*.js electron/*.js static/browser-extension/chromium/*.js tests/playwright_*.js; do node --check "$file"; done
 
       - name: Full desktop interaction contract
         run: |
@@ -85,10 +85,28 @@ jobs:
           python -m pytest -q tests/test_v6_final_reliability.py \
             -k "pdf_extension_and_rfc5987_filename_are_recovered or final_redirect_url_beats_generic_download_name or user_edited_filename_keeps_name_and_receives_known_extension or invalid_windows_filename_characters_are_sanitized or boot_notifications_use_a_session_transition_baseline or startup_supervisor_reconnects_fallback_windows or about_points_to_the_official_tools_page_and_verified_releases or connection_test_is_manual_bounded_and_blocks_active_downloads"
 
-      - name: Install pinned Playwright Chromium
+      - name: Install pinned Playwright Chromium and Electron source-shell runtime
         run: |
-          npm install --no-save playwright@1.58.2
+          npm install --no-save playwright@1.58.2 electron@43.2.0
           npx playwright install --with-deps --no-shell chromium
+          printf 'LUMIDM_PYTHON=%s\n' "$(command -v python)" >> "$GITHUB_ENV"
+
+      - name: Playwright real Electron source-shell proof
+        run: |
+          mkdir -p artifacts
+          xvfb-run -a node tests/playwright_electron_source_shell.js
+
+      - name: Assert Electron source shell released Runtime port
+        run: |
+          set -eu
+          for attempt in $(seq 1 40); do
+            if ! curl -fsS --max-time 1 http://127.0.0.1:7000/ >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+          echo "Electron source shell left port 7000 active"
+          exit 1
 
       - name: Start isolated Lumi source Runtime
         run: |
