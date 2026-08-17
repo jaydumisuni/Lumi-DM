@@ -210,7 +210,7 @@ function createMainWindow(startHidden = false) {
   if (mainWindow && !mainWindow.isDestroyed()) return mainWindow;
   mainWindow = new BrowserWindow({
     width: 920,
-    height: 650,
+    height: 560,
     minWidth: 720,
     minHeight: 500,
     center: true,
