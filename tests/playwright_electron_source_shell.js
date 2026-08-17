@@ -7,6 +7,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const ARTIFACTS = path.resolve(process.env.LUMI_PLAYWRIGHT_ARTIFACTS || "artifacts");
 const PYTHON = process.env.LUMIDM_PYTHON || (process.platform === "win32" ? "python.exe" : "python3");
+const TRACE_FILE = path.join(ARTIFACTS, "electron-source-trace.jsonl");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -49,8 +50,30 @@ async function managerPage(app) {
   }, "Electron manager never loaded the owned Runtime", 30000);
 }
 
+function traceRecords() {
+  if (!fs.existsSync(TRACE_FILE)) return [];
+  return fs.readFileSync(TRACE_FILE, "utf8")
+    .split(/\r?\n/u)
+    .filter(Boolean)
+    .map(line => {
+      try { return JSON.parse(line); } catch (_) { return null; }
+    })
+    .filter(Boolean);
+}
+
+async function waitForIpcResponse(channel, previousCount = 0) {
+  return waitFor(() => traceRecords().filter(record => (
+    record.process === "electron-main"
+    && record.source === "preload-main"
+    && record.event === "RESPONSE_RECEIVED"
+    && record.channel === channel
+    && record.ok === true
+  )).length > previousCount, `No successful preload→IPC response trace for ${channel}`, 10000);
+}
+
 async function main() {
   fs.mkdirSync(ARTIFACTS, { recursive: true });
+  try { fs.rmSync(TRACE_FILE, { force: true }); } catch (_) {}
   const dataRoot = path.join(ARTIFACTS, "electron-source-data");
   const downloads = path.join(ARTIFACTS, "electron-source-downloads");
   const temporary = path.join(ARTIFACTS, "electron-source-temporary");
@@ -65,6 +88,7 @@ async function main() {
       LUMIDM_DATA_DIR: dataRoot,
       LUMIDM_DOWNLOAD_DIR: downloads,
       LUMIDM_TEMP_DIR: temporary,
+      LUMIDM_STAGE0_ELECTRON_TRACE: TRACE_FILE,
       ELECTRON_DISABLE_SECURITY_WARNINGS: "true",
     },
     timeout: 30000,
@@ -76,9 +100,11 @@ async function main() {
   });
 
   try {
+    const platform = await electronApp.evaluate(() => process.platform);
     const page = await managerPage(electronApp);
     await page.locator("#app-shell").waitFor({ state: "visible", timeout: 20000 });
     await page.waitForFunction(() => document.documentElement.dataset.lumiRoadmapInteraction === "1");
+    await page.waitForFunction(() => Boolean(window.electronApp?.isElectron));
 
     const initial = await nativeWindows(electronApp);
     console.log("ELECTRON_SOURCE_WINDOWS_INITIAL", JSON.stringify(initial));
@@ -117,26 +143,35 @@ async function main() {
     await page.screenshot({ path: path.join(ARTIFACTS, "electron-source-02-notifications.png") });
     await page.click("#ttg-bell");
 
+    let responseCount = traceRecords().filter(record => record.event === "RESPONSE_RECEIVED" && record.channel === "ttg-window-control").length;
     await page.click('[data-window-action="minimize"]');
-    await waitFor(async () => {
-      const windows = await nativeWindows(electronApp);
-      return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.minimized));
-    }, "Real minimize IPC did not minimize the native manager");
+    await waitForIpcResponse("ttg-window-control", responseCount);
+    responseCount += 1;
+    if (platform === "win32") {
+      await waitFor(async () => {
+        const windows = await nativeWindows(electronApp);
+        return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.minimized));
+      }, "Real minimize IPC did not minimize the native manager");
+    }
     await electronApp.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
-      window?.restore();
+      if (window?.isMinimized()) window.restore();
       window?.show();
       window?.focus();
     });
 
     await page.click('[data-window-action="maximize"]');
-    await waitFor(async () => {
-      const windows = await nativeWindows(electronApp);
-      return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.maximized));
-    }, "Real maximize IPC did not maximize the native manager");
+    await waitForIpcResponse("ttg-window-control", responseCount);
+    responseCount += 1;
+    if (platform === "win32") {
+      await waitFor(async () => {
+        const windows = await nativeWindows(electronApp);
+        return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.maximized));
+      }, "Real maximize IPC did not maximize the native manager");
+    }
     await electronApp.evaluate(({ BrowserWindow }) => {
       const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
-      window?.unmaximize();
+      if (window?.isMaximized()) window.unmaximize();
       window?.show();
       window?.focus();
     });
@@ -149,6 +184,7 @@ async function main() {
     await page.screenshot({ path: path.join(ARTIFACTS, "electron-source-03-manager.png") });
 
     await page.click('[data-window-action="close"]');
+    await waitForIpcResponse("ttg-window-control", responseCount);
     await waitFor(async () => {
       const windows = await nativeWindows(electronApp);
       const currentManager = windows.find(window => window.url.startsWith("http://127.0.0.1:7000"));
@@ -165,8 +201,10 @@ async function main() {
     assert(widgetPage, "Widget renderer unavailable after close");
     await widgetPage.screenshot({ path: path.join(ARTIFACTS, "electron-source-04-widget.png") });
 
+    const controlResponses = traceRecords().filter(record => record.event === "RESPONSE_RECEIVED" && record.channel === "ttg-window-control" && record.ok === true);
+    assert(controlResponses.length >= 3, `Native window controls did not produce three successful IPC responses: ${JSON.stringify(controlResponses)}`);
     assert(mainConsoleErrors.length === 0, `Electron main-process console errors: ${mainConsoleErrors.join(" | ")}`);
-    console.log("LUMI_ELECTRON_SOURCE_SHELL_PASS", JSON.stringify({ initial, afterClose }));
+    console.log("LUMI_ELECTRON_SOURCE_SHELL_PASS", JSON.stringify({ platform, initial, afterClose, controlResponses: controlResponses.length }));
   } finally {
     await electronApp.close();
   }
