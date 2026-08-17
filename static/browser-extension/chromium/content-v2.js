@@ -50,7 +50,15 @@
     const add = raw => {
       const url = absoluteUrl(raw.url);
       if (!url || !/^https?:/i.test(url)) return;
-      const key = `${raw.kind || ""}|${url}|${raw.height || 0}|${raw.width || 0}|${raw.language || ""}`;
+      // The network URL is the browser resource identity. currentSrc, <source>
+      // and Performance entries can all report that same resource with
+      // different incidental parent-video dimensions or kind labels. Collapse
+      // those observations here so one browser resource cannot become multiple
+      // visible download rows. Subtitle identity additionally keeps language.
+      const kind = String(raw.kind || "").toLowerCase();
+      const key = kind === "subtitle"
+        ? `subtitle|${url}|${raw.language || ""}`
+        : `media|${url}`;
       if (seen.has(key)) return;
       seen.add(key);
       observations.push({ ...raw, url });
