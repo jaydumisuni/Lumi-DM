@@ -82,6 +82,59 @@
   .ttg-desktop #view-overview .lumi-quick svg{width:12px;height:12px}
   .ttg-desktop #view-overview .lumi-quick span{font-size:6px}
 
+  /* The compact manager has roughly 700px of workspace after the sidebar.
+     Do not inherit main-ui.css's 870px table minimum: primary row actions must
+     remain physically reachable without a horizontal-scroll gesture. */
+  .ttg-desktop #view-downloads .lumi-table,
+  .ttg-desktop #view-unfinished .lumi-table,
+  .ttg-desktop #view-finished .lumi-table{overflow:hidden}
+  .ttg-desktop #view-downloads .lumi-table-head,
+  .ttg-desktop #view-downloads .lumi-row,
+  .ttg-desktop #view-unfinished .lumi-table-head,
+  .ttg-desktop #view-unfinished .lumi-row{
+    min-width:0;
+    grid-template-columns:minmax(0,1.65fr) 70px 64px minmax(92px,.8fr) 66px 36px;
+    gap:5px;
+    padding-left:8px;
+    padding-right:8px;
+  }
+  .ttg-desktop #view-downloads .lumi-table-head,
+  .ttg-desktop #view-unfinished .lumi-table-head{height:32px;font-size:7px}
+  .ttg-desktop #view-downloads .lumi-row,
+  .ttg-desktop #view-unfinished .lumi-row{min-height:52px}
+  .ttg-desktop #view-downloads .lumi-file,
+  .ttg-desktop #view-unfinished .lumi-file{gap:6px}
+  .ttg-desktop #view-downloads .lumi-file-logo,
+  .ttg-desktop #view-unfinished .lumi-file-logo{width:30px;height:30px;padding:3px}
+  .ttg-desktop #view-downloads .lumi-file-copy strong,
+  .ttg-desktop #view-unfinished .lumi-file-copy strong{font-size:9px}
+  .ttg-desktop #view-downloads .lumi-file-copy small,
+  .ttg-desktop #view-unfinished .lumi-file-copy small,
+  .ttg-desktop #view-downloads .lumi-cell small,
+  .ttg-desktop #view-unfinished .lumi-cell small{font-size:7px}
+  .ttg-desktop #view-downloads .lumi-cell strong,
+  .ttg-desktop #view-unfinished .lumi-cell strong,
+  .ttg-desktop #view-downloads .lumi-status,
+  .ttg-desktop #view-unfinished .lumi-status{font-size:8px}
+  .ttg-desktop #view-downloads .lumi-progress,
+  .ttg-desktop #view-unfinished .lumi-progress{grid-template-columns:minmax(0,1fr) 27px;gap:4px}
+  .ttg-desktop #view-downloads .lumi-progress span,
+  .ttg-desktop #view-unfinished .lumi-progress span{font-size:7px}
+  .ttg-desktop #view-downloads .lumi-row-action{width:30px;height:30px}
+  .ttg-desktop #view-unfinished .lumi-row-action{width:30px;height:30px}
+
+  .ttg-desktop #view-finished .lumi-table-head,
+  .ttg-desktop #view-finished .lumi-row{
+    min-width:0;
+    grid-template-columns:minmax(0,1.7fr) 68px 92px minmax(0,1fr) 36px;
+    gap:5px;
+    padding-left:8px;
+    padding-right:8px;
+  }
+  .ttg-desktop #view-finished .lumi-table-head{height:32px;font-size:7px}
+  .ttg-desktop #view-finished .lumi-row{min-height:52px}
+  .ttg-desktop #view-finished .lumi-row-action{width:30px;height:30px}
+
   /* Modal chrome must remain fully actionable at the native default height. */
   .ttg-desktop .modal-backdrop{padding:7px}
   .ttg-desktop .modal{max-height:calc(100vh - 57px)}

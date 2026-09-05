@@ -6,6 +6,7 @@ const { randomBytes, randomUUID } = require("crypto");
 const http = require("http");
 const path = require("path");
 const { writeStage0Trace } = require("./stage0-trace");
+const { runtimeIdentityMatches } = require("./runtime-identity");
 
 const RUNTIME_SCHEMA = "lumi.runtime.v1";
 let ownedProcess = null;
@@ -71,10 +72,15 @@ function checkReady(timeout = 2500) {
       const schema = String(response.headers["x-lumi-runtime-schema"] || "");
       const instance = String(response.headers["x-lumi-runtime-instance"] || "");
       const pid = Number(response.headers["x-lumi-runtime-pid"] || 0);
-      const ready = response.statusCode === 200
-        && schema === RUNTIME_SCHEMA
-        && instance === expectedInstance
-        && pid === expectedPid;
+      const ready = runtimeIdentityMatches(
+        { statusCode: response.statusCode, schema, instance, pid },
+        {
+          expectedSchema: RUNTIME_SCHEMA,
+          expectedInstance,
+          expectedPid,
+          allowChildPid: app.isPackaged,
+        },
+      );
       if (!ready) {
         writeStage0Trace("SIDECAR_IDENTITY_MISMATCH", {
           pid: expectedPid,

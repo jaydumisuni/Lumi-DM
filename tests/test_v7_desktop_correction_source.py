@@ -20,10 +20,13 @@ def test_one_runtime_and_owned_sidecar_contract_are_explicit() -> None:
     surfaces = text("electron/roadmap-surfaces.js")
 
     assert 'RUNTIME_SCHEMA = "lumi.runtime.v1"' in supervisor
-    assert 'response.statusCode === 200' in supervisor
-    assert 'schema === RUNTIME_SCHEMA' in supervisor
-    assert 'instance === expectedInstance' in supervisor
-    assert 'pid === expectedPid' in supervisor
+    assert 'runtimeIdentityMatches' in supervisor
+    identity = text("electron/runtime-identity.js")
+    assert "statusCode !== 200" in identity
+    assert "allowChildPid" in identity
+    assert "schema !== expectedSchema" in identity
+    assert "instance !== expectedInstance" in identity
+    assert "pid === expectedPid" in identity
     assert 'X-Lumi-Desktop-Secret' in supervisor
     assert 'LUMIDM_DESKTOP_SECRET' in desktop_auth
     assert 'hmac.compare_digest' in desktop_auth

@@ -14,9 +14,14 @@ ETAG = '"lumi-test-v1"'
 
 
 class RangeHandler(BaseHTTPRequestHandler):
+    payload = PAYLOAD
     ignore_ranges_after_probe = False
     request_count = 0
     slow = False
+    chunk_delay = 0.01
+    active_range = 0
+    max_active_range = 0
+    range_lock = threading.Lock()
 
     def do_GET(self) -> None:
         type(self).request_count += 1
@@ -28,10 +33,10 @@ class RangeHandler(BaseHTTPRequestHandler):
             and range_header
         ):
             self.send_response(200)
-            self.send_header("Content-Length", str(len(PAYLOAD)))
+            self.send_header("Content-Length", str(len(type(self).payload)))
             self.send_header("ETag", ETAG)
             self.end_headers()
-            self.wfile.write(PAYLOAD)
+            self.wfile.write(type(self).payload)
             return
 
         if range_header:
@@ -39,40 +44,53 @@ class RangeHandler(BaseHTTPRequestHandler):
             assert unit == "bytes"
             start_raw, end_raw = raw.split("-", 1)
             start = int(start_raw)
-            end = int(end_raw) if end_raw else len(PAYLOAD) - 1
-            end = min(end, len(PAYLOAD) - 1)
-            body = PAYLOAD[start : end + 1]
-            self.send_response(206)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header(
-                "Content-Range",
-                f"bytes {start}-{end}/{len(PAYLOAD)}",
-            )
-            self.send_header("Accept-Ranges", "bytes")
-            self.send_header("ETag", ETAG)
-            self.send_header("Content-Type", "application/octet-stream")
-            self.end_headers()
-            for offset in range(0, len(body), 64 * 1024):
-                self.wfile.write(body[offset : offset + 64 * 1024])
-                self.wfile.flush()
-                if self.slow:
-                    time.sleep(0.01)
+            end = int(end_raw) if end_raw else len(type(self).payload) - 1
+            end = min(end, len(type(self).payload) - 1)
+            body = type(self).payload[start : end + 1]
+            with type(self).range_lock:
+                type(self).active_range += 1
+                type(self).max_active_range = max(type(self).max_active_range, type(self).active_range)
+            try:
+                self.send_response(206)
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header(
+                    "Content-Range",
+                    f"bytes {start}-{end}/{len(type(self).payload)}",
+                )
+                self.send_header("Accept-Ranges", "bytes")
+                self.send_header("ETag", ETAG)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.end_headers()
+                for offset in range(0, len(body), 64 * 1024):
+                    self.wfile.write(body[offset : offset + 64 * 1024])
+                    self.wfile.flush()
+                    if self.slow:
+                        time.sleep(0.01)
+            finally:
+                with type(self).range_lock:
+                    type(self).active_range = max(0, type(self).active_range - 1)
             return
 
         self.send_response(200)
-        self.send_header("Content-Length", str(len(PAYLOAD)))
+        self.send_header("Content-Length", str(len(type(self).payload)))
         self.send_header("ETag", ETAG)
         self.end_headers()
-        self.wfile.write(PAYLOAD)
+        self.wfile.write(type(self).payload)
 
     def log_message(self, *_args) -> None:
         return
 
 
+class HighConcurrencyHTTPServer(ThreadingHTTPServer):
+    request_queue_size = 128
+
+
 class Server:
     def __init__(self, handler=RangeHandler):
         handler.request_count = 0
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+        handler.active_range = 0
+        handler.max_active_range = 0
+        self.httpd = HighConcurrencyHTTPServer(("127.0.0.1", 0), handler)
         self.thread = threading.Thread(
             target=self.httpd.serve_forever,
             daemon=True,
@@ -203,3 +221,82 @@ def test_pause_restart_and_resume_uses_segment_journal(tmp_path: Path) -> None:
         assert completed.status == TaskStatus.COMPLETED.value, completed.error
         assert Path(completed.final_path).read_bytes() == PAYLOAD
         restarted.close()
+
+
+def test_requested_32_connections_establish_32_range_workers(tmp_path: Path) -> None:
+    class Range32Handler(RangeHandler):
+        payload = b"L" * (64 * 1024 * 1024)
+        chunk_delay = 0.05
+
+    Range32Handler.ignore_ranges_after_probe = False
+    Range32Handler.slow = True
+    with Server(Range32Handler) as url:
+        runtime = LumiRuntime(tmp_path / "data")
+        task = runtime.create_http_task(
+            url,
+            target_dir=tmp_path / "downloads",
+            temp_dir=tmp_path / "temporary",
+            filename="parallel-32.bin",
+            connections=32,
+        )
+        deadline = time.time() + 5
+        while time.time() < deadline and Range32Handler.max_active_range < 32:
+            current = runtime.get_task(task.id)
+            if current and current.status in {TaskStatus.COMPLETED.value, TaskStatus.FAILED.value}:
+                break
+            time.sleep(0.01)
+
+        observed = Range32Handler.max_active_range
+        completed = wait_for(
+            runtime,
+            task.id,
+            {TaskStatus.COMPLETED.value, TaskStatus.FAILED.value},
+            timeout=20,
+        )
+        runtime.close()
+
+        assert completed.status == TaskStatus.COMPLETED.value, completed.error
+        assert observed >= 32, f"expected 32 concurrent Range requests, observed {observed}"
+        assert Path(completed.final_path).read_bytes() == Range32Handler.payload
+
+
+def test_32_connection_pause_resume_completes_exact_file(tmp_path: Path) -> None:
+    class Range32PauseHandler(RangeHandler):
+        payload = b"P" * (64 * 1024 * 1024)
+        chunk_delay = 0.05
+
+    Range32PauseHandler.ignore_ranges_after_probe = False
+    Range32PauseHandler.slow = True
+    with Server(Range32PauseHandler) as url:
+        runtime = LumiRuntime(tmp_path / "data")
+        task = runtime.create_http_task(
+            url,
+            target_dir=tmp_path / "downloads",
+            temp_dir=tmp_path / "temporary",
+            filename="parallel-32-resume.bin",
+            connections=32,
+        )
+        deadline = time.time() + 10
+        while time.time() < deadline:
+            current = runtime.get_task(task.id)
+            if current and current.downloaded_bytes > 4 * 1024 * 1024:
+                break
+            time.sleep(0.02)
+
+        runtime.pause(task.id)
+        paused = wait_for(runtime, task.id, {TaskStatus.PAUSED.value}, timeout=15)
+        assert paused.downloaded_bytes > 0
+        assert Range32PauseHandler.max_active_range >= 32
+
+        runtime.resume(task.id)
+        completed = wait_for(
+            runtime,
+            task.id,
+            {TaskStatus.COMPLETED.value, TaskStatus.FAILED.value},
+            timeout=30,
+        )
+        runtime.close()
+
+        assert completed.status == TaskStatus.COMPLETED.value, completed.error
+        assert Path(completed.final_path).read_bytes() == Range32PauseHandler.payload
+        assert not (tmp_path / "temporary" / "parallel-32-resume.bin.part").exists()

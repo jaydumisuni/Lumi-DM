@@ -275,4 +275,9 @@ def test_v7_runtime_extension_media_widget_and_remote_contract(tmp_path: Path) -
                 process.wait(timeout=5)
         log.close()
 
-    assert process.returncode in {0, -signal.SIGINT, 130}, log_path.read_text(encoding="utf-8")
+    expected_exit_codes = {0, -signal.SIGINT, 130}
+    if os.name == "nt":
+        # subprocess.terminate() maps to TerminateProcess on Windows and the
+        # Python development server exits with code 1 even after a clean test.
+        expected_exit_codes.add(1)
+    assert process.returncode in expected_exit_codes, log_path.read_text(encoding="utf-8")

@@ -412,7 +412,13 @@ class HTTPTransferRunner:
             segments = [SegmentState(0, task.total_bytes - 1)]
 
         coordinator = SegmentCoordinator(segments)
-        coordinator.ensure_pending(min(max(2, task.connections), 4))
+        # A requested connection count is an execution contract, not a slow
+        # adaptive target. Pre-split enough work for the requested workers (and
+        # a refill queue where the resource is large enough) before any worker
+        # starts so a 32-connection task can establish 32 Range requests
+        # immediately. SegmentCoordinator still enforces the minimum safe range
+        # size and stops splitting when the remaining resource is too small.
+        coordinator.ensure_pending(max(2, task.connections * 2))
         task.status = TaskStatus.RUNNING.value
         task.mode = "adaptive"
         task.downloaded_bytes = coordinator.total_downloaded()
@@ -425,7 +431,7 @@ class HTTPTransferRunner:
         fatal_errors: list[Exception] = []
         workers: list[threading.Thread] = []
         next_worker = 0
-        target_workers = 1
+        target_workers = max(1, min(task.connections, coordinator._pending_count()))
         started = time.monotonic()
 
         def worker(index: int) -> None:
