@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -65,4 +65,3 @@ def test_runtime_instance_mismatch_is_always_rejected() -> None:
         "allowChildPid": True,
     }
     assert run_case(valid_observed(4200, instance="different-runtime"), expected) is False
-
