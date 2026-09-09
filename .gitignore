@@ -12,3 +12,8 @@ installer_output/
 test-output/
 *.log
 android/local.properties
+
+# Local Lumi runtime / verification output
+.lumi-data/
+artifacts/
+docs/superpowers/
