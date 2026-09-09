@@ -1,0 +1,25 @@
+/* Lumi text accessibility. Geometry is unchanged; only text scales. */
+:root{--lumi-text-scale:1}
+html[data-lumi-text-size="large"]{--lumi-text-scale:1.12}
+html[data-lumi-text-size="xlarge"]{--lumi-text-scale:1.25}
+
+/* Settings gets a small readability bump even at Default. */
+.approved-settings-card h3{font-size:10px!important}
+.approved-settings-card label{font-size:8px!important;line-height:1.25}
+.approved-settings-card .input,.approved-settings-card .select{font-size:9px!important}
+.approved-settings-card .approved-btn{font-size:8px!important}
+
+html:not([data-lumi-text-size="default"]) :is(.nav-item,.nav-subitem){font-size:calc(10px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) .ttg-titlebar-brand strong{font-size:calc(11px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.ttg-shell-menu button,.ttg-shell-menu-head strong,.ttg-theme-control>span){font-size:calc(9px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.approved-page-head h2,.lumi-overview-head h2,.lumi-page-head h2){font-size:calc(16px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.approved-page-head p,.approved-btn,.approved-filter,.approved-table-row,.approved-file-cell strong,.approved-status,.approved-setting-copy strong){font-size:calc(8px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.approved-table-head,.approved-file-cell small,.approved-table-foot,.approved-settings-card label,.approved-card-title p,.approved-support-cards small){font-size:calc(7px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) .approved-settings-card h3{font-size:calc(10px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) .approved-settings-card label{font-size:calc(8px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) .approved-settings-card :is(.input,.select){font-size:calc(9px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.lumi-stat-copy small,.lumi-file-copy small,.lumi-cell small,.lumi-card-title p,.lumi-setting-copy small){font-size:calc(8px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(.lumi-stat-copy strong,.lumi-file-copy strong,.lumi-cell strong,.lumi-card-title h3,.lumi-setting-copy strong){font-size:calc(10px * var(--lumi-text-scale))!important}
+html:not([data-lumi-text-size="default"]) :is(button,input,select,textarea){letter-spacing:normal}
+html[data-lumi-text-size="large"] .approved-settings-card,
+html[data-lumi-text-size="xlarge"] .approved-settings-card{overflow:auto}

@@ -86,6 +86,9 @@
 
   async function handleMainShellAction(action) {
     closeShellMenus();
+    if (["extension", "help", "about"].includes(action) && window.LumiMainUI?.showApprovedControl) {
+      return window.LumiMainUI.showApprovedControl(action);
+    }
     if (action === "extension") return prepareBrowserExtension();
     if (action === "help") return showMainModal("Help / Report a Bug", `<h3>Need help with Lumi?</h3><p>Report a bug or ask for help on the official tools page through the Bonny assistant.</p><div class="ttg-modal-actions"><button class="btn primary" id="lumi-open-support">Open Bonny Support</button><button class="btn" id="lumi-modal-close">Close</button></div>`);
     if (action === "about") return showAbout();

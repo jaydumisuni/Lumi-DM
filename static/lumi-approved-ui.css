@@ -315,3 +315,136 @@
   .ttg-desktop .brand-name{font-size:35px}
   .ttg-desktop .brand-sub{font-size:9px}
 }
+
+
+/* THETECHGUY compact dark-glass quality pass — D797 presentation only.
+   The approved mockup remains the visual authority. MIBU supplies compact
+   density; the main website supplies the purple/blue/cyan glass language. */
+html[data-ttg-theme="dark"] .ttg-desktop{
+  border-color:rgba(148,54,244,.66);
+  box-shadow:
+    0 0 0 1px rgba(34,211,238,.16),
+    0 18px 70px rgba(0,0,0,.46),
+    0 0 42px rgba(126,34,206,.12);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .app-shell{
+  background:
+    radial-gradient(circle at 4% 10%,rgba(168,85,247,.22),transparent 29%),
+    radial-gradient(circle at 93% 16%,rgba(34,211,238,.15),transparent 27%),
+    linear-gradient(110deg,rgba(2,5,13,.72),rgba(3,7,18,.80)),
+    url('/static/background.png') center/cover no-repeat;
+}
+html[data-ttg-theme="dark"] .ttg-desktop .workspace{
+  background:linear-gradient(135deg,rgba(3,7,17,.32),rgba(3,8,20,.18));
+}
+html[data-ttg-theme="dark"] .ttg-desktop .sidebar{
+  background:linear-gradient(180deg,rgba(5,9,21,.78),rgba(4,8,19,.68));
+  border-right-color:rgba(128,75,222,.30);
+  box-shadow:inset -1px 0 0 rgba(53,188,255,.07),8px 0 32px rgba(0,0,0,.14);
+  backdrop-filter:blur(24px) saturate(145%);
+  -webkit-backdrop-filter:blur(24px) saturate(145%);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .topbar{
+  background:linear-gradient(180deg,rgba(5,9,20,.72),rgba(4,8,18,.52));
+  border-bottom-color:rgba(99,125,177,.16);
+  box-shadow:inset 0 -1px 0 rgba(34,211,238,.035);
+  backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .brand-logo{
+  image-rendering:auto;
+  filter:
+    drop-shadow(0 0 9px rgba(168,85,247,.28))
+    drop-shadow(0 0 7px rgba(34,211,238,.16));
+}
+html[data-ttg-theme="dark"] .ttg-desktop .brand-name{
+  color:#ffffff;
+  text-shadow:0 2px 18px rgba(92,116,255,.14);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .nav-item{
+  color:#9daac1;
+  border:1px solid transparent;
+}
+html[data-ttg-theme="dark"] .ttg-desktop .nav-item:hover{
+  color:#eef7ff;
+  border-color:rgba(34,211,238,.11);
+  background:linear-gradient(90deg,rgba(34,211,238,.07),rgba(168,85,247,.055));
+}
+html[data-ttg-theme="dark"] .ttg-desktop .nav-item.active{
+  color:#ffffff;
+  border-color:rgba(149,65,238,.42);
+  background:linear-gradient(90deg,rgba(112,28,206,.46),rgba(40,102,223,.22) 64%,rgba(34,211,238,.07));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 0 20px rgba(125,42,220,.14);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .nav-item.active .lumi-nav-icon{
+  color:#eef9ff;
+  filter:drop-shadow(0 0 6px rgba(34,211,238,.35));
+}
+html[data-ttg-theme="dark"] .ttg-desktop .search-box{
+  color:#91a5c4;
+  border-color:rgba(84,126,185,.25);
+  background:linear-gradient(145deg,rgba(9,17,31,.72),rgba(5,11,23,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 8px 20px rgba(0,0,0,.10);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-stat,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-panel,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-table,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-card,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-setting-card,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-health,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-diagnostic-card{
+  border-color:rgba(80,120,179,.26);
+  background:linear-gradient(145deg,rgba(9,17,32,.74),rgba(4,10,22,.66));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.045),
+    0 12px 30px rgba(0,0,0,.18),
+    0 0 20px rgba(85,48,190,.035);
+  backdrop-filter:blur(18px) saturate(132%);
+  -webkit-backdrop-filter:blur(18px) saturate(132%);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-stat:hover,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-card:hover{
+  border-color:rgba(125,82,224,.38);
+  background:linear-gradient(145deg,rgba(12,21,39,.82),rgba(5,12,25,.74));
+}
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-storage-card{
+  border-color:rgba(133,66,229,.44);
+  background:linear-gradient(145deg,rgba(9,16,31,.68),rgba(5,11,24,.62));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 12px 30px rgba(0,0,0,.14),0 0 22px rgba(112,36,207,.07);
+  backdrop-filter:blur(20px) saturate(135%);
+  -webkit-backdrop-filter:blur(20px) saturate(135%);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-storage-drive,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-quick,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-row-action,
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-file-logo{
+  background:linear-gradient(145deg,rgba(10,19,35,.72),rgba(5,12,25,.64));
+  border-color:rgba(83,119,175,.25);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+html[data-ttg-theme="dark"] .ttg-desktop .lumi-quick:hover{
+  border-color:rgba(34,211,238,.30);
+  background:linear-gradient(145deg,rgba(12,23,43,.82),rgba(7,14,29,.76));
+  box-shadow:0 0 18px rgba(34,211,238,.07);
+}
+
+
+/* Approved single global top bar: mockup parity.
+   The Electron shell bar is the real Lumi bar. The legacy workspace bar stays
+   in the DOM for compatibility but must never consume vertical geometry. */
+.ttg-desktop .workspace > .topbar{
+  display:none!important;
+}
+.ttg-desktop .ttg-titlebar{
+  background:linear-gradient(180deg,rgba(4,8,18,.88),rgba(4,8,17,.76));
+  border-bottom-color:rgba(84,103,153,.18);
+  backdrop-filter:blur(22px) saturate(135%);
+  -webkit-backdrop-filter:blur(22px) saturate(135%);
+}
+.ttg-desktop .ttg-titlebar .search-box{
+  flex:none;
+  -webkit-app-region:no-drag;
+  margin-right:8px;
+}

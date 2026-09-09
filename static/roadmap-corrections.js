@@ -199,10 +199,12 @@
     await ensureFirmwareCatalogue();
     correctedRenderFirmware();
   }
-  window.openFirmwareView = correctedOpenFirmwareView;
-  window.renderFirmware = correctedRenderFirmware;
-  try { openFirmwareView = correctedOpenFirmwareView; } catch (_) {}
-  try { renderFirmware = correctedRenderFirmware; } catch (_) {}
+  if (!window.LumiMainUI?.approvedMockupActive) {
+    window.openFirmwareView = correctedOpenFirmwareView;
+    window.renderFirmware = correctedRenderFirmware;
+    try { openFirmwareView = correctedOpenFirmwareView; } catch (_) {}
+    try { renderFirmware = correctedRenderFirmware; } catch (_) {}
+  }
 
   async function loadModels(brand) {
     const input = document.getElementById("lumi-firmware-model");
@@ -265,7 +267,19 @@
         include_community: form.elements.include_community.checked ? "true" : "false",
       });
       const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
-      v5State.results = response.results || [];
+      let results = response.results || [];
+      if (window.LumiMainUI?.approvedMockupActive) {
+        results = results.filter(item => v5State.platform === "Apple"
+          ? /apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`)
+          : !/apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`));
+        if (data.region && data.region !== "all") {
+          results = results.filter(item => `${item.region || item.metadata?.region || item.metadata?.market || ""}`.toLowerCase().includes(String(data.region).toLowerCase()));
+        }
+        if (data.package_type && data.package_type !== "all") {
+          results = results.filter(item => `${item.file_type || ""}`.toLowerCase().includes(String(data.package_type).toLowerCase()) || (data.package_type === "official" && item.official));
+        }
+      }
+      v5State.results = results;
     } catch (error) {
       v5State.results = [];
       v5Toast("Firmware search failed", error.message, "error");

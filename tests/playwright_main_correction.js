@@ -31,6 +31,7 @@ async function main() {
 
   await context.addInitScript(() => {
     window.__lumiWindowActions = [];
+    window.__lumiExtensionPrepareCalls = 0;
     Object.defineProperty(window, "electronApp", {
       configurable: true,
       value: {
@@ -43,7 +44,10 @@ async function main() {
         pickFolder: async () => "C:\\Users\\Lumi\\Downloads",
         openPath: async () => ({ ok: true }),
         openExternal: async () => ({ ok: true }),
-        prepareBrowserExtension: async () => ({ ok: true, path: "C:\\Users\\Lumi\\Documents\\Lumi DM Browser Extension" }),
+        prepareBrowserExtension: async () => {
+          window.__lumiExtensionPrepareCalls += 1;
+          return { ok: true, path: "C:\\Users\\Lumi\\Documents\\Lumi DM Browser Extension" };
+        },
         getDesktopSettings: async () => ({ corner: "bottom-right", displayId: "primary", margin: 12, scale: 1, visible: true, showUpload: false, displays: [{ id: "primary", label: "Primary · 920×650" }] }),
         saveDesktopSettings: async value => ({ ...value, displays: [{ id: "primary", label: "Primary · 920×650" }] }),
         showWidget: () => {},
@@ -98,11 +102,14 @@ async function main() {
   await page.locator("#ttg-gear-menu").waitFor({ state: "visible" });
   assert(await page.locator('[data-main-shell-action="extension"]').isVisible(), "Bundled Browser Extension action is missing");
   await page.click('[data-main-shell-action="extension"]');
-  await page.locator("#ttg-shell-modal").waitFor({ state: "visible" });
-  const extensionCopy = await page.locator("#ttg-shell-modal-body").innerText();
-  assert(extensionCopy.includes("extension folder is ready"), "Extension action did not invoke the bundled package owner");
-  assert(extensionCopy.includes("No Lumi pairing code is required"), "Same-PC extension still presents a pairing ceremony");
-  await page.click("#ttg-shell-modal .ttg-shell-modal-close");
+  await page.locator('#view-control.approved-control-page[data-control="extension"]').waitFor({ state: "visible" });
+  const extensionCopy = await page.locator("#view-control").innerText();
+  assert(extensionCopy.includes("Browser Extension"), "Approved Browser Extension page did not open");
+  assert(extensionCopy.includes("Same-PC authentication happens automatically"), "Same-PC extension authentication guidance is missing");
+  assert(!extensionCopy.toLowerCase().includes("pairing code"), "Same-PC extension still presents a pairing ceremony");
+  await page.locator("[data-approved-extension-install]").first().click();
+  assert(await page.evaluate(() => window.__lumiExtensionPrepareCalls) === 1, "Extension action did not invoke the bundled package owner");
+  await page.click(".approved-control-close-page");
 
   await page.click("#ttg-bell"); await page.locator("#ttg-notification-menu").waitFor({ state: "visible" }); await page.click("#ttg-bell");
   for (const action of ["minimize", "maximize", "close"]) await page.click(`[data-window-action="${action}"]`);

@@ -129,7 +129,7 @@ async function latencySamples(count = 5) {
 
 async function downloadSamples() {
   const values = [];
-  for (const bytes of [1_000_000, 5_000_000, 15_000_000]) {
+  for (const bytes of [1_000_000, 5_000_000, 10_000_000]) {
     const sample = await timedRequest(`${DOWNLOAD_ENDPOINT}?bytes=${bytes}&cache=${Date.now()}`, {
       expectedBytes: bytes,
       timeout: 30000,

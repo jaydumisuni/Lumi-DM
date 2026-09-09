@@ -1,4 +1,4 @@
-const CACHE_NAME = 'LUMIDM-static-v2';
+const CACHE_NAME = 'LUMIDM-static-v5';
 const CORE = [
   '/',
   '/static/index.html',
@@ -10,6 +10,10 @@ const CORE = [
   '/static/main-ui.css',
   '/static/lumi-approved-ui.css',
   '/static/lumi-clear-glass.css',
+  '/static/lumi-glass-material.css',
+  '/static/lumi-background.png',
+  '/static/lumi-accessibility.css',
+  '/static/lumi-accessibility.js',
   '/static/app.js',
   '/static/app-hardening.js',
   '/static/technician-workspaces.js',

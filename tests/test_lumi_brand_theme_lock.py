@@ -121,7 +121,7 @@ def test_stale_reminal_preview_is_removed() -> None:
     assert not (ROOT / "static" / "preview.html").exists()
     service_worker = (ROOT / "static" / "sw.js").read_text(encoding="utf-8")
     assert "preview.html" not in service_worker
-    assert "LUMIDM-static-v2" in service_worker
+    assert "LUMIDM-static-v5" in service_worker
     for required in (
         "/static/app-hardening.js",
         "/static/technician-workspaces.css",

@@ -8,6 +8,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const ARTIFACTS = path.resolve(process.env.LUMI_PLAYWRIGHT_ARTIFACTS || "artifacts");
 const PYTHON = process.env.LUMIDM_PYTHON || (process.platform === "win32" ? "python.exe" : "python3");
+const ELECTRON_EXECUTABLE = process.env.LUMI_ELECTRON_EXECUTABLE || "";
 const RUNTIME = "http://127.0.0.1:7000";
 const TOTAL_BYTES = 16 * 1024 * 1024;
 
@@ -139,6 +140,7 @@ async function main() {
 
   try {
     electronApp = await electron.launch({
+      ...(ELECTRON_EXECUTABLE ? { executablePath: ELECTRON_EXECUTABLE } : {}),
       args: [path.join(ROOT, "electron", "main.js")],
       cwd: ROOT,
       env: {

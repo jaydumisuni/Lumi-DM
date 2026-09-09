@@ -19,6 +19,7 @@
   function initShell() {
     document.body.classList.add("ttg-desktop");
     document.body.insertAdjacentHTML("afterbegin", shellHtml());
+    integrateApprovedTopbar();
     bindShell();
     void syncWindowState();
     captureTaskBaseline();
@@ -31,6 +32,14 @@
     window.electronApp.onConnectionCapacity?.(status => {
       if (status?.state === "complete") showCapacityResult(status, false);
     });
+  }
+
+  function integrateApprovedTopbar() {
+    const titlebar = document.getElementById("ttg-titlebar");
+    const spacer = titlebar?.querySelector(".ttg-titlebar-spacer");
+    const search = document.querySelector(".workspace > .topbar .search-box");
+    if (!titlebar || !spacer || !search || titlebar.contains(search)) return;
+    spacer.insertAdjacentElement("afterend", search);
   }
 
   function shellHtml() {
@@ -132,6 +141,9 @@
   async function handleShellAction(action) {
     if (action === "settings") return switchShellView("settings");
     if (action === "diagnostics") return switchShellView("diagnostics");
+    if (["speed-test", "update"].includes(action) && window.LumiMainUI?.showApprovedControl) {
+      return window.LumiMainUI.showApprovedControl(action);
+    }
     if (action === "speed-test") {
       showModal("Connection capacity", "<h3>Preparing the test…</h3><p>Active downloads must be paused. Lumi will measure download capacity, upload capacity and latency using a bounded test.</p>");
       try {

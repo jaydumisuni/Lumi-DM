@@ -103,7 +103,8 @@ def test_about_points_to_the_official_tools_page_and_verified_releases():
 def test_connection_test_is_manual_bounded_and_blocks_active_downloads():
     source = (ROOT / "electron" / "connection-capacity.js").read_text(encoding="utf-8")
     assert "Pause active downloads before testing connection capacity" in source
-    assert "15_000_000" in source
+    assert "10_000_000" in source
+    assert "15_000_000" not in source
     assert "5_000_000" in source
     assert "download_mbps" in source and "upload_mbps" in source
     assert "latency_ms" in source

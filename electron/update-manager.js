@@ -39,7 +39,11 @@ function requestBuffer(url, headers = {}, redirects = 0) {
         let text = "";
         response.setEncoding("utf8");
         response.on("data", chunk => text += chunk);
-        response.on("end", () => reject(new Error(`Update request failed (${status}): ${text.slice(0, 180)}`)));
+        response.on("end", () => {
+          const error = new Error(`Update request failed (${status}): ${text.slice(0, 180)}`);
+          error.statusCode = status;
+          reject(error);
+        });
         return;
       }
       const chunks = [];
@@ -162,6 +166,19 @@ class UpdateManager {
       }
       return this.lastResult;
     } catch (error) {
+      if (error.statusCode === 404) {
+        const result = {
+          available: false,
+          currentVersion: this.currentVersion,
+          version: this.currentVersion,
+          noPublishedRelease: true,
+          releaseUrl: RELEASES_PAGE,
+          message: "No published Lumi release is available yet.",
+        };
+        this.lastResult = result;
+        this.onStatus({ state: "current", ...result });
+        return result;
+      }
       const result = { available: false, currentVersion: this.currentVersion, error: error.message, message: error.message };
       this.lastResult = result;
       this.onStatus({ state: "error", ...result });

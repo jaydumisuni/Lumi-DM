@@ -9,6 +9,7 @@
     "/static/main-ui-shell.js",
     "/static/main-ui-download.js",
     "/static/main-ui-fixes.js",
+    "/static/approved-mockup-ui.js",
     "/static/interaction-contract.js",
     "/static/roadmap-corrections.js",
     "/static/toast-contract.js",
@@ -93,6 +94,7 @@
     try { renderGrabber = UI.renderGrabberPrimary; } catch (_) {}
     try { renderSettings = UI.renderSettingsPrimary; } catch (_) {}
     UI.bindPrimaryActions();
+    UI.installApprovedMockupActions?.();
     UI.installInteractionContract();
     UI.patchGearMenu();
     UI.patchNotificationSwitch();

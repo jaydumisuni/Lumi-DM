@@ -31,54 +31,30 @@
     if (!view) return;
     view.dataset.osWorkspaceOwner = "delegated";
     let catalogue;
-    try {
-      catalogue = await loadCatalogue();
-    } catch (error) {
-      catalogue = {
-        families: ["Windows", "macOS", "Linux"],
-        options: {},
-        warning: error.message,
-      };
-    }
-    view.innerHTML = `
-      <div class="firmware-shell os-catalogue-shell">
-        <section class="firmware-hero os-hero">
-          <div class="os-hero-copy">
-            <small>Technician catalogue</small>
-            <h2>Computer Operating Systems</h2>
-            <p>Choose Windows, macOS or Linux, then narrow the version, edition, language, architecture and channel. Official files remain first. Helpers and indexes are clearly labelled before download.</p>
-          </div>
-          <div class="firmware-warning"><span>⚠</span><span>${osEsc(catalogue.warning || "Verify the edition, architecture and checksum before installation.")}</span></div>
-        </section>
-        <div class="os-platform-grid">
-          ${["Windows", "macOS", "Linux"].map(family => `
-            <button class="os-platform-card ${osState.family === family ? "active" : ""}" type="button" data-os-family="${family}">
-              <span class="os-platform-icon">${family === "Windows" ? "⊞" : family === "macOS" ? "◉" : "◆"}</span>
-              <strong>${family}</strong>
-              <small>${family === "Windows" ? "Microsoft retail ISO files" : family === "macOS" ? "Installers and restore images" : "Official distribution images"}</small>
-            </button>`).join("")}
-        </div>
-        <div id="os-filter-host">${osFilterHtml(catalogue, osState.family)}</div>
-        <div id="os-results">${osResultsHtml()}</div>
-      </div>`;
+    try { catalogue = await loadCatalogue(); }
+    catch (error) { catalogue = { families: ["Windows", "macOS", "Linux"], options: {}, warning: error.message }; }
+    view.innerHTML = `<div class="approved-page approved-os-page os-catalogue-shell">
+      <div class="approved-page-head"><div><h2>Operating Systems</h2><p>Official Windows, macOS and Linux installation files</p></div></div>
+      <div class="approved-platform-tabs os-platform-tabs">${["Windows","macOS","Linux"].map(family => `<button type="button" class="${osState.family===family?"active":""}" data-os-family="${family}"><img src="${family==="Windows"?"/static/brand/windows.svg":family==="macOS"?"/static/brand/apple.svg":"/static/brand/linux.svg"}" alt=""><span>${family}</span></button>`).join("")}</div>
+      <div id="os-filter-host">${osFilterHtml(catalogue, osState.family)}</div>
+      <div id="os-results" class="approved-tech-results">${osResultsHtml()}</div>
+    </div>`;
   }
-
   function osFilterHtml(catalogue, family) {
     const options = catalogue.options?.[family] || {};
     const distributions = family === "Linux" ? options.distributions || [] : [];
-    return `<form class="firmware-filters os-filters" id="os-catalogue-form">
+    return `<form class="approved-tech-filters approved-os-filters" id="os-catalogue-form">
       <input type="hidden" name="family" value="${osEsc(family)}">
-      ${family === "Linux" ? `<label>Distribution<select class="select" name="distribution">${distributions.map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>` : ""}
-      <label>Version<select class="select" name="version"><option value="">Latest / current</option>${(options.versions || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
-      <label>Edition / image<select class="select" name="edition"><option value="">Recommended</option>${(options.editions || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
-      <label>Architecture<select class="select" name="architecture">${(options.architectures || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
-      <label>Channel<select class="select" name="channel">${(options.channels || ["all"]).map(value => `<option value="${osEsc(value)}">${osEsc(titleCase(value))}</option>`).join("")}</select></label>
-      ${family === "Windows" ? `<label>Language<select class="select" name="language">${(options.languages || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>` : ""}
-      <label class="os-wide">Search within results<input class="input" name="query" type="search" placeholder="version, build, edition or file name"></label>
-      <div class="firmware-filter-actions"><button class="btn primary" type="submit">⌕ Find operating systems</button><button class="btn" type="button" data-os-action="clear">Clear</button></div>
+      ${family === "Linux" ? `<label>Distribution<select class="select" name="distribution"><option value="">All</option>${distributions.map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>` : ""}
+      <label>Version<select class="select" name="version"><option value="">All Versions</option>${(options.versions || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
+      <label>Edition<select class="select" name="edition"><option value="">All Editions</option>${(options.editions || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
+      <label>Architecture<select class="select" name="architecture"><option value="">All</option>${(options.architectures || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>
+      <label>Channel<select class="select" name="channel"><option value="">All Channels</option>${(options.channels || []).filter(value=>value!=="all").map(value => `<option value="${osEsc(value)}">${osEsc(titleCase(value))}</option>`).join("")}</select></label>
+      ${family === "Windows" ? `<label>Language<select class="select" name="language"><option value="">English</option>${(options.languages || []).map(value => `<option value="${osEsc(value)}">${osEsc(value)}</option>`).join("")}</select></label>` : ""}
+      <label class="approved-tech-search">Search<input class="input" name="query" type="search" placeholder="version, build, edition or file name"></label>
+      <button class="approved-btn primary" type="submit">⌕ Search</button><button class="approved-btn" type="button" data-os-action="clear">Clear filters</button>
     </form>`;
   }
-
   async function handleClick(event) {
     if (!event.target.closest("#view-operating_systems")) return;
     const familyButton = event.target.closest("[data-os-family]");
@@ -134,32 +110,21 @@
   }
 
   function osResultsHtml() {
-    if (osState.loading) return `<div class="firmware-loading">Checking official operating-system sources…</div>`;
-    if (!osState.results.length) return `<div class="empty"><div class="empty-icon">◫</div><strong>Select Windows, macOS or Linux</strong>Choose a version, edition and architecture, then search.</div>`;
-    const groups = {};
-    for (const item of osState.results) (groups[item.source_group || "Operating systems"] ||= []).push(item);
-    return `<div class="firmware-groups">${Object.entries(groups).map(([group, items]) => `
-      <section class="firmware-group">
-        <div class="firmware-group-head"><h3>${osEsc(group)}</h3><span>${items.length} result${items.length === 1 ? "" : "s"}</span></div>
-        <div class="firmware-list">${items.map(osCard).join("")}</div>
-      </section>`).join("")}</div>`;
+    if (osState.loading) return `<section class="approved-dense-table approved-os-table"><div class="approved-empty"><strong>Checking official operating-system sources…</strong></div></section>`;
+    return `<section class="approved-dense-table approved-os-table"><div class="approved-table-head"><span>Version</span><span>Edition</span><span>Architecture</span><span>Channel</span><span>Size</span><span>Build / Release</span><span>Actions</span></div><div class="approved-table-body">${osState.results.length ? osState.results.map(osCard).join("") : `<div class="approved-empty"><strong>No operating-system results yet</strong><span>Choose Windows, macOS or Linux, then search official sources.</span></div>`}</div><div class="approved-table-foot"><span>${osState.results.length} result${osState.results.length === 1 ? "" : "s"}</span><span>Verify edition, architecture and checksum before installation.</span></div></section>`;
   }
 
   function osCard(item) {
     const index = osState.results.indexOf(item);
     const resolver = item.metadata?.resolver === "fido" && !item.direct;
-    const host = safeHost(item.url || item.source_url);
-    return `<article class="firmware-card ${item.official ? "official" : ""} ${resolver ? "os-resolver" : ""}">
-      <div class="firmware-card-head"><div class="firmware-source-icon">${item.official ? "✓" : resolver ? "W" : "⌁"}</div><div class="firmware-title"><h4>${osEsc(item.title || item.filename || item.source_name)}</h4><p>${osEsc(item.source_name)} · ${osEsc(item.device || item.brand)}</p></div></div>
-      <div class="firmware-badges"><span class="firmware-badge ${item.official ? "good" : "warn"}">${item.official ? "Official source" : resolver ? "Official-file helper" : "Source index"}</span>${item.channel ? `<span class="firmware-badge">${osEsc(item.channel)}</span>` : ""}${item.file_type ? `<span class="firmware-badge">${osEsc(item.file_type)}</span>` : ""}</div>
-      <div class="firmware-details"><div class="firmware-detail"><span>Version</span><strong>${osEsc(item.version || "—")}</strong></div><div class="firmware-detail"><span>Architecture</span><strong>${osEsc(item.metadata?.architecture || item.device || "—")}</strong></div><div class="firmware-detail"><span>Size / host</span><strong>${item.size ? osFmtBytes(item.size) : osEsc(host || "—")}</strong></div></div>
-      ${item.sha256 ? `<div class="firmware-detail os-checksum-row"><span>SHA-256</span><strong class="os-checksum good" title="${osEsc(item.sha256)}">${osEsc(item.sha256)}</strong></div>` : ""}
-      <div class="firmware-notes">${osEsc(item.notes || "Confirm compatibility and verify the source before installation.")}</div>
-      ${resolver ? `<div class="os-licence">Fido is an external GPLv3 helper by Pete Batard. Lumi requests a temporary Microsoft-hosted retail ISO URL only after you click Resolve.</div>` : ""}
-      <div class="firmware-actions">${resolver ? `<button class="btn primary" type="button" data-os-action="resolve" data-index="${index}">Resolve official link</button>` : item.direct && item.url ? `<button class="btn primary" type="button" data-os-action="download" data-index="${index}">↓ Download in Lumi</button>` : ""}${item.url ? `<button class="btn" type="button" data-os-action="copy" data-index="${index}">Copy URL</button>` : ""}${item.source_url || item.url ? `<button class="btn" type="button" data-os-action="source" data-index="${index}">Open source</button>` : ""}</div>
-    </article>`;
+    const version = item.version || item.title || "—";
+    const edition = item.file_type || item.metadata?.edition || item.metadata?.distribution || "Recommended";
+    const arch = item.metadata?.architecture || item.device || "—";
+    const channel = item.channel || "Stable";
+    const release = item.build || item.release_date || item.metadata?.build || "—";
+    const action = resolver ? `<button class="approved-btn" type="button" data-os-action="resolve" data-index="${index}">Resolve</button>` : item.direct && item.url ? `<button class="approved-btn primary" type="button" data-os-action="download" data-index="${index}">Download</button>` : `<button class="approved-btn" type="button" data-os-action="source" data-index="${index}">Source</button>`;
+    return `<div class="approved-table-row approved-os-row"><div class="approved-file-cell"><img src="${osState.family === "Windows" ? "/static/brand/windows.svg" : osState.family === "macOS" ? "/static/brand/apple.svg" : "/static/brand/linux.svg"}" alt=""><span><strong>${osEsc(version)}</strong><small>${osEsc(item.source_name || osState.family)}</small></span></div><span>${osEsc(edition)}</span><span>${osEsc(arch)}</span><span>${osEsc(titleCase(channel))}</span><span>${item.size ? osFmtBytes(item.size) : "—"}</span><span>${osEsc(release)}</span><span class="approved-actions">${action}</span></div>`;
   }
-
   async function resolveWindows(item, button) {
     const form = document.getElementById("os-catalogue-form");
     const data = Object.fromEntries(new FormData(form).entries());

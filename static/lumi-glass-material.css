@@ -1,0 +1,464 @@
+/* Lumi material system aligned to the proven Oracle desktop glass UI.
+   Glass is controlled inside the app: translucent cards over a stable themed
+   foundation, not raw desktop transparency. */
+:root{
+  --lumi-bg:#070b14;
+  --lumi-window:rgba(10,18,34,.90);
+  --lumi-glass:rgba(24,36,62,.58);
+  --lumi-glass-strong:rgba(21,31,53,.82);
+  --lumi-control:rgba(18,27,47,.48);
+  --lumi-line:rgba(157,170,212,.22);
+  --lumi-line-strong:rgba(140,105,255,.52);
+  --lumi-text:#f7f8ff;
+  --lumi-muted:#9ca9c4;
+  --lumi-purple:#9b64ff;
+  --lumi-purple-2:#6d49ff;
+  --lumi-blue:#4d8dff;
+  --lumi-edge-cyan:#54e9ff;
+  --lumi-edge-blue:#4f8cff;
+  --lumi-edge-magenta:#d94cff;
+  --lumi-shadow:0 20px 58px rgba(0,0,0,.34),0 0 38px rgba(78,74,255,.08);
+}
+html[data-ttg-theme="glass"]{
+  color-scheme:light;
+  --lumi-bg:#edf1fb;
+  --lumi-window:rgba(246,248,255,.88);
+  --lumi-glass:rgba(255,255,255,.62);
+  --lumi-glass-strong:rgba(255,255,255,.83);
+  --lumi-control:rgba(255,255,255,.64);
+  --lumi-line:rgba(74,88,130,.16);
+  --lumi-line-strong:rgba(122,88,255,.38);
+  --lumi-text:#101525;
+  --lumi-muted:#6f7891;
+  --lumi-shadow:0 18px 46px rgba(65,74,110,.16),0 0 34px rgba(121,84,255,.07);
+}
+html[data-ttg-theme="dark"]{color-scheme:dark}
+
+html[data-ttg-theme="dark"],html[data-ttg-theme="dark"] body,
+html[data-ttg-theme="glass"],html[data-ttg-theme="glass"] body{
+  color:var(--lumi-text)!important;
+  background:
+    radial-gradient(circle at 18% 8%,rgba(111,65,255,.24),transparent 28%),
+    radial-gradient(circle at 92% 82%,rgba(44,131,255,.18),transparent 32%),
+    linear-gradient(150deg,var(--lumi-bg),color-mix(in srgb,var(--lumi-bg) 88%,#302171))!important;
+}
+html[data-ttg-theme="glass"],html[data-ttg-theme="glass"] body{
+  background:
+    radial-gradient(circle at 18% 8%,rgba(111,65,255,.14),transparent 28%),
+    radial-gradient(circle at 92% 82%,rgba(44,131,255,.12),transparent 32%),
+    linear-gradient(150deg,var(--lumi-bg),color-mix(in srgb,var(--lumi-bg) 94%,#7d79bc))!important;
+}
+
+/* Stable glass foundation: Oracle's window material. */
+html[data-ttg-theme] :is(#app-shell,.app-shell,.workspace){
+  background:linear-gradient(155deg,var(--lumi-window),color-mix(in srgb,var(--lumi-window) 86%,#1c2450))!important;
+  color:var(--lumi-text)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+}
+html[data-ttg-theme="glass"] :is(#app-shell,.app-shell,.workspace){
+  background:linear-gradient(155deg,var(--lumi-window),color-mix(in srgb,var(--lumi-window) 92%,#b8b6e8))!important;
+}
+
+/* Chrome stays readable but visually belongs to the same sheet of glass. */
+html[data-ttg-theme] :is(.sidebar,.topbar,.ttg-titlebar){
+  background:color-mix(in srgb,var(--lumi-window) 92%,transparent)!important;
+  border-color:var(--lumi-line)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+
+/* Normal content glass = Oracle --glass. */
+html[data-ttg-theme] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:linear-gradient(135deg,var(--lumi-glass),color-mix(in srgb,var(--lumi-glass) 86%,#5140ad))!important;
+  border-color:var(--lumi-line)!important;
+  color:var(--lumi-text)!important;
+  backdrop-filter:blur(24px) saturate(135%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(135%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 6px 18px rgba(0,0,0,.10)!important;
+}
+html[data-ttg-theme="glass"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:linear-gradient(135deg,var(--lumi-glass),color-mix(in srgb,var(--lumi-glass) 94%,#d9d7f5))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 6px 18px rgba(65,74,110,.07)!important;
+}
+
+/* Strong glass for overlays and menus. */
+html[data-ttg-theme] :is(.ttg-shell-menu,.modal,.ttg-shell-modal,.inspector,.context-menu,.approved-speed-drawer,.approved-update-panel){
+  background:linear-gradient(145deg,color-mix(in srgb,var(--lumi-window) 94%,#1e2449),var(--lumi-glass-strong))!important;
+  border-color:var(--lumi-line-strong)!important;
+  color:var(--lumi-text)!important;
+  backdrop-filter:blur(28px) saturate(140%)!important;
+  -webkit-backdrop-filter:blur(28px) saturate(140%)!important;
+  box-shadow:0 20px 60px rgba(0,0,0,.34)!important;
+}
+html[data-ttg-theme="glass"] :is(.ttg-shell-menu,.modal,.ttg-shell-modal,.inspector,.context-menu,.approved-speed-drawer,.approved-update-panel){
+  background:linear-gradient(145deg,color-mix(in srgb,var(--lumi-window) 96%,#d9d7f5),var(--lumi-glass-strong))!important;
+  box-shadow:0 18px 48px rgba(65,74,110,.17)!important;
+}
+
+/* Inputs and neutral actions match Oracle button/select material. */
+html[data-ttg-theme] :is(
+ .search-box,.live-speed,.select,.input,.textarea,.lumi-filter,.lumi-secondary,.lumi-icon-button,
+ .approved-filter,.approved-theme-segment,.approved-help-search,.approved-tech-filters .input,.approved-tech-filters .select,
+ .approved-btn:not(.primary):not(.danger),.approved-icon-action
+){
+  background:var(--lumi-control)!important;
+  border-color:var(--lumi-line)!important;
+  color:var(--lumi-text)!important;
+  backdrop-filter:blur(18px) saturate(130%)!important;
+  -webkit-backdrop-filter:blur(18px) saturate(130%)!important;
+  box-shadow:none!important;
+}
+html[data-ttg-theme] :is(.approved-btn:not(.primary):not(.danger),.approved-icon-action,.approved-filter):hover{
+  border-color:var(--lumi-line-strong)!important;
+}
+
+/* Text hierarchy follows Oracle: no wallpaper-dependent palette tricks. */
+html[data-ttg-theme] :is(.approved-page,.lumi-overview,.lumi-page,.ttg-shell-menu,.modal,.ttg-shell-modal){color:var(--lumi-text)!important}
+html[data-ttg-theme] :is(.approved-page h1,.approved-page h2,.approved-page h3,.approved-stat-copy strong,.approved-file-cell strong,.approved-category-title strong,.approved-category-tile>b){color:var(--lumi-text)!important}
+html[data-ttg-theme] :is(
+ .approved-page-head p,.approved-settings-card label,.approved-file-cell small,.approved-table-foot,.approved-stat-copy small,.approved-stat-copy span,
+ .approved-empty span,.approved-browser-title small,.approved-browser-card>small,.approved-support-cards small,.approved-faq p,
+ .lumi-stat-copy span,.lumi-speed-sub,.lumi-file-copy small,.lumi-cell small,.lumi-card-title p,.lumi-metric small,.lumi-setting-copy small,
+ .nav-subitem,.ttg-shell-menu small
+){color:var(--lumi-muted)!important}
+html[data-ttg-theme] .approved-faq summary{color:var(--lumi-text)!important}
+html[data-ttg-theme] .approved-filter:not(.active){color:var(--lumi-muted)!important}
+html[data-ttg-theme] .approved-theme-segment button:not(.active){color:var(--lumi-muted)!important}
+
+/* The user asked for a small visibility shadow, not a glow. */
+html[data-ttg-theme="dark"] :is(.approved-page,.lumi-overview,.lumi-page,.nav-item,.nav-subitem,.ttg-shell-menu,button,label,input,select,textarea){text-shadow:0 1px 1px rgba(0,0,0,.28)}
+html[data-ttg-theme="glass"] :is(.approved-page,.lumi-overview,.lumi-page,.nav-item,.nav-subitem,.ttg-shell-menu,button,label,input,select,textarea){text-shadow:0 1px 1px rgba(255,255,255,.35)}
+
+html[data-ttg-theme] .approved-control-overlay{background:rgba(2,5,12,.56)!important;backdrop-filter:blur(6px)!important}
+html[data-ttg-theme="glass"] .approved-control-overlay{background:rgba(237,241,250,.48)!important}
+html[data-ttg-theme] :is(.approved-table-head,.table-head){background:color-mix(in srgb,var(--lumi-glass-strong) 72%,transparent)!important}
+html[data-ttg-theme] :is(.approved-table-row:hover,.download-row:hover){background:color-mix(in srgb,var(--lumi-purple) 10%,transparent)!important}
+\n\n
+
+/* Supplied THETECHGUY / Lumi background artwork — exact user attachment.
+   It provides the blue/purple/cyan light field; the UI remains the glass layer. */
+html[data-ttg-theme="dark"]{
+  --lumi-window:rgba(5,10,25,.38);
+  --lumi-glass:rgba(12,23,48,.42);
+  --lumi-glass-strong:rgba(10,19,40,.74);
+  --lumi-control:rgba(12,23,46,.46);
+  --lumi-line:rgba(117,151,218,.27);
+  --lumi-line-strong:rgba(158,91,255,.68);
+}
+html[data-ttg-theme="glass"]{
+  --lumi-window:rgba(235,242,255,.56);
+  --lumi-glass:rgba(245,249,255,.53);
+  --lumi-glass-strong:rgba(244,248,255,.78);
+  --lumi-control:rgba(248,251,255,.60);
+  --lumi-line:rgba(79,102,150,.20);
+  --lumi-line-strong:rgba(128,82,255,.48);
+}
+.brand-background{
+  position:fixed;
+  inset:-10px;
+  z-index:0;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(0,3,12,.02),rgba(0,4,16,.10)),
+    url('/static/lumi-background.png') center 54%/cover no-repeat;
+  filter:saturate(1.48) brightness(.88) blur(4px);
+  transform:scale(1.06);
+}
+html[data-ttg-theme="glass"] .brand-background{
+  opacity:.64;
+  filter:saturate(.92) brightness(1.02) blur(3px);
+}
+
+/* One integrated glass sheet. Avoid stacking opaque navy layers. */
+#app-shell{
+  position:relative;
+  z-index:1;
+  isolation:isolate;
+  border:0!important;
+  border-radius:0!important;
+  overflow:hidden;
+  background:linear-gradient(150deg,rgba(3,8,22,.045),rgba(3,9,24,.075))!important;
+  box-shadow:none!important;
+}
+html[data-ttg-theme="glass"] #app-shell{
+  background:linear-gradient(150deg,rgba(245,249,255,.34),rgba(234,242,255,.43))!important;
+}
+#app-shell::before{content:none!important}
+html[data-ttg-theme] .workspace{
+  background:linear-gradient(150deg,rgba(3,9,24,.035),rgba(4,11,28,.08))!important;
+  backdrop-filter:blur(12px) saturate(128%)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(128%)!important;
+}
+html[data-ttg-theme="glass"] .workspace{
+  background:linear-gradient(150deg,rgba(248,251,255,.25),rgba(237,245,255,.34))!important;
+}
+html[data-ttg-theme] .sidebar{
+  background:linear-gradient(180deg,rgba(4,10,27,.17),rgba(5,12,31,.11))!important;
+  border-right:1px solid rgba(98,141,220,.27)!important;
+  backdrop-filter:blur(24px) saturate(142%)!important;
+  -webkit-backdrop-filter:blur(24px) saturate(142%)!important;
+  box-shadow:inset -1px 0 0 rgba(188,81,255,.055)!important;
+}
+html[data-ttg-theme="glass"] .sidebar{
+  background:linear-gradient(180deg,rgba(247,250,255,.58),rgba(236,244,255,.47))!important;
+  border-right-color:rgba(79,104,160,.18)!important;
+}
+
+/* Cards are darker than the sheet, but still visibly translucent. */
+html[data-ttg-theme="dark"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:linear-gradient(145deg,rgba(255,255,255,.060),transparent 30%),linear-gradient(135deg,rgba(8,19,43,.14),rgba(15,19,49,.075))!important;
+  border-color:rgba(126,168,245,.43)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(88,98,255,.045),0 7px 22px rgba(0,0,0,.10),0 0 22px rgba(91,83,255,.10)!important;
+  backdrop-filter:blur(16px) saturate(152%)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(152%)!important;
+}
+html[data-ttg-theme="glass"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:linear-gradient(135deg,rgba(250,252,255,.54),rgba(236,244,255,.45))!important;
+  border-color:rgba(79,103,157,.20)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.62),0 8px 22px rgba(54,68,110,.09)!important;
+}
+
+/* Whole-window A5/A6-style luminous perimeter. This intentionally lives on
+   the desktop shell, so there is no horizontal divider below the titlebar. */
+body.ttg-desktop{
+  border:0!important;
+  border-radius:12px!important;
+  overflow:hidden!important;
+  position:relative;
+}
+body.ttg-desktop::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:2147483000;
+  pointer-events:none;
+  border-radius:12px;
+  padding:1px;
+  background:linear-gradient(90deg,var(--lumi-edge-cyan) 0%,#6d79ff 48%,var(--lumi-edge-magenta) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  filter:drop-shadow(0 0 4px rgba(68,189,255,.42)) drop-shadow(0 0 7px rgba(180,67,255,.18));
+}
+html[data-ttg-theme="glass"] body.ttg-desktop::before{opacity:.78}
+
+/* Integrated titlebar — no divider line. */
+html[data-ttg-theme] .ttg-titlebar{
+  border-bottom:0!important;
+  background:linear-gradient(90deg,rgba(3,8,22,.10),rgba(5,9,24,.04))!important;
+  backdrop-filter:blur(22px) saturate(142%)!important;
+  -webkit-backdrop-filter:blur(22px) saturate(142%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
+}
+html[data-ttg-theme="glass"] .ttg-titlebar{
+  background:linear-gradient(90deg,rgba(249,252,255,.54),rgba(239,246,255,.42))!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.50)!important;
+}
+
+/* Controls need slightly stronger local glass so every function stays obvious. */
+html[data-ttg-theme="dark"] :is(
+ .search-box,.live-speed,.select,.input,.textarea,.lumi-filter,.lumi-secondary,.lumi-icon-button,
+ .approved-filter,.approved-theme-segment,.approved-help-search,.approved-tech-filters .input,.approved-tech-filters .select,
+ .approved-btn:not(.primary):not(.danger),.approved-icon-action
+){background:rgba(9,20,44,.32)!important;border-color:rgba(111,148,218,.31)!important}
+
+
+/* Specificity lock: these selectors intentionally outrank the legacy shared
+   material rule above so the supplied background can actually read through. */
+html[data-ttg-theme="dark"] :is(#app-shell,.app-shell){
+  background:linear-gradient(150deg,rgba(3,8,22,.045),rgba(3,9,24,.075))!important;
+  backdrop-filter:blur(14px) saturate(132%)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(132%)!important;
+}
+html[data-ttg-theme="glass"] :is(#app-shell,.app-shell){
+  background:linear-gradient(150deg,rgba(245,249,255,.34),rgba(234,242,255,.43))!important;
+  backdrop-filter:blur(14px) saturate(122%)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(122%)!important;
+}
+html[data-ttg-theme="dark"] .workspace{
+  background:linear-gradient(150deg,rgba(3,9,24,.035),rgba(4,11,28,.08))!important;
+  backdrop-filter:blur(8px) saturate(128%)!important;
+  -webkit-backdrop-filter:blur(8px) saturate(128%)!important;
+}
+html[data-ttg-theme="glass"] .workspace{
+  background:linear-gradient(150deg,rgba(248,251,255,.25),rgba(237,245,255,.34))!important;
+  backdrop-filter:blur(8px) saturate(118%)!important;
+  -webkit-backdrop-filter:blur(8px) saturate(118%)!important;
+}
+html[data-ttg-theme="dark"] .topbar{
+  background:rgba(4,10,27,.14)!important;
+  border-color:rgba(108,146,219,.20)!important;
+  backdrop-filter:blur(16px) saturate(136%)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(136%)!important;
+}
+html[data-ttg-theme="glass"] .topbar{
+  background:rgba(247,250,255,.38)!important;
+  border-color:rgba(78,101,154,.16)!important;
+}
+
+
+/* Visual target lock — reference glass shared by both themes. */
+html[data-ttg-theme="dark"] .brand-background{
+  opacity:1!important;
+  background:
+    linear-gradient(180deg,rgba(0,3,12,.015),rgba(0,4,16,.08)),
+    url('/static/lumi-background.png') center 54%/cover no-repeat!important;
+  filter:saturate(1.55) brightness(.95) blur(3px)!important;
+  transform:scale(1.045)!important;
+}
+html[data-ttg-theme="glass"] .brand-background{
+  opacity:1!important;
+  background:
+    linear-gradient(180deg,rgba(243,248,255,.12),rgba(232,241,255,.24)),
+    url('/static/lumi-background.png') center 54%/cover no-repeat!important;
+  filter:saturate(.98) brightness(1.06) blur(4px)!important;
+  transform:scale(1.05)!important;
+}
+
+html[data-ttg-theme="dark"] :is(#app-shell,.app-shell){
+  background:linear-gradient(150deg,rgba(2,7,20,.045),rgba(3,9,25,.075))!important;
+  backdrop-filter:blur(10px) saturate(132%)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(132%)!important;
+}
+html[data-ttg-theme="glass"] :is(#app-shell,.app-shell){
+  background:linear-gradient(150deg,rgba(244,249,255,.10),rgba(232,241,255,.15))!important;
+  backdrop-filter:blur(10px) saturate(118%)!important;
+  -webkit-backdrop-filter:blur(10px) saturate(118%)!important;
+}
+html[data-ttg-theme="dark"] .workspace{background:rgba(3,9,24,.025)!important}
+html[data-ttg-theme="glass"] .workspace{background:rgba(244,249,255,.060)!important}
+
+html[data-ttg-theme="dark"] .sidebar{
+  background:linear-gradient(180deg,rgba(3,9,25,.18),rgba(5,11,30,.12))!important;
+  border-right:1px solid rgba(91,145,236,.31)!important;
+  box-shadow:inset -1px 0 0 rgba(194,76,255,.08)!important;
+}
+html[data-ttg-theme="glass"] .sidebar{
+  background:linear-gradient(180deg,rgba(248,251,255,.30),rgba(235,244,255,.21))!important;
+  border-right:1px solid rgba(78,111,174,.22)!important;
+  box-shadow:inset -1px 0 0 rgba(139,82,255,.07)!important;
+}
+
+html[data-ttg-theme="dark"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.012) 30%,transparent 52%),
+    radial-gradient(circle at 0 0,rgba(38,147,255,.115),transparent 43%),
+    radial-gradient(circle at 100% 100%,rgba(184,55,255,.095),transparent 46%),
+    linear-gradient(135deg,rgba(5,14,34,.13),rgba(11,14,40,.075))!important;
+  border-color:rgba(119,165,244,.46)!important;
+  backdrop-filter:blur(12px) saturate(154%)!important;
+  -webkit-backdrop-filter:blur(12px) saturate(154%)!important;
+  box-shadow:inset 1px 0 0 rgba(61,210,255,.055),inset -1px 0 0 rgba(214,71,255,.050),inset 0 1px 0 rgba(255,255,255,.15),inset 0 -1px 0 rgba(95,79,255,.055),0 7px 21px rgba(0,0,0,.10),0 0 20px rgba(92,78,255,.09)!important;
+}
+html[data-ttg-theme="glass"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.40),rgba(255,255,255,.16) 34%,rgba(255,255,255,.075) 58%),
+    radial-gradient(circle at 0 0,rgba(54,151,255,.09),transparent 43%),
+    radial-gradient(circle at 100% 100%,rgba(173,69,255,.07),transparent 46%),
+    linear-gradient(135deg,rgba(244,249,255,.14),rgba(230,240,255,.09))!important;
+  border-color:rgba(82,112,171,.27)!important;
+  backdrop-filter:blur(14px) saturate(128%)!important;
+  -webkit-backdrop-filter:blur(14px) saturate(128%)!important;
+  box-shadow:inset 1px 0 0 rgba(61,181,255,.050),inset -1px 0 0 rgba(184,84,255,.045),inset 0 1px 0 rgba(255,255,255,.70),inset 0 -1px 0 rgba(102,91,210,.045),0 7px 19px rgba(52,67,108,.08)!important;
+}
+
+html[data-ttg-theme="dark"] :is(
+ .search-box,.live-speed,.select,.input,.textarea,.lumi-filter,.lumi-secondary,.lumi-icon-button,
+ .approved-filter,.approved-theme-segment,.approved-help-search,.approved-tech-filters .input,.approved-tech-filters .select,
+ .approved-btn:not(.primary):not(.danger),.approved-icon-action
+){
+  background:rgba(7,17,39,.36)!important;
+  border-color:rgba(116,157,229,.36)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.065)!important;
+}
+html[data-ttg-theme="glass"] :is(
+ .search-box,.live-speed,.select,.input,.textarea,.lumi-filter,.lumi-secondary,.lumi-icon-button,
+ .approved-filter,.approved-theme-segment,.approved-help-search,.approved-tech-filters .input,.approved-tech-filters .select,
+ .approved-btn:not(.primary):not(.danger),.approved-icon-action
+){
+  background:rgba(249,252,255,.50)!important;
+  border-color:rgba(78,103,157,.23)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.66)!important;
+}
+
+html[data-ttg-theme="dark"] .ttg-titlebar{
+  background:linear-gradient(90deg,rgba(2,7,20,.09),rgba(4,9,24,.035))!important;
+}
+html[data-ttg-theme="glass"] .ttg-titlebar{
+  background:linear-gradient(90deg,rgba(249,252,255,.22),rgba(238,246,255,.14))!important;
+}
+html[data-ttg-theme="dark"] .topbar{background:rgba(3,9,24,.06)!important}
+html[data-ttg-theme="glass"] .topbar{background:rgba(247,251,255,.20)!important}
+
+
+/* Light-glass edge parity: same product language, lighter intensity. */
+html[data-ttg-theme="glass"] body.ttg-desktop::before{
+  opacity:.92!important;
+  background:linear-gradient(90deg,#55dfff 0%,#787dff 50%,#d65cff 100%)!important;
+  filter:drop-shadow(0 0 3px rgba(69,177,255,.24)) drop-shadow(0 0 5px rgba(182,78,255,.12))!important;
+}
+html[data-ttg-theme="glass"] .sidebar{
+  border-right-color:rgba(101,123,216,.27)!important;
+}
+html[data-ttg-theme="glass"] :is(
+ .panel,.download-table,.entity-card,.settings-card,.form-card,.stat-card,
+ .firmware-card,.firmware-filters,.os-platform-card,.catalogue-mode-bar,
+ .lumi-stat,.lumi-panel,.lumi-table,.lumi-card,.lumi-setting-card,.lumi-health,.lumi-diagnostic-card,
+ .approved-stat,.approved-dense-table,.approved-queue-rules,.approved-category-tile,
+ .approved-paste-panel,.approved-link-options,.approved-settings-card,.approved-browser-card,
+ .approved-feature-list,.approved-how-list,.approved-faq,.approved-report-form,.approved-support-cards article,
+ .approved-about-frame
+){
+  border-color:rgba(102,122,206,.29)!important;
+  box-shadow:inset 1px 0 0 rgba(56,183,255,.055),inset -1px 0 0 rgba(190,76,255,.050),inset 0 1px 0 rgba(255,255,255,.72),0 7px 19px rgba(52,67,108,.075),0 0 14px rgba(104,87,224,.045)!important;
+}

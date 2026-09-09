@@ -17,7 +17,13 @@ const http = require("http");
 const path = require("path");
 
 app.setName("Lumi DM");
-if (process.platform === "win32") app.setAppUserModelId("com.lumi.dm");
+if (process.platform === "win32") {
+  // Lumi's canonical manager footprint is 920x560 physical pixels. Keep it
+  // stable on Windows hosts that use 125%/150% desktop scaling; renderer assets
+  // remain high-resolution and are downsampled by Chromium inside that frame.
+  app.commandLine.appendSwitch("force-device-scale-factor", "1");
+  app.setAppUserModelId("com.lumi.dm");
+}
 
 if (app.isPackaged) process.env.LUMIDM_BRANDING_DIR = path.join(process.resourcesPath, "Resouces");
 else process.env.LUMIDM_BRANDING_DIR = path.resolve(__dirname, "..", "Resouces");
@@ -42,6 +48,7 @@ const ACTIVE_STATES = new Set(["queued", "resolving", "running", "pausing", "pos
 
 let mainWindow = null;
 let widgetWindow = null;
+let widgetShowRequested = false;
 let tray = null;
 let updater = null;
 let isQuitting = false;
@@ -219,7 +226,7 @@ function createMainWindow(startHidden = false) {
     title: "Lumi DM",
     icon: iconPath(),
     autoHideMenuBar: true,
-    backgroundColor: "#070a11",
+    backgroundColor: "#070b14",
     webPreferences: { contextIsolation: true, preload: path.join(__dirname, "preload-main.js") },
   });
   mainWindow.setMenuBarVisibility(false);
@@ -241,12 +248,16 @@ function createMainWindow(startHidden = false) {
 
   void (async () => {
     await loadOwnedRuntime(mainWindow);
-    if (!startHidden && mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+    if (!startHidden && mainWindow && !mainWindow.isDestroyed()) {
+      hideWidget();
+      mainWindow.show();
+    }
   })();
   return mainWindow;
 }
 function showMainWindow() {
   const window = createMainWindow(false);
+  hideWidget();
   if (window.isMinimized()) window.restore();
   window.show();
   window.focus();
@@ -300,18 +311,27 @@ function createWidget() {
   void widgetWindow.loadFile(path.join(__dirname, "widget.html"));
   widgetWindow.on("closed", () => { widgetWindow = null; });
   widgetWindow.once("ready-to-show", () => {
-    if (settings.visible !== false) widgetWindow.showInactive();
+    if (widgetShowRequested && readDesktopPrefs().visible !== false && widgetWindow && !widgetWindow.isDestroyed()) {
+      widgetWindow.showInactive();
+    }
   });
   return widgetWindow;
 }
 function showWidget() {
   const settings = readDesktopPrefs();
-  if (settings.visible === false) return;
+  if (settings.visible === false) {
+    widgetShowRequested = false;
+    return;
+  }
+  widgetShowRequested = true;
   createWidget();
   repositionWidgetPreservingSize(settings);
-  widgetWindow.showInactive();
+  if (widgetWindow && !widgetWindow.isDestroyed() && !widgetWindow.webContents.isLoadingMainFrame()) {
+    widgetWindow.showInactive();
+  }
 }
 function hideWidget() {
+  widgetShowRequested = false;
   if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.hide();
 }
 
@@ -450,9 +470,11 @@ app.whenReady().then(() => {
   registerIpc();
   createTray();
   serverSupervisor.start();
-  createMainWindow(isStartupLaunch());
+  const startHidden = isStartupLaunch();
+  createMainWindow(startHidden);
   createWidget();
-  showWidget();
+  if (startHidden) showWidget();
+  else hideWidget();
   updater = new UpdateManager({
     onStatus: status => {
       for (const window of BrowserWindow.getAllWindows()) {

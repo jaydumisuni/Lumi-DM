@@ -7,6 +7,7 @@ const v5State = {
   results: [],
   loading: false,
   desktop: null,
+  platform: sessionStorage.getItem("LUMI.firmwarePlatform") || "Android",
 };
 
 try { viewMeta.firmware = ["Firmware", "Official OS, custom builds and technician source evidence"]; } catch (_) {}
@@ -69,27 +70,28 @@ function renderFirmware() {
   const element = document.getElementById("view-firmware");
   if (!element) return;
   const catalogue = v5State.catalogue || { brands: [], providers: [] };
-  const providerGroups = groupProviders(catalogue.providers || []);
-  element.innerHTML = `
-    <div class="firmware-shell">
-      <section class="firmware-hero">
-        <h2>Technician Firmware Finder</h2>
-        <p>Select a brand and model, then compare official operating-system files, public betas, custom operating systems and community evidence. Lumi never guesses a match: every result keeps its provider and source page visible before download.</p>
-        <div class="firmware-warning"><span>⚠</span><span>${v5Esc(catalogue.warning || "Verify the exact model, region, bootloader and rollback requirements before flashing.")}</span></div>
-      </section>
-      <form class="firmware-filters" id="firmware-search-form">
-        <label>Brand<select class="select" name="brand" id="firmware-brand"><option value="">All brands</option>${(catalogue.brands || []).map(value => `<option value="${v5Esc(value)}">${v5Esc(value)}</option>`).join("")}</select></label>
-        <label>Source<select class="select" name="provider" id="firmware-provider"><option value="all">All available sources</option>${providerGroups}</select></label>
-        <label>Model / codename<input class="input" name="device" id="firmware-device" list="firmware-device-list" placeholder="iPhone15,2, shiba, SM-S918B"><datalist id="firmware-device-list">${deviceOptions()}</datalist></label>
-        <label>Channel<select class="select" name="channel"><option value="all">Stable + beta</option><option value="stable">Stable</option><option value="beta">Beta / preview</option><option value="nightly">Nightly</option><option value="official">Official</option><option value="community">Community</option></select></label>
-        <label class="firmware-query">Search within results<input class="input" name="query" type="search" placeholder="version, build, region or file type"></label>
-        <label class="firmware-check"><input type="checkbox" name="include_community" checked>Include community sources</label>
-        <div class="firmware-filter-actions"><button class="btn primary" type="submit">⌕ Find firmware</button><button class="btn" type="button" data-firmware-action="clear">Clear</button></div>
-      </form>
-      <div id="firmware-results">${firmwareResultsHtml()}</div>
-    </div>`;
+  const apple = v5State.platform === "Apple";
+  const brands = (catalogue.brands || []).filter(value => apple ? /apple/i.test(value) : !/apple/i.test(value));
+  element.innerHTML = `<div class="approved-page approved-firmware-page firmware-shell">
+    <div class="approved-page-head"><div><h2>Mobile Firmware</h2><p>Download official ROMs, OTA packages, flash files, and IPSW for your devices.</p></div></div>
+    <div class="approved-platform-tabs firmware-platform-tabs">
+      <button type="button" class="${apple ? "" : "active"}" data-firmware-action="platform" data-platform="Android"><span>●</span> Android</button>
+      <button type="button" class="${apple ? "active" : ""}" data-firmware-action="platform" data-platform="Apple"><span>●</span> iPhone / iPad</button>
+    </div>
+    <form class="approved-tech-filters approved-firmware-filters" id="firmware-search-form-v7">
+      <label>Brand<select class="select" name="brand" id="lumi-firmware-brand" required><option value="">Select brand</option>${brands.map(value => `<option value="${v5Esc(value)}">${v5Esc(value)}</option>`).join("")}</select></label>
+      <label>Model<input class="input" name="device" id="lumi-firmware-model" list="lumi-firmware-model-list" placeholder="Select brand first" autocomplete="off" disabled required><datalist id="lumi-firmware-model-list"></datalist></label>
+      <label>Source<select class="select" name="provider" id="lumi-firmware-source" disabled><option value="all">Select model first</option></select></label>
+      <label>Channel<select class="select" name="channel"><option value="all">Stable + beta</option><option value="stable">Stable</option><option value="beta">Beta / preview</option><option value="nightly">Nightly</option><option value="official">Official</option><option value="community">Community</option></select></label>
+      <label>Region<select class="select" name="region"><option value="all">All</option><option>Global</option><option>Europe</option><option>India</option><option>China</option><option>USA</option></select></label>
+      <label>Type<select class="select" name="package_type"><option value="all">All</option><option value="official">Official ROM</option><option value="ota">OTA Update</option><option value="flash">Flash File</option><option value="ipsw">IPSW</option></select></label>
+      <label class="approved-tech-search">Search firmware<input class="input" name="query" type="search" placeholder="version, build, region or file type"></label>
+      <label class="approved-firmware-community"><input type="checkbox" name="include_community" checked> Community</label>
+      <div class="approved-tech-actions"><button class="approved-btn primary" type="submit">⌕ Search</button><button class="approved-btn" type="button" data-firmware-action="clear">Clear</button></div>
+    </form>
+    <div id="firmware-results" class="approved-tech-results">${firmwareResultsHtml()}</div>
+  </div>`;
 }
-
 function groupProviders(providers) {
   const groups = {};
   for (const provider of providers) (groups[provider.group] ||= []).push(provider);
@@ -101,42 +103,18 @@ function deviceOptions() {
 }
 
 function firmwareResultsHtml() {
-  if (v5State.loading) return `<div class="firmware-loading">Searching public firmware sources…</div>`;
-  if (!v5State.results.length) return `<div class="empty"><div class="empty-icon">▦</div><strong>Select a device or enter a model</strong>Official files appear first. Community source searches stay clearly labelled for technician review.</div>`;
-  const groups = {};
-  for (const result of v5State.results) (groups[result.source_group || "Other sources"] ||= []).push(result);
-  return `<div class="firmware-groups">${Object.entries(groups).map(([group, values]) => `
-    <section class="firmware-group">
-      <div class="firmware-group-head"><h3>${v5Esc(group)}</h3><span>${values.length} result${values.length === 1 ? "" : "s"}</span></div>
-      <div class="firmware-list">${values.map(firmwareCard).join("")}</div>
-    </section>`).join("")}</div>`;
+  if (v5State.loading) return `<section class="approved-dense-table approved-firmware-table"><div class="approved-empty"><strong>Searching public firmware sources…</strong></div></section>`;
+  return `<section class="approved-dense-table approved-firmware-table"><div class="approved-table-head"><span>Device</span><span>Build / Version</span><span>Region</span><span>Package Type</span><span>Size</span><span>Release Date</span><span>Signing / Status</span><span>Action</span></div><div class="approved-table-body">${v5State.results.length ? v5State.results.map(firmwareCard).join("") : `<div class="approved-empty"><strong>No firmware results yet</strong><span>Select a platform, brand/model, then search official sources.</span></div>`}</div><div class="approved-table-foot"><span>${v5State.results.length} result${v5State.results.length === 1 ? "" : "s"}</span><span>Verify exact model and region before flashing.</span></div></section>`;
 }
-
 function firmwareCard(item) {
   const index = v5State.results.indexOf(item);
-  const badges = [
-    item.official ? `<span class="firmware-badge good">Official source</span>` : `<span class="firmware-badge warn">Community / index</span>`,
-    item.signed === true ? `<span class="firmware-badge good">Signed</span>` : item.signed === false ? `<span class="firmware-badge warn">Unsigned</span>` : "",
-    item.channel ? `<span class="firmware-badge">${v5Esc(item.channel)}</span>` : "",
-    item.file_type ? `<span class="firmware-badge">${v5Esc(item.file_type)}</span>` : "",
-  ].join("");
-  return `<article class="firmware-card ${item.official ? "official" : ""} ${item.direct ? "" : "firmware-source-only"}">
-    <div class="firmware-card-head"><div class="firmware-source-icon">${item.official ? "✓" : "⌁"}</div><div class="firmware-title"><h4>${v5Esc(item.title || item.filename || item.source_name)}</h4><p>${v5Esc(item.source_name)} · ${v5Esc(item.device || item.brand)}</p></div></div>
-    <div class="firmware-badges">${badges}</div>
-    <div class="firmware-details">
-      <div class="firmware-detail"><span>Version</span><strong title="${v5Esc(item.version || "")}">${v5Esc(item.version || "—")}</strong></div>
-      <div class="firmware-detail"><span>Build</span><strong title="${v5Esc(item.build || "")}">${v5Esc(item.build || "—")}</strong></div>
-      <div class="firmware-detail"><span>Size / date</span><strong>${item.size ? v5FmtBytes(item.size) : v5Esc(item.release_date || "—")}</strong></div>
-    </div>
-    <div class="firmware-notes">${v5Esc(item.notes || (item.direct ? "Direct public file. Confirm the device match before download." : "Open the source and verify the exact file before download."))}</div>
-    <div class="firmware-actions">
-      ${item.direct && item.url ? `<button class="btn primary" type="button" data-firmware-action="download" data-index="${index}">↓ Download in Lumi</button>` : ""}
-      ${item.url ? `<button class="btn" type="button" data-firmware-action="copy" data-index="${index}">Copy URL</button>` : ""}
-      ${item.source_url || item.url ? `<button class="btn" type="button" data-firmware-action="source" data-index="${index}">Open source</button>` : ""}
-    </div>
-  </article>`;
+  const region = item.region || item.metadata?.region || item.metadata?.market || "Global";
+  const packageType = item.file_type || (item.official ? "Official ROM" : "Community");
+  const device = item.device || item.model || item.brand || "Device";
+  const version = [item.build, item.version].filter(Boolean).join(" · ") || item.title || "—";
+  const status = item.signed === true ? "✓ Signed" : item.signed === false ? "Unsigned" : item.official ? "✓ Official" : "Source";
+  return `<div class="approved-table-row approved-firmware-row"><div class="approved-file-cell"><img src="${/apple|iphone|ipad/i.test(`${item.brand} ${device}`) ? "/static/brand/apple.svg" : "/static/brand/android.svg"}" alt=""><span><strong>${v5Esc(device)}</strong><small>${v5Esc(item.brand || item.source_name || "")}</small></span></div><span title="${v5Esc(version)}">${v5Esc(version)}</span><span>${v5Esc(region)}</span><span class="approved-package-type">${v5Esc(packageType)}</span><span>${item.size ? v5FmtBytes(item.size) : "—"}</span><span>${v5Esc(item.release_date || "—")}</span><span class="${item.signed === false ? "approved-bad" : "approved-verified"}">${v5Esc(status)}</span><span class="approved-actions">${item.direct && item.url ? `<button class="approved-icon-action primary" type="button" data-firmware-action="download" data-index="${index}" title="Download">↓</button>` : `<button class="approved-icon-action" type="button" data-firmware-action="source" data-index="${index}" title="Open source">↗</button>`}</span></div>`;
 }
-
 async function handleFirmwareSubmit(event) {
   if (event.target.id !== "firmware-search-form") return;
   event.preventDefault();
@@ -151,7 +129,11 @@ async function handleFirmwareSubmit(event) {
       include_community: data.include_community ? "true" : "false",
     });
     const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
-    v5State.results = response.results || [];
+    let results = response.results || [];
+    results = results.filter(item => v5State.platform === "Apple" ? /apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`) : !/apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`));
+    if (data.region && data.region !== "all") results = results.filter(item => `${item.region || item.metadata?.region || item.metadata?.market || ""}`.toLowerCase().includes(data.region.toLowerCase()));
+    if (data.package_type && data.package_type !== "all") results = results.filter(item => `${item.file_type || ""}`.toLowerCase().includes(data.package_type.toLowerCase()) || (data.package_type === "official" && item.official));
+    v5State.results = results;
   } catch (error) {
     v5Toast("Firmware search failed", error.message, "error");
     v5State.results = [];
@@ -177,6 +159,11 @@ async function handleFirmwareClick(event) {
   const button = event.target.closest("[data-firmware-action]");
   if (!button) return;
   const action = button.dataset.firmwareAction;
+  if (action === "platform") {
+    v5State.platform = button.dataset.platform === "Apple" ? "Apple" : "Android";
+    sessionStorage.setItem("LUMI.firmwarePlatform", v5State.platform);
+    v5State.results = []; v5State.devices = []; renderFirmware(); return;
+  }
   if (action === "clear") {
     v5State.results = [];
     v5State.devices = [];

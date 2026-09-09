@@ -7,6 +7,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const ARTIFACTS = path.resolve(process.env.LUMI_PLAYWRIGHT_ARTIFACTS || "artifacts");
 const PYTHON = process.env.LUMIDM_PYTHON || (process.platform === "win32" ? "python.exe" : "python3");
+const ELECTRON_EXECUTABLE = process.env.LUMI_ELECTRON_EXECUTABLE || "";
 const TRACE_FILE = path.join(ARTIFACTS, "electron-source-trace.jsonl");
 
 function assert(condition, message) {
@@ -80,6 +81,7 @@ async function main() {
   for (const directory of [dataRoot, downloads, temporary]) fs.mkdirSync(directory, { recursive: true });
 
   const electronApp = await electron.launch({
+    ...(ELECTRON_EXECUTABLE ? { executablePath: ELECTRON_EXECUTABLE } : {}),
     args: [path.join(ROOT, "electron", "main.js")],
     cwd: ROOT,
     env: {
@@ -106,10 +108,21 @@ async function main() {
     await page.waitForFunction(() => document.documentElement.dataset.lumiRoadmapInteraction === "1");
     await page.waitForFunction(() => Boolean(window.electronApp?.isElectron));
 
-    const initial = await nativeWindows(electronApp);
+    let initial = await nativeWindows(electronApp);
+    let manager = initial.find(window => window.url.startsWith("http://127.0.0.1:7000"));
+    let widget = initial.find(window => window.url.includes("widget.html"));
+    if (process.env.LUMI_KEEP_OPEN === "1" && manager && !manager.visible) {
+      await electronApp.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
+        if (window?.isMinimized()) window.restore();
+        window?.show();
+        window?.focus();
+      });
+      initial = await nativeWindows(electronApp);
+      manager = initial.find(window => window.url.startsWith("http://127.0.0.1:7000"));
+      widget = initial.find(window => window.url.includes("widget.html"));
+    }
     console.log("ELECTRON_SOURCE_WINDOWS_INITIAL", JSON.stringify(initial));
-    const manager = initial.find(window => window.url.startsWith("http://127.0.0.1:7000"));
-    const widget = initial.find(window => window.url.includes("widget.html"));
     assert(manager, "No native manager BrowserWindow owns the Runtime renderer");
     assert(widget, "No native Lumi widget BrowserWindow exists");
     assert(initial.length === 2, `Unexpected native surface count: ${JSON.stringify(initial)}`);
@@ -205,6 +218,16 @@ async function main() {
     assert(controlResponses.length >= 3, `Native window controls did not produce three successful IPC responses: ${JSON.stringify(controlResponses)}`);
     assert(mainConsoleErrors.length === 0, `Electron main-process console errors: ${mainConsoleErrors.join(" | ")}`);
     console.log("LUMI_ELECTRON_SOURCE_SHELL_PASS", JSON.stringify({ platform, initial, afterClose, controlResponses: controlResponses.length }));
+    if (process.env.LUMI_KEEP_OPEN === "1") {
+      await electronApp.evaluate(({ BrowserWindow }) => {
+        const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
+        if (window?.isMinimized()) window.restore();
+        window?.show();
+        window?.focus();
+      });
+      console.log("LUMI_ELECTRON_REVIEW_READY");
+      await new Promise(resolve => electronApp.on("close", resolve));
+    }
   } finally {
     await electronApp.close();
   }
