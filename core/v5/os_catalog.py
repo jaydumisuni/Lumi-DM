@@ -405,32 +405,126 @@ def _kali_results(edition: str, architecture: str, channel: str) -> list[Firmwar
     except Exception:
         return [_source_card("kali", "Linux", "Open official Kali download selector", "https://www.kali.org/get-kali/", "Choose installer, live, netinstaller or weekly images from Kali's official page.")]
     soup = BeautifulSoup(html, "html.parser")
-    results: list[FirmwareResult] = []
-    for link in soup.select('a[href$=".iso"]'):
+    requested = edition.lower() if edition else ""
+    candidates: dict[str, dict[str, str]] = {}
+    for link in soup.select('a[href]'):
         filename = str(link.get("href") or "").rsplit("/", 1)[-1]
         lower = filename.lower()
+        if not (lower.endswith(".iso") or lower.endswith(".iso.torrent")):
+            continue
         if arch not in lower:
             continue
-        requested = edition.lower() if edition else ""
         if requested == "live" and "live" not in lower:
             continue
         if requested == "netinstaller" and "netinst" not in lower:
             continue
-        if requested == "installer" and "installer" not in lower:
+        if requested == "installer" and ("installer" not in lower or "netinst" in lower):
             continue
+        iso_name = filename[:-8] if lower.endswith(".torrent") else filename
+        entry = candidates.setdefault(iso_name, {})
+        entry["torrent" if lower.endswith(".torrent") else "iso"] = filename
+
+    results: list[FirmwareResult] = []
+    for iso_name, entry in sorted(candidates.items()):
+        filename = entry.get("iso") or entry.get("torrent") or ""
+        if not filename:
+            continue
+        lower = filename.lower()
+        transport = "http" if entry.get("iso") else "torrent"
         version_match = re.search(r"kali-linux-([0-9.]+)", lower)
+        result_edition = "Live" if "live" in lower else "NetInstaller" if "netinst" in lower else "Installer"
         results.append(_result(
             provider="kali", source_name="Kali Linux", group="Official Linux",
             official=True, family="Linux", title=filename,
             version=version_match.group(1) if version_match else "current",
-            edition="Live" if "live" in lower else "NetInstaller" if "netinst" in lower else "Installer",
-            architecture=arch, channel="stable" if channel != "weekly" else "weekly",
+            edition=result_edition, architecture=arch, channel="stable" if channel != "weekly" else "weekly",
             url=urljoin(page, filename), source_url="https://www.kali.org/get-kali/",
-            filename=filename, checksum=_extract_checksum(sums, filename),
-            notes="Official Kali image. Lumi keeps the published SHA-256 so it can be verified after download.",
+            filename=filename, checksum=_extract_checksum(sums, iso_name),
+            notes=(
+                "Official Kali image. Lumi keeps the published SHA-256 so it can be verified after download."
+                if transport == "http"
+                else "Official Kali torrent. Lumi uses its existing BitTorrent engine because the current Kali index does not publish this image as a direct ISO."
+            ),
             direct=True,
+            metadata={"download_transport": transport, "image_filename": iso_name},
         ))
     return results
+
+
+_MACOS_INSTALLER_PAGES = {
+    "27": "https://mrmacintosh.com/macos-golden-gate-full-installer-database-download-directly-from-apple/",
+    "26": "https://mrmacintosh.com/macos-tahoe-full-installer-database-download-directly-from-apple/",
+    "15": "https://mrmacintosh.com/macos-sequoia-full-installer-database-download-directly-from-apple/",
+    "14": "https://mrmacintosh.com/macos-sonoma-full-installer-database-download-directly-from-apple/",
+    "13": "https://mrmacintosh.com/macos-ventura-13-full-installer-database-download-directly-from-apple/",
+    "12": "https://mrmacintosh.com/macos-12-monterey-full-installer-database-download-directly-from-apple/",
+    "11": "https://mrmacintosh.com/macos-big-sur-full-installer-database-download-directly-from-apple/",
+}
+
+
+def _macos_major(version: str) -> str:
+    text = str(version or "").strip()
+    if not text or text.lower() == "latest":
+        return "27"
+    match = re.search(r"\b(27|26|15|14|13|12|11)\b", text)
+    return match.group(1) if match else ""
+
+
+def _macos_installer_page(version: str) -> str:
+    major = _macos_major(version)
+    return _MACOS_INSTALLER_PAGES.get(major, _MACOS_INSTALLER_PAGES["27"])
+
+
+def _parse_macos_installer_page(
+    html: str, *, source_url: str, major: str, channel: str,
+) -> list[FirmwareResult]:
+    soup = BeautifulSoup(html, "html.parser")
+    values: list[FirmwareResult] = []
+    seen: set[str] = set()
+    for row in soup.select("tr"):
+        link = next((
+            item for item in row.select("a[href]")
+            if "installassistant.pkg" in str(item.get("href") or "").lower()
+        ), None)
+        if link is None:
+            continue
+        href = urljoin(source_url, str(link.get("href") or ""))
+        host = (urlparse(href).hostname or "").lower()
+        if not (host == "apple.com" or host.endswith(".apple.com")):
+            continue
+        context = row.get_text(" ", strip=True)
+        versions = re.findall(r"(?<![A-Za-z0-9])([0-9]{1,2}(?:\.[0-9]+){1,2})(?![A-Za-z0-9])", context)
+        version_value = next((value for value in versions if value.split(".", 1)[0] == major), "")
+        if not version_value:
+            continue
+        lower = context.lower()
+        build_match = re.search(r"\b([0-9]{2}[A-Z][0-9]{2,5}[A-Za-z]?)\b", context)
+        seed_build = bool(build_match and re.search(r"[a-z]$", build_match.group(1)))
+        is_beta = seed_build or "beta" in lower or "developer" in lower or "release candidate" in lower or " rc" in lower
+        item_channel = "beta" if is_beta else "public"
+        if channel not in {"", "all", item_channel}:
+            continue
+        if href in seen:
+            continue
+        seen.add(href)
+        filename = href.rsplit("/", 1)[-1].split("?", 1)[0] or "InstallAssistant.pkg"
+        latest = "latest" in lower
+        item = _result(
+            provider="mrmacintosh", source_name="Mr. Macintosh index · Apple-hosted file",
+            group="Official-file index", official=False, family="macOS",
+            title=f"macOS {version_value} InstallAssistant.pkg",
+            version=version_value,
+            edition="Full installer", architecture="Universal",
+            channel=item_channel, url=href, source_url=source_url, filename=filename,
+            notes="The index is third-party, but this InstallAssistant.pkg is hosted on Apple's servers. Lumi binds version/build evidence from the same table row.",
+            direct=True,
+            metadata={"file_host": host, "latest": latest, "row_evidence": context[:240]},
+        )
+        item.build = build_match.group(1) if build_match else ""
+        item.id = _safe_id("os", "mrmacintosh", version_value, item.build or "build", href)
+        values.append(item)
+    values.sort(key=lambda item: (not bool(item.metadata.get("latest")), tuple(-int(part) for part in item.version.split("."))))
+    return values
 
 
 def _macos_results(version: str, edition: str, architecture: str, channel: str) -> list[FirmwareResult]:
@@ -445,54 +539,28 @@ def _macos_results(version: str, edition: str, architecture: str, channel: str) 
             "https://mrmacintosh.com/apple-silicon-m1-full-macos-restore-ipsw-firmware-files-database/",
             "This index points to Apple-hosted restore IPSWs. Confirm the exact Mac model before restoring.",
         )]
-    category = "https://mrmacintosh.com/category/macos-installer/"
-    results: list[FirmwareResult] = [support]
-    try:
-        category_html = _CACHE.get("mrmacintosh-category", 60 * 60, lambda: _get_text(category))
-        soup = BeautifulSoup(category_html, "html.parser")
-        pages: list[str] = []
-        wanted = version.lower().replace("macos", "").strip()
-        for link in soup.select("a[href]"):
-            href = urljoin(category, str(link.get("href") or ""))
-            text = link.get_text(" ", strip=True).lower()
-            if "full installer" not in text and "installer database" not in text and "full-installer" not in href:
-                continue
-            if wanted and wanted not in {"latest"} and wanted.split()[0] not in f"{text} {href}".lower():
-                continue
-            if href not in pages:
-                pages.append(href)
-            if len(pages) >= 6:
+    major = _macos_major(version)
+    page = _macos_installer_page(version)
+    if not major:
+        return [support, _source_card("mrmacintosh", "macOS", "Open the macOS full-installer index", "https://mrmacintosh.com/category/macos-installer/", "Browse public and beta full installers. Direct files are hosted on Apple's servers when available.")]
+    def load_major(selected_major: str) -> list[FirmwareResult]:
+        selected_page = _MACOS_INSTALLER_PAGES[selected_major]
+        try:
+            html = _CACHE.get(f"mrmacintosh-macos-{selected_major}", 60 * 60, lambda: _get_text(selected_page))
+            return _parse_macos_installer_page(html, source_url=selected_page, major=selected_major, channel=channel)
+        except Exception:
+            return []
+
+    direct = load_major(major)
+    if not direct and str(version or "").strip().lower() == "latest":
+        for fallback_major in ("26", "15", "14", "13", "12", "11"):
+            direct = load_major(fallback_major)
+            if direct:
+                page = _MACOS_INSTALLER_PAGES[fallback_major]
                 break
-        for page in pages:
-            for href, context in _links_from_html(
-                page,
-                {"apple.com", "swcdn.apple.com", "updates.cdn-apple.com", "swdist.apple.com", "oscdn.apple.com"},
-                (".pkg",),
-            ):
-                filename = href.rsplit("/", 1)[-1].split("?", 1)[0]
-                if "installassistant" not in filename.lower() and "installassistant" not in context.lower():
-                    continue
-                beta = "beta" in context.lower()
-                item_channel = "beta" if beta else "public"
-                if channel not in {"", "all"} and channel != item_channel:
-                    continue
-                version_match = re.search(r"(?:macOS\s*)?([0-9]+(?:\.[0-9.]+)?)", context, re.I)
-                results.append(_result(
-                    provider="mrmacintosh", source_name="Mr. Macintosh index · Apple-hosted file",
-                    group="Official-file index", official=False, family="macOS",
-                    title=context[:180] or filename,
-                    version=version_match.group(1) if version_match else version,
-                    edition="Full installer", architecture=architecture or "Universal",
-                    channel=item_channel, url=href, source_url=page, filename=filename,
-                    notes="The index is third-party, but this file URL is hosted by Apple. Confirm compatibility and availability before download.",
-                    direct=True,
-                    metadata={"file_host": urlparse(href).hostname or ""},
-                ))
-    except Exception:
-        pass
-    if len(results) == 1:
-        results.append(_source_card("mrmacintosh", "macOS", "Open the macOS full-installer index", category, "Browse public and beta full installers. Direct files are hosted on Apple's servers when available."))
-    return results
+    if direct:
+        return [support, *direct]
+    return [support, _source_card("mrmacintosh", "macOS", "Open the macOS full-installer index", page, "No direct Apple-hosted installer matched the requested macOS generation. Review the source index rather than using an inferred installer.")]
 
 
 def search_os(
@@ -536,9 +604,17 @@ def search_os(
             item.source_name, item.notes, item.device,
         ]).lower()]
     dedup: dict[str, FirmwareResult] = {item.id: item for item in values}
+
+    def version_rank(item: FirmwareResult) -> tuple[int, int, int]:
+        parts = [int(value) for value in re.findall(r"\d+", str(item.version or ""))[:3]]
+        parts = (parts + [0, 0, 0])[:3]
+        return tuple(-value for value in parts)
+
     ordered = sorted(dedup.values(), key=lambda item: (
         0 if item.official else 1,
         0 if item.direct else 1,
+        0 if item.metadata.get("latest") else 1,
+        version_rank(item),
         item.source_name.lower(),
         item.title.lower(),
     ))

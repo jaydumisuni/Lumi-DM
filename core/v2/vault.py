@@ -205,6 +205,12 @@ def secure_request_envelope(
             existing_post,
             {"post_body": value.pop("post_body")},
         )
+    if value.get("provider_secret") not in (None, ""):
+        existing_provider = str(value.get("provider_secret_reference") or "")
+        payload = value.pop("provider_secret")
+        if not isinstance(payload, dict):
+            raise VaultError("Provider secret payload must be an object")
+        value["provider_secret_reference"] = vault.replace(existing_provider, payload)
     value.pop("cookies", None)
     return value
 
@@ -237,3 +243,22 @@ def hydrate_post_body(reference: str) -> Any:
     if kind == "text":
         return str(body.get("data") or "")
     return body
+
+
+def hydrate_provider_secret(reference: str) -> dict[str, Any]:
+    if not reference:
+        return {}
+    return resolve_secret(reference)
+
+
+def delete_secret(reference: str) -> bool:
+    if not reference:
+        return False
+    root, item_id = parse_reference(reference)
+    vault = LocalSecretVault(root.parent)
+    with vault._lock:
+        entries = vault._read_entries()
+        existed = entries.pop(item_id, None) is not None
+        if existed:
+            vault._atomic_write(entries)
+        return existed

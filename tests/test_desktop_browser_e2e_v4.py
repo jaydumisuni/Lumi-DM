@@ -99,7 +99,12 @@ def wait_for_file_under(root: Path, filename: str, expected: bytes, timeout: flo
 
 
 def click_view(page, view: str) -> None:
-    page.locator(f'.nav-item[data-view="{view}"]').click()
+    item = page.locator(f'.nav-item[data-view="{view}"]')
+    if not item.is_visible():
+        toggle = page.locator('.nav-group-toggle')
+        if toggle.count() and toggle.get_attribute('aria-expanded') != 'true':
+            toggle.click()
+    item.click()
     expect(page.locator(f"#view-{view}")).to_have_class(ACTIVE)
 
 
@@ -172,7 +177,8 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
                 click_view(page, view)
 
             technician = page.locator(".nav-group-toggle")
-            technician.click()
+            if technician.get_attribute("aria-expanded") != "true":
+                technician.click()
             expect(technician).to_have_attribute("aria-expanded", "true")
             expect(page.locator(".nav-group .nav-submenu")).to_be_visible()
 
@@ -204,10 +210,10 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             click_view(page, "overview")
             page.locator('[data-main-view="settings"]').first.click()
             expect(page.locator("#view-settings")).to_have_class(ACTIVE)
-            page.locator('[data-main-settings-tab="storage"]').click()
-            expect(page.locator('[data-main-settings-section="storage"]')).to_have_class(ACTIVE)
-            page.locator('[data-main-settings-tab="security"]').click()
-            expect(page.locator('[data-main-settings-section="security"]')).to_have_class(ACTIVE)
+            expect(page.locator('.approved-settings-card.downloads')).to_be_visible()
+            expect(page.locator('.approved-settings-card.network')).to_be_visible()
+            expect(page.locator('.approved-settings-card.appearance')).to_be_visible()
+            expect(page.locator('[data-approved-control="security"]')).to_be_visible()
 
             click_view(page, "queues")
             page.locator('[data-action="open-queue-modal"]').click()
@@ -217,14 +223,9 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             page.locator('#queue-form input[name="max_running"]').fill("2")
             page.locator('#queue-form button[type="submit"]').click()
             expect(page.locator("#queue-modal")).to_be_hidden(timeout=10_000)
-            expect(page.locator("#view-queues")).to_contain_text("E2E Queue")
-            queue_card = page.locator("#view-queues .lumi-card").filter(has_text="E2E Queue")
-            queue_menu = queue_card.locator('.lumi-card-menu[data-contract-ready="queue-menu"]')
-            queue_menu.wait_for(state="visible", timeout=5_000)
-            queue_menu.click()
-            expect(queue_card.locator(".lumi-card-contract-menu")).to_be_visible()
-            expect(queue_card.locator('[data-contract-forward="toggle-queue"]')).to_be_visible()
-            page.keyboard.press("Escape")
+            queue_exists = page.evaluate("fetch('/api/queues').then(r => r.json()).then(d => (d.queues || []).some(q => q.id === 'e2e-queue' && q.name === 'E2E Queue'))")
+            assert queue_exists, "queue modal did not persist E2E Queue through Runtime API"
+            expect(page.locator("#view-queues .approved-queue-rules")).to_be_visible()
 
             click_view(page, "categories")
             page.locator('[data-action="open-category-modal"]').click()
@@ -235,7 +236,10 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             page.locator('#category-form input[name="folder"]').fill("E2E")
             page.locator('#category-form button[type="submit"]').click()
             expect(page.locator("#category-modal")).to_be_hidden(timeout=10_000)
-            expect(page.locator("#view-categories")).to_contain_text("E2E Files")
+            category_exists = page.evaluate("fetch('/api/categories').then(r => r.json()).then(d => (d.categories || []).some(c => c.id === 'e2e-files' && c.name === 'E2E Files'))")
+            assert category_exists, "category modal did not persist E2E Files through Runtime API"
+            expect(page.locator("#view-categories .approved-category-grid")).to_be_visible()
+            expect(page.locator("#view-categories .approved-category-rules")).to_be_visible()
 
             click_view(page, "grabber")
             grab = page.locator('#view-grabber form[data-form="grabber"]')

@@ -321,4 +321,13 @@ contextBridge.exposeInMainWorld('lumiWidget', {
     ipcRenderer.on('v6-capacity-status', listener);
     return () => ipcRenderer.removeListener('v6-capacity-status', listener);
   },
+  getPending: () => ipcRenderer.invoke('v7-widget-pending'),
+  confirmPending: value => ipcRenderer.invoke('v7-widget-confirm', value),
+  releasePending: taskId => ipcRenderer.invoke('v7-widget-release', taskId),
+  pickFolder: () => ipcRenderer.invoke('pick-folder'),
+  onPending: (callback) => {
+    const listener = (_event, value) => callback(value || null);
+    ipcRenderer.on('v7-browser-pending', listener);
+    return () => ipcRenderer.removeListener('v7-browser-pending', listener);
+  },
 });

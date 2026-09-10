@@ -109,16 +109,9 @@ function publishExpanded() {
 function publishPending(task) {
   const window = widgetWindow();
   if (!window || window.isDestroyed()) return;
+  // The existing widget renderer owns the pending confirmation UI. Runtime
+  // remains the only task authority; no third native confirmation window is used.
   window.webContents.send("v7-browser-pending", task || null);
-  if (task) {
-    // Presentation-only: the Runtime task is deliberately queued in the
-    // inactive browser-pending queue. Select that existing widget tab so the
-    // capture is immediately visible instead of appearing as an empty panel.
-    void window.webContents.executeJavaScript(
-      'document.querySelector(\'[data-tab="queued"]\')?.click()',
-      true,
-    ).catch(() => {});
-  }
 }
 
 async function rpc(method, params = {}) {

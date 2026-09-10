@@ -16,6 +16,7 @@ from core.v2.models import TaskStatus, TaskType, utc_now
 from core.v2.wave2 import services as wave2_services
 
 from .firmware import brands, list_devices, providers, search_firmware
+from . import samsung_fus
 
 
 wave5_api = Blueprint("lumi_wave5", __name__, url_prefix="/api/v5")
@@ -218,6 +219,69 @@ def firmware_search():
         channel=str(request.args.get("channel") or "all"),
         include_community=str(request.args.get("include_community") or "true").lower() not in {"0", "false", "no"},
     )})
+
+
+def _stage_samsung_resolved(
+    active, resolved: samsung_fus.SamsungResolvedPackage, *, target_dir: Path, temp_dir: Path,
+    connections: int = 0, queue_id: str = "default", priority: int = 0, duplicate_policy: str = "reuse",
+):
+    result = active.start_http(
+        resolved.url, target_dir=Path(target_dir), temp_dir=Path(temp_dir),
+        filename=resolved.filename, connections=connections, queue_id=queue_id,
+        priority=priority, start_paused=True, duplicate_policy=duplicate_policy,
+        request_envelope=resolved.request_envelope(), category_id="firmware",
+    )
+    task = active.runtime.get_task(result["id"])
+    if task is None:
+        raise RuntimeError("Samsung firmware task was not created")
+    task.status = TaskStatus.STAGED.value
+    task.category_id = "firmware"
+    task.total_bytes = max(int(task.total_bytes or 0), int(resolved.size or 0))
+    task.metadata.update({
+        "firmware": True,
+        "firmware_provider": "samsung-fus",
+        "firmware_source": "Samsung FUS · Lumi native resolver",
+        "firmware_brand": "Samsung",
+        "firmware_device": resolved.model,
+        "firmware_version": resolved.version,
+        "firmware_channel": "stable",
+        "firmware_source_url": "https://www.samsung.com/support/",
+        "firmware_official_host": "cloud-neofussvr.sslcs.cdngc.net",
+        "samsung_csc": resolved.csc,
+        "samsung_fus_decrypt": {
+            "model": resolved.model, "csc": resolved.csc,
+            "version": resolved.version, "encryption": resolved.encryption,
+        },
+    })
+    active.runtime.store.save_task(task)
+    active.runtime.store.append_event(task.id, "samsung_firmware_staged", {
+        "model": resolved.model, "csc": resolved.csc, "version": resolved.version,
+        "filename": resolved.filename, "bytes": resolved.size,
+    })
+    return task
+
+
+@wave5_api.post("/firmware/samsung/stage")
+def samsung_firmware_stage():
+    data = _json_body()
+    try:
+        _ensure_firmware_category()
+        model = samsung_fus.normalize_model(str(data.get("model") or data.get("device") or ""))
+        csc = samsung_fus.normalize_csc(str(data.get("csc") or ""))
+        resolved = samsung_fus.resolve_latest(model, csc)
+        active = wave2_services()
+        target_dir = Path(str(data.get("target_dir") or active.runtime.store.get_setting("firmware.default_dir", "") or Path.home() / "Downloads"))
+        temp_dir = Path(str(data.get("temp_dir") or active.runtime.store.get_setting("firmware.temp_dir", "") or active.runtime.data_dir / "temporary"))
+        task = _stage_samsung_resolved(
+            active, resolved, target_dir=target_dir, temp_dir=temp_dir,
+            connections=int(data.get("connections") or 0),
+            queue_id=str(data.get("queue_id") or "default"),
+            priority=int(data.get("priority") or 0),
+            duplicate_policy=str(data.get("duplicate_policy") or "reuse"),
+        )
+        return jsonify(task.to_dict(public=True))
+    except Exception as exc:
+        return _error(exc)
 
 
 @wave5_api.post("/firmware/stage")

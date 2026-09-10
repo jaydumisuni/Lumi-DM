@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/full-desktop-interaction-contract
+      - fix/issue8-packaged-runtime-child-pid
   pull_request:
 
 permissions:
@@ -75,6 +76,21 @@ jobs:
             tests/test_v4_maintenance_diagnostics.py \
             tests/test_v4_security.py \
             tests/test_v5_firmware_hardening.py \
+            tests/test_firmware_device_catalog_breadth.py \
+            tests/test_firmware_provider_truth.py \
+            tests/test_lineage_firmware_current_api.py \
+            tests/test_xiaomi_firmware_updater_provider.py \
+            tests/test_samsung_fus_provider.py \
+            tests/test_samsung_fus_stage.py \
+            tests/test_samsung_postprocess.py \
+            tests/test_samsung_ui_contract.py \
+            tests/test_provider_secret_vault.py \
+            tests/test_v5_artifact_integrity.py \
+            tests/test_runtime_postprocess_composition.py \
+            tests/test_os_catalog_corrections.py \
+            tests/test_os_stage_transport.py \
+            tests/test_locked_navigation_quick_actions.py \
+            tests/test_widget_pending_confirmation_contract.py \
             tests/test_v5_os_routes.py
           python -m pytest -q tests/test_v5_finishing.py \
             -k "not background_and_branding_contract_are_packaged"
@@ -99,6 +115,10 @@ jobs:
       - name: Playwright real widget browser-handoff lifecycle
         run: |
           xvfb-run -a node tests/playwright_widget_handoff_lifecycle.js
+
+      - name: Playwright inline widget pending-confirmation lifecycle
+        run: |
+          xvfb-run -a node tests/playwright_widget_pending_confirmation.js
 
       - name: Assert Electron source shell released Runtime port
         run: |
@@ -207,6 +227,11 @@ jobs:
         shell: pwsh
         run: |
           node.exe tests/playwright_widget_handoff_lifecycle.js
+
+      - name: Playwright real Windows inline widget pending-confirmation lifecycle
+        shell: pwsh
+        run: |
+          node.exe tests/playwright_widget_pending_confirmation.js
 
       - name: Upload Windows source-shell evidence
         if: always()

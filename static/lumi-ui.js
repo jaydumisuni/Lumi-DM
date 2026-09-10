@@ -60,14 +60,6 @@
       }
     }
 
-    const quick = document.querySelector("#view-overview .lumi-quick-grid");
-    const clear = quick?.querySelector('[data-action="clear-done"]');
-    if (clear) {
-      clear.classList.remove("danger");
-      clear.removeAttribute("data-action");
-      clear.dataset.mainView = "categories";
-      clear.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg><span>Categories</span>`;
-    }
   }
 
   function currentPath() {

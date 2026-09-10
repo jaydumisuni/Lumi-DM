@@ -183,17 +183,21 @@ async function main() {
     const boxes = items.map(item => { const r = item.getBoundingClientRect(); return {top:r.top,bottom:r.bottom,height:r.height}; });
     const labelBoxes = labels.map(label => { const r = label.getBoundingClientRect(); const s=getComputedStyle(label); return {height:r.height,whiteSpace:s.whiteSpace,fontSize:s.fontSize}; });
     const nav = document.querySelector(".nav-list");
+    const footer = document.querySelector(".sidebar-footer");
+    const footerTop = footer.getBoundingClientRect().top;
+    const submenuBottom = submenu.getBoundingClientRect().bottom;
     return {
       open: group.classList.contains("open"),
       display: getComputedStyle(submenu).display,
-      boxes, labelBoxes,
+      boxes, labelBoxes, footerClearance: footerTop - submenuBottom,
       navOverflow: nav.scrollHeight - nav.clientHeight,
     };
   });
   console.log("COMPACT_BRAND_UI_TECHNICIAN", JSON.stringify(tech));
   assert(tech.open && tech.display === "grid", `Technician submenu did not open in flow: ${JSON.stringify(tech)}`);
-  assert(tech.boxes.length === 2, `Expected two Technician children: ${JSON.stringify(tech)}`);
-  assert(tech.boxes[0].bottom <= tech.boxes[1].top + 0.5, `Technician rows overlap: ${JSON.stringify(tech.boxes)}`);
+  assert(tech.boxes.length === 5, `Expected five locked Technician children: ${JSON.stringify(tech)}`);
+  assert(tech.boxes.every((box, index) => index === tech.boxes.length - 1 || box.bottom <= tech.boxes[index + 1].top + 0.5), `Technician rows overlap: ${JSON.stringify(tech.boxes)}`);
+  assert(tech.footerClearance >= 0, `Technician submenu overlaps storage footer: ${JSON.stringify(tech)}`);
   assert(tech.labelBoxes.every(label => label.whiteSpace === "nowrap" && label.height <= 16), `Technician labels wrap/overlap: ${JSON.stringify(tech.labelBoxes)}`);
   assert(tech.navOverflow <= 1, `Expanded Technician requires hidden sidebar scrolling: ${tech.navOverflow}px`);
   await page.click(".nav-group-toggle");

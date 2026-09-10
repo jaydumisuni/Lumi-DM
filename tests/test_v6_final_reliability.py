@@ -70,8 +70,8 @@ def test_widget_distinguishes_live_use_from_connection_capacity():
     assert "Live ↓" in widget
     assert "Capacity ↓" in widget
     assert "Upload capacity" not in widget
-    assert "Open Lumi Manager" in widget
-    assert "Resume in manager" in widget
+    assert 'id="open-main" title="Open Lumi DM"' in widget
+    assert "paused?'Resume':'Pause'" in widget
 
 
 def test_boot_notifications_use_a_session_transition_baseline():

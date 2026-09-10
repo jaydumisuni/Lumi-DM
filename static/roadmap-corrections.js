@@ -163,6 +163,7 @@
 
   function providerSupports(provider, brand, exactProviders) {
     if (!provider) return false;
+    if (provider.id === "lineageos") return exactProviders.has("lineageos");
     if (exactProviders.has(provider.id)) return true;
     const brands = Array.isArray(provider.brands) ? provider.brands : [];
     if (brands.includes(brand)) return true;

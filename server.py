@@ -24,6 +24,8 @@ from core.v5 import install_v5
 from core.v5.browser_api import wave5_browser_api
 from core.v5.desktop_api import wave5_desktop_api
 from core.v5.os_api import install_os_api, wave5_os_api
+from core.v5.samsung_postprocess import install_samsung_postprocess
+from core.v5.artifact_postprocess import install_artifact_integrity
 from core.v6 import install_reliability
 from core.v7.runtime_contract import install_correction_campaign as install_v7_runtime_contract
 from core.v7.desktop_auth import install_desktop_auth
@@ -43,6 +45,8 @@ if "lumi_wave3" not in app.blueprints:
 install_stage0_trace(app)
 install_v4(app)
 install_v5(app)
+install_samsung_postprocess()
+install_artifact_integrity()
 install_os_api()
 install_reliability()
 if "lumi_wave5_browser" not in app.blueprints:

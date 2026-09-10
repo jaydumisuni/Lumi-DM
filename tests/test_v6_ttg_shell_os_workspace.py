@@ -7,16 +7,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_sidebar_separates_mobile_firmware_and_operating_systems() -> None:
+def test_sidebar_groups_technician_workspaces_and_keeps_os_separate_from_firmware() -> None:
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
 
     assert 'data-view="firmware"' in html
-    assert ">Mobile firmware<" in html
+    assert ">Mobile Firmware<" in html
     assert 'data-view="operating_systems"' in html
-    assert ">Operating systems<" in html
+    assert ">Operating Systems<" in html
+    sidebar = html.split('<nav class="nav-list"', 1)[1].split("</nav>", 1)[0]
+    submenu = sidebar.split('<div class="nav-submenu">', 1)[1].split("</div>", 1)[0]
+    for view in ("firmware", "operating_systems", "queues", "categories", "grabber"):
+        assert f'data-view="{view}"' in submenu
     assert 'id="view-operating_systems"' in html
 
-    sidebar = html.split('<nav class="nav-list"', 1)[1].split("</nav>", 1)[0]
     assert 'data-view="settings"' not in sidebar
     assert 'data-view="diagnostics"' not in sidebar
 
@@ -80,6 +83,9 @@ def test_locked_builder_shell_contract_is_v2() -> None:
     assert contract["navigation"]["technician_sections"] == [
         "Mobile firmware",
         "Operating systems",
+        "Queues",
+        "Categories",
+        "LinkGrabber",
     ]
     assert contract["builder_contract"]["remove_platform_default_titlebar"] is True
     assert contract["builder_contract"]["generate_bell_and_gear_menus"] is True

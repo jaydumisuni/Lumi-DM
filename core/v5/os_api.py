@@ -7,7 +7,7 @@ from typing import Any
 from flask import Blueprint, jsonify, request
 
 from core.v2.categories import CategoryRule
-from core.v2.models import TaskStatus
+from core.v2.models import TaskStatus, TaskType
 from core.v2.wave2 import services as wave2_services
 
 from .os_catalog import catalogue, resolve_windows_iso, search_os
@@ -80,6 +80,40 @@ def windows_resolve():
         return _error(exc)
 
 
+def _start_os_transfer(active, url: str, *, target_dir: Path, temp_dir: Path, filename: str) -> dict[str, Any]:
+    if str(url).lower().endswith(".torrent"):
+        return active.start_delegated(
+            TaskType.TORRENT.value,
+            url,
+            target_dir=target_dir,
+            metadata={
+                "filename": filename or Path(url.split("?", 1)[0]).name or "operating-system.torrent",
+                "connections": 0,
+                "selected_files": [],
+                "file_priorities": [],
+                "seed_ratio": 0.0,
+                "seed_time_seconds": 0,
+                "stop_after_download": True,
+            },
+            queue_id="default",
+            priority=0,
+            start_paused=True,
+            category_id="operating-systems",
+        )
+    return active.start_http(
+        url,
+        target_dir=target_dir,
+        temp_dir=temp_dir,
+        filename=filename,
+        connections=0,
+        queue_id="default",
+        priority=0,
+        start_paused=True,
+        duplicate_policy="reuse",
+        category_id="operating-systems",
+    )
+
+
 @wave5_os_api.post("/stage")
 def os_stage():
     data = _body()
@@ -90,17 +124,12 @@ def os_stage():
         _ensure_os_category()
         active = wave2_services()
         default_root = active.runtime.store.get_setting("os.default_dir", "") or Path.home() / "Downloads"
-        result = active.start_http(
+        result = _start_os_transfer(
+            active,
             url,
             target_dir=Path(str(data.get("target_dir") or default_root)),
             temp_dir=Path(str(data.get("temp_dir") or active.runtime.data_dir / "temporary")),
             filename=str(data.get("filename") or "").strip(),
-            connections=int(data.get("connections") or 0),
-            queue_id=str(data.get("queue_id") or "default"),
-            priority=int(data.get("priority") or 0),
-            start_paused=True,
-            duplicate_policy=str(data.get("duplicate_policy") or "reuse"),
-            category_id="operating-systems",
         )
         task = active.runtime.get_task(result["id"])
         if task is None:

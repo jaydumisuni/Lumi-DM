@@ -59,6 +59,7 @@ class RequestEnvelope:
     secret_headers_reference: str = ""
     cookie_reference: str = ""
     post_body_reference: str = ""
+    provider_secret_reference: str = ""
     captured_at: str = field(default_factory=utc_now)
     provider_id: str = ""
     browser_profile: str = ""
@@ -102,6 +103,7 @@ class RequestEnvelope:
             "secret_headers_reference",
             "cookie_reference",
             "post_body_reference",
+            "provider_secret_reference",
         ):
             if out[key]:
                 out[key] = "<secure-reference>"
@@ -126,6 +128,7 @@ class RequestEnvelope:
             ),
             cookie_reference=str(value.get("cookie_reference") or ""),
             post_body_reference=str(value.get("post_body_reference") or ""),
+            provider_secret_reference=str(value.get("provider_secret_reference") or ""),
             captured_at=str(value.get("captured_at") or utc_now()),
             provider_id=str(value.get("provider_id") or ""),
             browser_profile=str(value.get("browser_profile") or ""),

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/full-desktop-interaction-contract
+      - fix/issue8-packaged-runtime-child-pid
   pull_request:
 
 permissions:

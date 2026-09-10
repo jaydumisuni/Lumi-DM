@@ -190,8 +190,14 @@ def test_browser_capture_uses_existing_widget_and_inactive_runtime_queue() -> No
     assert "active=False" in surface
     assert "browser.capture.widget_pending" in surface
     assert 'task.status = TaskStatus.QUEUED.value' in surface
-    assert "executeJavaScript" in native
-    assert 'data-tab="queued"' in native
+    preload = text("electron/preload-widget.js")
+    assert 'window.webContents.send("v7-browser-pending"' in native
+    assert "v7-widget-confirm" in native
+    assert "v7-widget-release" in native
+    assert "executeJavaScript" not in native
+    assert "onPending" in preload
+    assert "confirmPending" in preload
+    assert "releasePending" in preload
     assert "forcedPendingExpansion" in native
     assert "surfaceExpanded = false" in native
     assert 'task.status = TaskStatus.QUEUED.value' in surface

@@ -193,7 +193,9 @@ def install_reliability() -> None:
     http_replay.probe_resource = reliable_probe
     runtime.probe_resource = reliable_probe
 
-    runner_class = http_replay.HTTPTransferRunner
+    # Enhance the already-composed Runtime runner instead of resetting it to
+    # the bare replay class. This preserves Wave-3 and later post-processors.
+    runner_class = runtime.HTTPTransferRunner
     original_run = runner_class.run
     original_complete = runner_class._complete_file
 

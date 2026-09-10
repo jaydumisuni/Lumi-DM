@@ -106,13 +106,15 @@ def test_lumi_dark_is_default_and_clear_glass_is_the_only_light_theme() -> None:
 def test_approved_shell_storage_and_categories_are_runtime_bound() -> None:
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     ui = (ROOT / "static" / "lumi-ui.js").read_text(encoding="utf-8")
+    views = (ROOT / "static" / "main-ui-views.js").read_text(encoding="utf-8")
 
     assert 'id="lumi-storage-drive"' in html
     assert 'id="lumi-storage-free"' in html
     assert 'id="lumi-storage-best-speed"' in html
     assert 'THETECHGUY TOOL' in ui
     assert '/api/v4/maintenance/storage' in ui
-    assert 'clear.dataset.mainView = "categories"' in ui
+    assert '<span>Clear Completed</span>' in views
+    assert 'clear.dataset.mainView = "categories"' not in ui
     assert 'const requestId = ++storageRequestId' in ui
     assert 'if (requestId !== storageRequestId) return;' in ui
 
