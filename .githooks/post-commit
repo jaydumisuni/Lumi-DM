@@ -1,0 +1,11 @@
+#!/bin/sh
+# Push the commit just created. Never modifies the working tree.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+if command -v python3 >/dev/null 2>&1; then
+  python3 "$ROOT/tools/git_autosync.py" --repo "$ROOT" --push-only >/dev/null 2>&1 &
+elif command -v python >/dev/null 2>&1; then
+  python "$ROOT/tools/git_autosync.py" --repo "$ROOT" --push-only >/dev/null 2>&1 &
+elif command -v py >/dev/null 2>&1; then
+  py -3 "$ROOT/tools/git_autosync.py" --repo "$ROOT" --push-only >/dev/null 2>&1 &
+fi
+exit 0
