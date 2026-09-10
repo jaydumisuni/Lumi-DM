@@ -181,18 +181,17 @@ async function main() {
     await page.click('[data-window-action="maximize"]');
     await waitForIpcResponse("ttg-window-control", responseCount);
     responseCount += 1;
-    if (platform === "win32") {
-      await waitFor(async () => {
-        const windows = await nativeWindows(electronApp);
-        return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.maximized));
-      }, "Real maximize IPC did not maximize the native manager");
-    }
-    await electronApp.evaluate(({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
-      if (window?.isMaximized()) window.unmaximize();
-      window?.show();
-      window?.focus();
-    });
+    await waitFor(async () => {
+      const windows = await nativeWindows(electronApp);
+      return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.maximized));
+    }, "Real maximize IPC did not maximize the native manager");
+    // Exercise the same Maximize/Restore control a user clicks. On some Linux
+    // window managers an injected BrowserWindow.unmaximize() in the same event
+    // turn as maximize can be ignored even though the real UI toggle is sound.
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await page.click('[data-window-action="maximize"]');
+    await waitForIpcResponse("ttg-window-control", responseCount);
+    responseCount += 1;
     await waitFor(async () => {
       const windows = await nativeWindows(electronApp);
       const current = windows.find(window => window.url.startsWith("http://127.0.0.1:7000"));

@@ -5,6 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 const BASE = process.env.LUMI_PLAYWRIGHT_BASE || "http://127.0.0.1:7000";
+const CHROMIUM_EXECUTABLE = process.env.LUMI_CHROMIUM_EXECUTABLE || "";
 let browser = null;
 
 function assert(condition, message) {
@@ -24,7 +25,7 @@ async function waitServer(page) {
 }
 
 async function main() {
-  browser = await chromium.launch({ headless: true, channel: "chromium" });
+  browser = await chromium.launch({ headless: true, ...(CHROMIUM_EXECUTABLE ? { executablePath: CHROMIUM_EXECUTABLE } : { channel: "chromium" }) });
   const context = await browser.newContext({ viewport: { width: 920, height: 560 }, deviceScaleFactor: 1 });
   await context.addInitScript(() => {
     Object.defineProperty(window, "electronApp", {
