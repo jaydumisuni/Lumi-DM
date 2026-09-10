@@ -107,6 +107,11 @@ async function main() {
     await page.locator("#app-shell").waitFor({ state: "visible", timeout: 20000 });
     await page.waitForFunction(() => document.documentElement.dataset.lumiRoadmapInteraction === "1");
     await page.waitForFunction(() => Boolean(window.electronApp?.isElectron));
+    await waitFor(async () => {
+      const windows = await nativeWindows(electronApp);
+      const current = windows.find(window => window.url.startsWith("http://127.0.0.1:7000"));
+      return Boolean(current?.visible);
+    }, "Main manager never became visible on a normal source launch", 10000);
 
     let initial = await nativeWindows(electronApp);
     let manager = initial.find(window => window.url.startsWith("http://127.0.0.1:7000"));

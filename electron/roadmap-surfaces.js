@@ -122,8 +122,11 @@ async function rpc(method, params = {}) {
 
 async function pendingTask(taskId = "") {
   const state = await request("GET", "/api/v7/runtime/state");
+  const terminal = new Set(["completed", "failed", "cancelled"]);
   return (state.tasks || []).find(task => (
     task.metadata?.browser_capture_pending === true
+    && String(task.queue_id || "") === "browser-pending"
+    && !terminal.has(String(task.status || "").toLowerCase())
     && (!taskId || String(task.id) === String(taskId))
   )) || null;
 }
@@ -222,7 +225,10 @@ function installUniqueIpc() {
   ipcMain.removeHandler("v7-widget-release");
   ipcMain.handle("v7-widget-release", async (_event, taskId) => widgetAction("cancel", taskId));
   ipcMain.removeHandler("v7-widget-pending");
-  ipcMain.handle("v7-widget-pending", async () => pendingTask());
+  ipcMain.handle("v7-widget-pending", async () => {
+    try { return await pendingTask(); }
+    catch (_) { return null; }
+  });
 }
 
 function replaceLegacyWidgetHandlers() {

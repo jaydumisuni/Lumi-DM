@@ -374,7 +374,21 @@ def dispatch_rpc(app: Flask, method: str, params: dict[str, Any]) -> Any:
     if method == "download.resume":
         return _public_task(runtime.resume(str(params.get("task_id") or "")))
     if method == "download.cancel":
-        return _public_task(runtime.cancel(str(params.get("task_id") or "")))
+        task_id = str(params.get("task_id") or "")
+        before = runtime.get_task(task_id)
+        was_browser_pending = bool(before and before.metadata.get("browser_capture_pending"))
+        handoff_id = str(before.metadata.get("browser_handoff_id") or "") if before else ""
+        cancelled = runtime.cancel(task_id)
+        if cancelled is not None and was_browser_pending:
+            cancelled.metadata["browser_capture_pending"] = False
+            runtime.store.save_task(cancelled)
+            if handoff_id:
+                _handoffs(app).decide(handoff_id, "browser", "Pending Lumi download was cancelled")
+            runtime.store.append_event(cancelled.id, "browser.capture.cancelled", {
+                "handoff_id": handoff_id,
+                "schema": SCHEMA,
+            })
+        return _public_task(cancelled)
     if method == "download.remove":
         return {"ok": runtime.delete(str(params.get("task_id") or ""), delete_file=bool(params.get("delete_file")))}
     if method == "queue.add":

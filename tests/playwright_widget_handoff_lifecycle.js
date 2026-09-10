@@ -201,15 +201,21 @@ async function main() {
     assert(!String(expanded.url).includes("confirm.html"), "Browser capture expanded a legacy confirmation surface");
 
     await widget.locator('#widget.expanded').waitFor({ state: "visible", timeout: 8000 });
-    await widget.locator('[data-tab="queued"].active').waitFor({ state: "visible", timeout: 8000 });
-    const start = widget.locator(`button[data-action="resume"][data-id="${taskId}"]`);
+    await widget.locator('#pending-confirmation').waitFor({ state: "visible", timeout: 8000 });
+    assert((await widget.locator('#pending-filename').inputValue()) === "widget-lifecycle.bin", "Pending confirmation lost the captured filename");
+    const start = widget.locator('[data-pending-action="now"]');
     await start.waitFor({ state: "visible", timeout: 8000 });
     const hit = await start.evaluate(element => {
       const rect = element.getBoundingClientRect();
       const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-      return Boolean(target && (target === element || element.contains(target)));
+      return {
+        ok: Boolean(target && (target === element || element.contains(target))),
+        rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+        target: target ? { tag: target.tagName, id: target.id || "", className: String(target.className || "") } : null,
+      };
     });
-    assert(hit, "Pending Start button is not the physical hit target");
+    console.log("WIDGET_PENDING_NOW_HIT", JSON.stringify(hit));
+    assert(hit.ok, `Download now button is not the physical hit target: ${JSON.stringify(hit)}`);
     await widget.screenshot({ path: path.join(ARTIFACTS, "electron-widget-01-pending-expanded.png") });
 
     await start.click();

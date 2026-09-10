@@ -233,6 +233,19 @@ def test_v7_runtime_extension_media_widget_and_remote_contract(tmp_path: Path) -
         assert confirmed_task["connections"] == 32
         assert confirmed_task["metadata"]["browser_capture_pending"] is False
 
+        cancelled_capture = _rpc(session, base, "browser.capture", {
+            "source": "https://example.invalid/browser-cancel.bin",
+            "filename": "browser-cancel.bin",
+            "target_dir": str(downloads),
+            "queue_id": "default",
+            "browser": {"url": "https://example.invalid/cancel", "title": "Browser cancel"},
+        })
+        cancelled = _rpc(session, base, "download.cancel", {
+            "task_id": cancelled_capture["task"]["id"],
+        })
+        assert cancelled["status"] == "cancelled"
+        assert cancelled["metadata"]["browser_capture_pending"] is False
+
         # Other tools/phones use the same RPC semantics after normal pairing.
         requested = _rpc(session, base, "download.request", {
             "source": "https://example.invalid/remote-request.bin",
