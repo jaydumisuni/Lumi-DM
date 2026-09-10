@@ -246,7 +246,7 @@ def _stage_samsung_resolved(
         "firmware_version": resolved.version,
         "firmware_channel": "stable",
         "firmware_source_url": "https://www.samsung.com/support/",
-        "firmware_official_host": "cloud-neofussvr.sslcs.cdngc.net",
+        "firmware_official_host": "cloud-neofussvr.samsungmobile.com",
         "samsung_csc": resolved.csc,
         "samsung_fus_decrypt": {
             "model": resolved.model, "csc": resolved.csc,

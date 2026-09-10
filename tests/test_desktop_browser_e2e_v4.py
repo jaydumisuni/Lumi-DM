@@ -252,7 +252,8 @@ def test_desktop_ui_full_interaction_and_local_download(tmp_path: Path) -> None:
             )
             expect(page.locator("#view-grabber")).to_contain_text("fixture.bin")
 
-            page.locator("#new-download-btn").click()
+            click_view(page, "downloads")
+            page.locator('[data-main-open-new]:visible').first.click()
             expect(page.locator("#new-modal")).to_be_visible()
             for source, selector in {
                 "direct": 'form[data-source-form="direct"]',

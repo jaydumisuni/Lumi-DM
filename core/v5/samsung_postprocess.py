@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
+import threading
 
 from core.v2 import runtime as _runtime
-from core.v2.models import TaskStatus, utc_now
-from core.v2.vault import delete_secret, hydrate_provider_secret
+from core.v2.models import RequestEnvelope, TaskStatus, utc_now
+from core.v2.vault import delete_secret, hydrate_provider_secret, secure_request_envelope
 
 from . import samsung_fus
 
@@ -18,6 +20,36 @@ def _destroy_request_secret(task, attribute: str) -> None:
             setattr(task.request, attribute, "")
     except Exception:
         return
+
+
+def _refresh_samsung_authorization(store, task, failed_headers: dict[str, str]) -> bool:
+    if str(getattr(task.request, "provider_id", "") or "") != "samsung-fus":
+        return False
+    current = str(task.request.normalized_headers().get("Authorization") or "")
+    failed = str(failed_headers.get("Authorization") or "")
+    # A peer worker may already have rotated the vaulted token while this worker
+    # was waiting for the refresh lock. Reuse that token instead of reauthing again.
+    if current and failed and current != failed:
+        return True
+    marker = dict(task.metadata.get("samsung_fus_decrypt") or {})
+    model = str(marker.get("model") or "")
+    csc = str(marker.get("csc") or "")
+    version = str(marker.get("version") or "")
+    if not model or not csc or not version or not task.filename:
+        return False
+    authorization = samsung_fus.refresh_download_authorization(
+        model=model, csc=csc, version=version, expected_filename=task.filename,
+    )
+    envelope = asdict(task.request)
+    headers = dict(envelope.get("headers") or {})
+    headers["Authorization"] = authorization
+    headers.setdefault("User-Agent", "SMART 2.0")
+    envelope["headers"] = headers
+    secured = secure_request_envelope(store.data_dir, envelope)
+    task.request = RequestEnvelope.from_dict(secured)
+    store.save_task(task)
+    store.append_event(task.id, "samsung_fus_authorization_refreshed", {"model": model, "csc": csc})
+    return True
 
 
 def finalize_samsung_package(store, task_id: str, encrypted: Path) -> None:
@@ -100,6 +132,16 @@ def install_samsung_postprocess() -> None:
 
     class SamsungFirmwareHTTPTransferRunner(current):
         _lumi_samsung_fus_wrapper = True
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._samsung_auth_refresh_lock = threading.Lock()
+
+        def _refresh_request_authorization(self, task, failed_headers: dict[str, str]) -> bool:
+            if str(getattr(task.request, "provider_id", "") or "") != "samsung-fus":
+                return super()._refresh_request_authorization(task, failed_headers)
+            with self._samsung_auth_refresh_lock:
+                return _refresh_samsung_authorization(self.store, task, failed_headers)
 
         def _complete_file(self, task, partial: Path, final: Path) -> None:
             super()._complete_file(task, partial, final)

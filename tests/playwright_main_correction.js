@@ -67,7 +67,7 @@ async function main() {
 
   const page = await context.newPage();
   await waitServer(page);
-  await page.route("**/api/v5/firmware/catalogue", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ warning: "Verify the exact model before flashing.", brands: ["Samsung", "Apple", "Google Pixel"], providers: [{ id: "samsung", name: "Samsung Support", group: "Official OS", brands: ["Samsung"] }, { id: "android", name: "AndroidFileHost", group: "Community mirrors", brands: ["Android"] }] }) }));
+  await page.route("**/api/v5/firmware/catalogue", route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ warning: "Verify the exact model before flashing.", brands: ["Samsung", "Apple", "Google Pixel"], providers: [{ id: "samsung-fus", name: "Samsung FUS resolver", group: "Official Samsung firmware resolver", brands: ["Samsung"] }, { id: "androidfilehost", name: "AndroidFileHost", group: "Community mirrors", brands: ["Android"] }] }) }));
   await page.route(/\/api\/v5\/firmware\/devices\?/, route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ devices: [{ id: "SM-S918B", name: "Galaxy S23 Ultra", model: "SM-S918B", codename: "dm3q", provider: "samsung", brand: "Samsung" }, { id: "SM-S918U", name: "Galaxy S23 Ultra US", model: "SM-S918U", codename: "dm3q", provider: "samsung", brand: "Samsung" }] }) }));
   await page.route(/\/api\/v5\/firmware\/search\?/, route => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ results: [] }) }));
 
@@ -123,7 +123,7 @@ async function main() {
   assert(await connectionSelect.inputValue() === "32", "Settings do not expose the canonical 32-connection policy");
   assert(await connectionSelect.locator("option").count() === 1, "Settings still allow silent HTTP connection downgrade");
 
-  await page.click(".nav-group-toggle"); await page.click('[data-view="firmware"]');
+  if (!(await page.locator('[data-view="firmware"]').isVisible())) await page.click(".nav-group-toggle"); await page.click('[data-view="firmware"]');
   await page.locator("#firmware-search-form-v7").waitFor({ state: "visible", timeout: 10000 });
   const firmwareOrder = await page.locator("#firmware-search-form-v7 > label").evaluateAll(labels => labels.slice(0, 4).map(label => label.querySelector("select,input")?.name || ""));
   console.log("PLAYWRIGHT_FIRMWARE_ORDER", JSON.stringify(firmwareOrder));
@@ -133,7 +133,7 @@ async function main() {
   await page.selectOption("#lumi-firmware-brand", "Samsung"); await page.waitForFunction(() => !document.getElementById("lumi-firmware-model").disabled);
   await model.fill("SM-S918B"); await page.waitForFunction(() => !document.getElementById("lumi-firmware-source").disabled);
   const sourceOptions = await source.locator("option").allInnerTexts();
-  assert(sourceOptions.some(value => value.includes("Samsung Support")), `Model did not resolve a valid source: ${sourceOptions.join(" | ")}`);
+  assert(sourceOptions.some(value => value.includes("Samsung FUS")), `Model did not expose the native Samsung FUS resolver: ${sourceOptions.join(" | ")}`);
 
   await page.click('[data-view="overview"]'); await page.locator("#view-overview.active").waitFor({ state: "visible" });
   await page.locator('#view-overview [data-main-open-new]').first().click(); await page.locator("#new-modal").waitFor({ state: "visible" });

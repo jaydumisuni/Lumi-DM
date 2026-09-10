@@ -29,3 +29,14 @@ def test_lineage_channel_filter_applies_to_nested_builds():
     raw = [{"date": "2026-09-09", "type": "nightly", "version": "22.2", "files": [{"filename": "rom.zip", "url": "https://mirrorbits.lineageos.org/rom.zip", "sha256": "c" * 64}]}]
     assert firmware._parse_lineage_builds(raw, "enchilada", "stable") == []
     assert len(firmware._parse_lineage_builds(raw, "enchilada", "nightly")) == 1
+
+
+def test_lineage_fetch_has_bounded_curl_fallback(monkeypatch):
+    class Done:
+        returncode = 0
+        stdout = '[]'
+        stderr = ''
+    monkeypatch.setattr(firmware, "_get_json", lambda url: (_ for _ in ()).throw(RuntimeError("python transport down")))
+    monkeypatch.setattr(firmware.shutil, "which", lambda name: "/usr/bin/curl" if name == "curl" else None)
+    monkeypatch.setattr(firmware.subprocess, "run", lambda *a, **k: Done())
+    assert firmware._lineage_json("https://download.lineageos.org/api/v2/devices/enchilada/builds") == []

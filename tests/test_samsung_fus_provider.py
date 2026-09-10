@@ -55,3 +55,37 @@ def test_native_samsung_decrypt_round_trip(tmp_path):
     output = samsung_fus.decrypt_package(source, decrypt_key_hex=key.hex(), encryption=4)
     assert output.name == "firmware.zip"
     assert output.read_bytes() == clear
+
+
+def test_native_fus_2026_smartdownload_auth_and_request_primitives_are_self_contained():
+    import xml.etree.ElementTree as ET
+
+    nonce = "0123456789abcdefEXTRA"
+    assert samsung_fus._auth_signature(nonce) == "ff9af17d365c75e46d98c431f2176e97"
+    assert samsung_fus._PROTOCOL_REFERENCE_COMMIT == "2b9d59054f863c540578dc2dce429daaefb3460e"
+
+    version = "S921BXXU9ABCDE/S921BOXM9ABCDE/S921BXXU9ABCDE/S921BXXU9ABCDE"
+    xml = samsung_fus._binary_inform(version, "SM-S921B", "EUX", nonce)
+    root = ET.fromstring(xml)
+    assert root.findtext("./FUSHdr/SessionID") == "0"
+    assert root.findtext("./FUSHdr/MsgID") == "1"
+    assert root.findtext("./FUSBody/Put/ACCESS_MODE/Data") == "1"
+    assert root.findtext("./FUSBody/Put/REQUEST_TYPE/Data") == "2"
+    assert root.findtext("./FUSBody/Put/BINARY_MODEL_NAME/Data") == "SM-S921B"
+    assert root.findtext("./FUSBody/Put/BINARY_LOCAL_CODE/Data") == "EUX"
+    assert root.findtext("./FUSBody/Put/BINARY_SW_VERSION/Data") == version
+    assert root.findtext("./FUSBody/Put/LOGIC_CHECK/Data") == samsung_fus._logic_check(version, nonce)
+    assert root.findtext("./FUSBody/Get/CmdID") == "2"
+    assert root.find("./FUSBody/Get/BINARY_SW_VERSION") is not None
+
+    init = samsung_fus._binary_init("SM-S921B_ABCDEFGHIJKLMNO123456789.zip.enc4", nonce, version, "SM-S921B", "EUX")
+    init_root = ET.fromstring(init)
+    assert init_root.findtext("./FUSBody/Put/BINARY_SW_VERSION/Data") == version
+    assert init_root.findtext("./FUSBody/Put/DEVICE_MODEL_TYPE/Data") == "SM-S921B"
+    assert init_root.findtext("./FUSBody/Put/DEVICE_LOCAL_CODE/Data") == "EUX"
+
+
+def test_native_samsung_adapter_is_packaged_interpreter_independent():
+    source = Path(samsung_fus.__file__).read_text(encoding="utf-8")
+    forbidden = ("sys.executable", "subprocess", "pycryptodomex", "Cryptodome", "import samloader", "from samloader")
+    assert all(value not in source for value in forbidden)

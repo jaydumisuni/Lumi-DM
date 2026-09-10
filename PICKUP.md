@@ -111,78 +111,70 @@ Live `spinel` proof returned two digest-backed artifacts:
 
 This closes the gap where Lumi previously stored/displayed an expected checksum without automatically enforcing it after transfer.
 
-## Samsung FUS — current checkpoint and IMPORTANT blocker
+## Samsung FUS — native packaged-safe implementation complete
 
-Samsung work is **not release-ready yet**. Do not call it complete.
+Samsung no longer depends on an external Python subprocess/helper at runtime. Lumi now implements the reviewed Samsung SmartDownload/FUS interoperability path natively with its already-packaged `cryptography` dependency.
 
-What exists now:
+Final architecture and proof:
 
-- `samsung-fus` provider/search row and UI Resolve action.
-- exact Samsung model validation (`SM-...`) and exact 3-character CSC validation.
-- protected `/api/v5/firmware/samsung/stage` route.
-- staging uses Lumi's canonical HTTP task with category `firmware`.
-- FUS Authorization is passed in the request envelope and therefore moved into Lumi's encrypted header vault; public task JSON shows only `<redacted>`.
-- a protocol-shaped real API proof confirmed the secret did not appear in public JSON.
-- `samsung_postprocess.py` currently models the required decrypt completion lifecycle.
-- provider-secret vault support has also been added to `RequestEnvelope` / `core/v2/vault.py`, including secure redaction, hydration, and deletion. This is intended for the packaged-safe Samsung decrypt-key handoff.
-- runtime reliability composition was adjusted to enhance `runtime.HTTPTransferRunner` rather than resetting to the bare replay runner, preserving Wave3 + Samsung + integrity wrappers.
+- Protocol reference used for interoperability review: `topjohnwu/samloader-rs` (Apache-2.0), reviewed clone commit `2b9d59054f863c540578dc2dce429daaefb3460e`. No donor source is embedded in Lumi.
+- Exact Samsung model (`SM-...`) and exact 3-character CSC validation remain mandatory.
+- Native FOTA latest-version lookup + FUS nonce/auth + BinaryInform + BinaryInit are implemented in `core/v5/samsung_fus.py`.
+- BinaryInform includes the required `Get/CmdID=2/BINARY_SW_VERSION` request block; BinaryInit matches the reviewed SmartDownload request shape.
+- The `.enc2/.enc4` AES-128 decrypt key is derived at resolve time and stored only as an encrypted `provider_secret` vault reference.
+- FUS HTTP Authorization remains in the existing sensitive-header vault and is redacted from public task JSON.
+- HTTP 401 refresh is narrow/provider-specific: normal HTTP tasks are unchanged; Samsung serializes FUS reauthorization so multiple range workers do not all renegotiate simultaneously.
+- Lumi's own HTTP engine owns segmented/resumable transfer. Samsung decryption is a post-process wrapper over the active Wave3 HTTP runner.
+- Decrypt uses packaged `cryptography` AES-128-ECB and the reviewed final-byte padding semantics.
+- Successful decrypt deletes the encrypted package and the decrypt-key vault entry only after usable output exists. Decrypt failure preserves the encrypted package and key reference for diagnosis/retry.
 
-### Packaging blocker discovered during review
+Live Samsung proof on KRATOS, without downloading the multi-gigabyte payload:
 
-The first Samsung implementation uses a pinned external samloader subprocess (`core/v5/samsung_fus.py`). That is acceptable as protocol research/source proof but **not acceptable as the final packaged Windows implementation** because the PyInstaller sidecar's `sys.executable` becomes `LUMIDM-server.exe`, not a reusable Python interpreter for `python -c`.
+- `SM-S921B / EUX` resolved in about 4.34 s.
+- Version resolved: `S921BXXSAGYH1/S921BOXMAGYH1/S921BXXSAGYH1/S921BXXSAGYH1`.
+- Official encrypted package size: `17,592,535,024` bytes.
+- Official cloud host: `cloud-neofussvr.samsungmobile.com`.
+- 16-byte ranged transfer ticket test returned HTTP `206` with `Content-Range: bytes 0-15/17592535024`.
+- Protected `/api/v5/firmware/samsung/stage` returned a canonical `status=staged`, `type=http`, `category=firmware` task.
+- Public task JSON exposed `Authorization=<redacted>` and `provider_secret_reference=<secure-reference>`; no live decrypt key/signature was written into the repository.
 
-Do not freeze the Samsung external-subprocess implementation as release-ready.
+### Xiaomi rate-limit hardening
 
-### Next Samsung architecture — first task for the next chat
+GitHub's unauthenticated API quota was exhausted during live proof. Lumi now keeps verification without depending on that quota:
 
-Replace the temporary runtime helper with a native Lumi FUS adapter that uses the already-packaged `cryptography` library. The intended final flow is:
+1. Try GitHub release API.
+2. Try bounded command-line API transport if available.
+3. If API access is rate-limited/unavailable, fetch the public GitHub release page and its `releases/expanded_assets/<tag>` fragment.
+4. Parse only exact release assets whose public row contains `sha256:<64-hex>`.
+5. Cache verified release metadata for 30 minutes.
+6. If no digest-backed evidence is available, fail closed and retain research/source fallbacks.
 
-1. Normalize exact Samsung model + CSC.
-2. Resolve latest version from Samsung FOTA/FUS when reachable.
-3. Perform FUS nonce/auth/BinaryInform/BinaryInit natively inside Lumi.
-4. Derive the `.enc2/.enc4` decrypt key **at resolve time**.
-5. Store that key as a `provider_secret` in Lumi's encrypted vault; retain only `provider_secret_reference` on the request/task.
-6. Keep FUS HTTP Authorization in the existing sensitive-header vault.
-7. Lumi's own HTTP engine downloads/resumes the encrypted Samsung package.
-8. Samsung post-process hydrates the provider secret, decrypts the package using packaged `cryptography`, verifies output exists/is usable, deletes the encrypted file only after successful decrypt, then destroys the provider-secret vault entry.
-9. On decrypt failure: preserve encrypted package, mark task failed, preserve diagnostic evidence, do not delete the provider secret until retry/cancel policy is defined.
-10. Remove `pycryptodomex`/`tqdm` and external runtime-helper dependency if the native path fully replaces it.
+Live proof while the API was rate-limited still recovered the same two `spinel` assets with matching SHA-256 values, and a protected Xiaomi firmware stage produced a canonical staged task carrying the exact expected SHA-256.
 
-The external samloader revision used as protocol evidence was commit `0e53d8032699a4039ea6f5310ebec05f8f417f07`. It is archived/GPL and should remain a protocol/reference donor, not embedded Lumi application source.
+## Final verification state for this KRATOS product pass
 
-## Tests/proofs already green in this pass
+Fresh evidence on the final tree:
 
-Targeted results observed during this session include:
+- Native Samsung/Xiaomi/integrity focused contracts: green.
+- Current functional core batch: **104/104 PASS**.
+- Workflow filtered groups: **6 PASS + 1 PASS + 4 PASS + 8 PASS**.
+- Full pytest collection after final Xiaomi fallback: **203 PASS / 11 FAIL**.
+- The 11 failures are confirmed pre-existing/deferred release-pipeline baseline debt: builder profile/icon expectations, missing `electron/package.json`, missing Builder GitHub release contract/publisher, and missing TTG shell standard document. Their owning release/pipeline files are unchanged from the pre-pass branch state.
+- Python compileall: PASS.
+- JavaScript syntax on changed UI/Electron test files: PASS.
+- Real Electron source shell: PASS; exactly two native surfaces, manager 920x560, widget hidden while manager is open, close -> widget handoff works.
+- Physical widget pending confirmation: PASS.
+- Approved mockup, compact geometry, settled views, 14-screen visual sweep, main interactions, both-theme readability/palette, glass accessibility/polish/parity: PASS.
+- Final live Samsung metadata + ranged transfer + protected stage: PASS.
+- Final live Xiaomi public-digest fallback + protected stage: PASS.
 
-- OS correction + transport contracts: 8/8 PASS
-- Lineage/current firmware breadth/hardening set: PASS
-- Samsung/Xiaomi provider contracts before native refactor: PASS
-- Samsung UI/stage/post-process source contracts: PASS
-- Samsung protected-stage redaction proof: HTTP 200; Authorization returned only as `<redacted>`
-- Xiaomi parser + bounded GitHub transport tests: PASS
-- Artifact SHA-256 integrity tests: PASS
-- Widget pending-confirmation physical Electron proof: PASS
-- Compact Technician layout regression: PASS
+## Exact next execution order after this freeze
 
-**Important:** a full repository regression/freeze has NOT yet been performed on this complete combined worktree. Do not infer release readiness from the targeted passes.
-
-Checkpoint verification before this WIP push ran 59 targeted ownership tests: **58 passed / 1 failed**. The single failure is confirmed baseline debt: `tests/test_v6_ttg_shell_os_workspace.py::test_advanced_diagnostics_remains_available_only_as_hidden_workspace` expects `docs/TTG_APP_SHELL_STANDARD.md`, and `git cat-file HEAD:docs/TTG_APP_SHELL_STANDARD.md` confirms that file was already absent from the pre-pass HEAD (`93b9c80`). Do not misclassify that missing document as a regression introduced by this checkpoint.
-
-## Exact next execution order
-
-1. Finish packaged-safe native Samsung FUS implementation using provider-secret vault support.
-2. Add tests for native FUS nonce/auth/request parsing, decrypt-key derivation, provider-secret destruction after successful decrypt, and packaged/frozen interpreter independence.
-3. Prove runner MRO/composition: artifact integrity -> Samsung post-process -> Wave3 HTTP, with v6 reliability preserving that chain.
-4. Re-run live Samsung metadata proof when Samsung endpoints are reachable; fail closed/source fallback if unreachable.
-5. Re-run live Xiaomi `spinel` and Lineage `enchilada` evidence.
-6. Run all targeted firmware/OS/widget/navigation contracts.
-7. Run the broad Python regression suite using the correct Lumi dependency environment. Distinguish pre-existing release/baseline debt from regressions introduced here; do not rewrite unrelated tests merely to get green.
-8. Run Node/Playwright browser sweeps and real Electron source-shell/widget lifecycle tests on KRATOS.
-9. `git diff --check`, inspect complete diff, remove only proven test/runtime noise.
-10. Freeze/commit/push.
-11. Verify remote SHA.
-12. When ATHENA returns, pull this same branch; do not manually copy files.
-13. Only after product behavior is frozen, finish the GitHub Release/build pipeline consumed by Lumi's in-app updater.
+1. Commit and push the remaining post-checkpoint hardening delta; verify remote SHA.
+2. ATHENA pulls the same branch when available; do not manually copy files.
+3. Rebuild/package on Windows from the frozen source and prove the extension WebSocket/runtime dependency path on the fresh package.
+4. Complete the deliberately deferred GitHub Release/build pipeline consumed by Lumi's in-app updater.
+5. Resolve the 11 historical release/pipeline baseline tests as part of that pipeline work, not by weakening product tests.
 
 ## Do not regress these locked decisions
 

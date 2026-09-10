@@ -22,7 +22,7 @@ class FakeService:
 def test_samsung_stage_uses_vaultable_request_envelope_and_marks_postprocess(tmp_path):
     task = SimpleNamespace(id="s1", status="paused", category_id="", metadata={}, total_bytes=0)
     service = FakeService(task,tmp_path)
-    resolved = SamsungResolvedPackage(model="SM-S921B",csc="EUX",version="A/B/C/D",filename="fw.zip.enc4",size=1234,url="http://cloud-neofussvr.sslcs.cdngc.net/NF_DownloadBinaryForMass.do?file=/fw.zip.enc4",authorization="FUS nonce=secret",encryption=4,decrypt_key_hex="11"*16)
+    resolved = SamsungResolvedPackage(model="SM-S921B",csc="EUX",version="A/B/C/D",filename="fw.zip.enc4",size=1234,url="http://cloud-neofussvr.samsungmobile.com/NF_SmartDownloadBinaryForMass.do?file=/fw.zip.enc4",authorization="FUS nonce=secret",encryption=4,decrypt_key_hex="11"*16)
     result = api._stage_samsung_resolved(service,resolved,target_dir=tmp_path/"downloads",temp_dir=tmp_path/"tmp")
     assert result is task
     url, kwargs = service.calls[0]

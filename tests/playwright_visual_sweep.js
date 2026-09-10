@@ -118,14 +118,16 @@ async function main() {
       ["grabber", "visual-10-linkgrabber.png"],
     ];
     for (const [view, file] of views) {
-      await page.click(`[data-view="${view}"]`);
+      const target = page.locator(`[data-view="${view}"]`);
+      if (!(await target.isVisible())) await page.click(".nav-group-toggle");
+      await target.click();
       await page.locator(`#view-${view}.active`).waitFor({ state: "visible" });
       await assertShell(page, view);
       await screenshot(page, file);
     }
 
     const technician = page.locator(".nav-group-toggle");
-    await technician.click();
+    if (!(await page.locator(".nav-group .nav-submenu").isVisible())) await technician.click();
     await page.locator(".nav-group .nav-submenu").waitFor({ state: "visible" });
     const expandedSidebar = await assertSidebarFits(page, "sidebar technician expanded");
     for (const selector of ['[data-view="firmware"]', '[data-view="operating_systems"]']) {

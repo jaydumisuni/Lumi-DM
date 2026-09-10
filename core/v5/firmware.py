@@ -690,8 +690,31 @@ def _parse_lineage_builds(raw: Any, device: str, channel: str) -> list[FirmwareR
     return results
 
 
+def _lineage_json(url: str) -> Any:
+    try:
+        return _get_json(url)
+    except Exception as primary:
+        curl = shutil.which("curl")
+        if not curl:
+            raise primary
+        completed = subprocess.run(
+            [curl, "-fsSL", "--connect-timeout", "10", "--max-time", "45",
+             "-A", _USER_AGENT, url],
+            capture_output=True, text=True, timeout=50, check=False,
+        )
+        if completed.returncode == 0:
+            try:
+                return json.loads(completed.stdout)
+            except (TypeError, ValueError):
+                pass
+        match = re.fullmatch(r"https://api\.github\.com/repos/([^/]+)/([^/]+)/releases/latest", url)
+        if not match:
+            raise RuntimeError((completed.stderr or str(primary))[-1000:]) from primary
+        return _github_public_release(match.group(1), match.group(2))
+
+
 def _lineage_firmware(device: str, channel: str) -> list[FirmwareResult]:
-    raw = _get_json(f"https://download.lineageos.org/api/v2/devices/{quote_plus(device)}/builds")
+    raw = _lineage_json(f"https://download.lineageos.org/api/v2/devices/{quote_plus(device)}/builds")
     return _parse_lineage_builds(raw, device, channel)
 
 
@@ -830,6 +853,102 @@ def _parse_xfu_release(release: dict[str, Any], *, brand: str, device: str, code
     return results
 
 
+def _human_size_bytes(text: str) -> int:
+    match = re.search(r"\b([0-9]+(?:\.[0-9]+)?)\s*(B|KB|MB|GB|TB)\b", str(text or ""), re.I)
+    if not match:
+        return 0
+    scale = {"B": 1, "KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3, "TB": 1024 ** 4}[match.group(2).upper()]
+    return int(float(match.group(1)) * scale)
+
+
+def _github_public_text(url: str) -> str:
+    primary: Exception | None = None
+    try:
+        session = requests.Session()
+        session.headers.update({"User-Agent": _USER_AGENT, "Accept": "text/html,*/*;q=0.8"})
+        response = session.get(url, timeout=_TIMEOUT)
+        response.raise_for_status()
+        return response.text
+    except Exception as exc:
+        primary = exc
+    curl = shutil.which("curl")
+    if not curl:
+        raise primary or RuntimeError("GitHub public release transport unavailable")
+    completed = subprocess.run(
+        [curl, "-fsSL", "--connect-timeout", "10", "--max-time", "45",
+         "-A", _USER_AGENT, url],
+        capture_output=True, text=True, timeout=50, check=False,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError((completed.stderr or str(primary) or "GitHub public release fetch failed")[-1000:]) from primary
+    return completed.stdout
+
+
+def _parse_github_public_release(
+    page_html: str, assets_html: str, *, owner: str, repo: str,
+) -> dict[str, Any]:
+    page = BeautifulSoup(page_html, "html.parser")
+    fragment = page.select_one('include-fragment[src*="/releases/expanded_assets/"]')
+    fragment_src = str(fragment.get("src") or "") if fragment else ""
+    tag = unquote(fragment_src.rstrip("/").rsplit("/", 1)[-1]) if fragment_src else ""
+    if not tag:
+        heading = page.find("h1")
+        tag = heading.get_text(" ", strip=True) if heading else ""
+    body_node = page.select_one('[data-test-selector="body-content"]') or page.select_one(".markdown-body")
+    body = body_node.get_text(" ", strip=True) if body_node else ""
+    release_time = page.select_one("relative-time[datetime]")
+    published_at = str(release_time.get("datetime") or "") if release_time else ""
+    base_prefix = f"/{owner}/{repo}/releases/download/"
+    assets: list[dict[str, Any]] = []
+    asset_page = BeautifulSoup(assets_html, "html.parser")
+    for row in asset_page.select("li.Box-row"):
+        link = next((item for item in row.select("a[href]") if str(item.get("href") or "").startswith(base_prefix)), None)
+        if link is None:
+            continue
+        href = str(link.get("href") or "")
+        filename = href.rsplit("/", 1)[-1]
+        digest_match = re.search(r"\bsha256:[a-f0-9]{64}\b", row.get_text(" ", strip=True), re.I)
+        if not digest_match:
+            continue
+        when = row.select_one("relative-time[datetime]")
+        created_at = str(when.get("datetime") or "") if when else ""
+        assets.append({
+            "name": filename,
+            "browser_download_url": urljoin("https://github.com", href),
+            "size": _human_size_bytes(row.get_text(" ", strip=True)),
+            "digest": digest_match.group(0).lower(),
+            "created_at": created_at,
+        })
+    return {
+        "tag_name": tag,
+        "name": tag,
+        "html_url": f"https://github.com/{owner}/{repo}/releases/tag/{quote_plus(tag)}" if tag else f"https://github.com/{owner}/{repo}/releases/latest",
+        "published_at": published_at,
+        "body": body,
+        "assets": assets,
+        "metadata_source": "github-public-release-html",
+    }
+
+
+def _github_public_release(owner: str, repo: str) -> dict[str, Any]:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", owner) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", repo):
+        raise ValueError("invalid GitHub repository identity")
+    page_url = f"https://github.com/{owner}/{repo}/releases/latest"
+    page_html = _github_public_text(page_url)
+    page = BeautifulSoup(page_html, "html.parser")
+    fragment = page.select_one('include-fragment[src*="/releases/expanded_assets/"]')
+    fragment_src = str(fragment.get("src") or "") if fragment else ""
+    expected = f"https://github.com/{owner}/{repo}/releases/expanded_assets/"
+    fragment_url = urljoin(page_url, fragment_src) if fragment_src else ""
+    if not fragment_url.startswith(expected):
+        raise RuntimeError("GitHub release page did not expose the expected asset fragment")
+    assets_html = _github_public_text(fragment_url)
+    release = _parse_github_public_release(page_html, assets_html, owner=owner, repo=repo)
+    if not release.get("assets"):
+        raise RuntimeError("GitHub public release exposed no digest-backed assets")
+    return release
+
+
 def _github_release_json(url: str) -> Any:
     try:
         session = requests.Session()
@@ -850,9 +969,15 @@ def _github_release_json(url: str) -> Any:
              "-H", f"User-Agent: {_USER_AGENT}", url],
             capture_output=True, text=True, timeout=50, check=False,
         )
-        if completed.returncode != 0:
+        if completed.returncode == 0:
+            try:
+                return json.loads(completed.stdout)
+            except (TypeError, ValueError):
+                pass
+        match = re.fullmatch(r"https://api\.github\.com/repos/([^/]+)/([^/]+)/releases/latest", url)
+        if not match:
             raise RuntimeError((completed.stderr or str(primary))[-1000:]) from primary
-        return json.loads(completed.stdout)
+        return _github_public_release(match.group(1), match.group(2))
 
 
 def _xiaomi_firmware(brand: str, device: str, channel: str) -> list[FirmwareResult]:
@@ -862,7 +987,10 @@ def _xiaomi_firmware(brand: str, device: str, channel: str) -> list[FirmwareResu
     repo = _xfu_repo_name(codename)
     if not repo:
         return []
-    release = _github_release_json(f"https://api.github.com/repos/XiaomiFirmwareUpdaterReleases/{repo}/releases/latest")
+    release = _CACHE.get(
+        f"xfu-release-v2:{repo}", 30 * 60,
+        lambda: _github_release_json(f"https://api.github.com/repos/XiaomiFirmwareUpdaterReleases/{repo}/releases/latest"),
+    )
     if not isinstance(release, dict):
         return []
     return _parse_xfu_release(release, brand=brand, device=device, codename=codename)

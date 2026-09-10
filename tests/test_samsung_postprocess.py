@@ -12,7 +12,7 @@ class FakeStore:
 
 def make_task(tmp_path, encrypted):
     secured=secure_request_envelope(tmp_path,{
-        "url":"http://cloud-neofussvr.sslcs.cdngc.net/file",
+        "url":"http://cloud-neofussvr.samsungmobile.com/NF_SmartDownloadBinaryForMass.do?file=/fw.zip.enc4",
         "headers":{"Authorization":"FUS nonce=SECRET","User-Agent":"Kies2.0_FUS"},
         "provider_secret":{"samsung_decrypt_key":"11"*16},
     })

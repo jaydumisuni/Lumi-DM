@@ -274,6 +274,31 @@ class HTTPTransferRunner:
         self._throttle_started = time.monotonic()
         self._throttle_bytes = 0
 
+    def _refresh_request_authorization(self, task: DownloadTask, failed_headers: dict[str, str]) -> bool:
+        return False
+
+    def _get_with_auth_refresh(
+        self, task: DownloadTask, session: requests.Session, headers: dict[str, str]
+    ) -> requests.Response:
+        response = session.get(
+            task.request.final_url or task.request.url,
+            headers=headers, stream=True, allow_redirects=True,
+            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
+        )
+        if response.status_code != 401:
+            return response
+        if not self._refresh_request_authorization(task, dict(headers)):
+            return response
+        response.close()
+        retry_headers = _base_headers(task.request)
+        if "Range" in headers:
+            retry_headers["Range"] = headers["Range"]
+        return session.get(
+            task.request.final_url or task.request.url,
+            headers=retry_headers, stream=True, allow_redirects=True,
+            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
+        )
+
     def run(self) -> None:
         task = self._require_task()
         probe_session = requests.Session()
@@ -351,13 +376,7 @@ class HTTPTransferRunner:
         headers = _base_headers(task.request)
         if existing:
             headers["Range"] = f"bytes={existing}-"
-        response = session.get(
-            task.request.final_url or task.request.url,
-            headers=headers,
-            stream=True,
-            allow_redirects=True,
-            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
-        )
+        response = self._get_with_auth_refresh(task, session, headers)
         if existing:
             if response.status_code != 206:
                 response.close()
@@ -547,13 +566,7 @@ class HTTPTransferRunner:
             return
         headers = _base_headers(task.request)
         headers["Range"] = f"bytes={current}-{segment.end}"
-        response = session.get(
-            task.request.final_url or task.request.url,
-            headers=headers,
-            stream=True,
-            allow_redirects=True,
-            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
-        )
+        response = self._get_with_auth_refresh(task, session, headers)
         if response.status_code in {401, 403, 410}:
             response.close()
             raise RemoteChangedError(

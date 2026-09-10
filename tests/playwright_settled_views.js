@@ -79,12 +79,14 @@ async function main() {
       ["categories", "settled-04-categories.png"],
       ["grabber", "settled-05-linkgrabber.png"],
     ]) {
-      await page.click(`[data-view="${view}"]`);
+      const target = page.locator(`[data-view="${view}"]`);
+      if (!(await target.isVisible())) await page.click(".nav-group-toggle");
+      await target.click();
       await page.locator(`#view-${view}.active`).waitFor({ state: "visible" });
       results.push(await capture(page, name));
     }
 
-    await page.click(".nav-group-toggle");
+    if (!(await page.locator('[data-view="firmware"]').isVisible())) await page.click(".nav-group-toggle");
     await page.locator(".nav-group .nav-submenu").waitFor({ state: "visible" });
     await page.click('[data-view="firmware"]');
     await page.locator("#view-firmware.active").waitFor({ state: "visible" });
