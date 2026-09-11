@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "contract_id": "lumi-builder-github-release-v1",
+  "builder_contract_id": "ttg-builder-github-release-v1",
+  "builder_repository": "jaydumisuni/thetechguy-software-builder",
+  "security": {
+    "token_environment_variables": [
+      "GITHUB_TOKEN",
+      "GH_TOKEN"
+    ],
+    "never_store_token_in_project": true,
+    "minimum_repository_permission": "contents:write",
+    "require_target_repository_confirmation": true,
+    "redact_credentials_from_errors": true
+  },
+  "release": {
+    "repository": "jaydumisuni/Lumi-DM",
+    "tag": "v1.0.0",
+    "title": "Lumi DM 1.0.0",
+    "generate_sha256_sidecars": true,
+    "replace_same_name_assets": true,
+    "target_commitish": "fix/issue8-packaged-runtime-child-pid"
+  },
+  "implementation": {
+    "owner": "THETECHGUY Software Builder",
+    "service": "app/services/github_releases.py",
+    "publisher_cli": "scripts/publish_github_release.py",
+    "project_wrapper": "scripts/publish_github_release.py",
+    "generated_packaging": "builder_cache/electron-workspaces/<app>-<target>/runtime/package.json"
+  }
+}

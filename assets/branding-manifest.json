@@ -10,8 +10,8 @@
   "transparent_padding": true,
   "high_dpi": true,
   "verified_runtime_identity": {
-    "desktop_builder_icon": "static/favicon-256.png",
-    "desktop_builder_icon_sha256": "03cf21a8fa74c653be089ef6107f63a922a0dd20bff36d659dae9e25118d9f34",
+    "desktop_builder_icon": "static/favicon-512.png",
+    "desktop_builder_icon_sha256": "a2487764043fc1763f139294515fff217e3273b73898b536f5227107eed5d0b4",
     "desktop_builder_logo": "static/favicon-96.png",
     "desktop_builder_logo_sha256": "c30e87a25950ccefeda7e5802b5e127eaf48ce27a59e0e93e2787eced80f7517",
     "browser_extension_icon": "static/browser-extension/chromium/icon.svg",
@@ -62,7 +62,7 @@
       "fit": "contain"
     },
     "main_sidebar": {
-      "source": "static/favicon-96.png",
+      "source": "static/favicon-512.png",
       "fit": "contain"
     },
     "browser_extension": {

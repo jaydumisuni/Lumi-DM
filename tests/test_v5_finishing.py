@@ -127,27 +127,25 @@ def test_background_and_branding_contract_are_packaged() -> None:
     root = Path(__file__).resolve().parents[1]
     background = _background_path()
     manifest = json.loads((root / "assets" / "branding-manifest.json").read_text(encoding="utf-8"))
-    package = json.loads((root / "electron" / "package.json").read_text(encoding="utf-8"))
+    config = json.loads((root / "techguy-build.json").read_text(encoding="utf-8"))
 
     assert background is not None and background.is_file()
     assert background.name == "backgroud .PNG"
     assert manifest["fit"] == "contain"
     assert manifest["builder_contract"]["reject_distortion"] is True
-    assert package["main"] == "main.js"
-    packaged_files = set(package["build"]["files"])
-    assert {
-        "main.js",
-        "native-session.js",
-        "server-supervisor.js",
-        "connection-capacity.js",
-        "widget.html",
-        "confirm.html",
-        "preload-widget.js",
-        "preload-confirm.js",
-        "update-manager.js",
-    } <= packaged_files
-    assert not any("v5" in item or "v6" in item or "legacy" in item for item in packaged_files)
-    assert any(item.get("to") == "Resouces" for item in package["build"]["extraResources"])
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["electron"]["sourceRoot"] == "electron"
+    required = {
+        "main.js", "native-session.js", "server-supervisor.js",
+        "connection-capacity.js", "widget.html", "confirm.html",
+        "preload-widget.js", "preload-confirm.js", "update-manager.js",
+    }
+    present = {item.name for item in (root / "electron").iterdir() if item.is_file()}
+    assert required <= present
+    assert not any("v5" in item or "v6" in item or "legacy" in item for item in present)
+    for resource in ("Resouces", "static", "assets", "browser-extension"):
+        assert (root / resource).exists(), resource
+    assert not (root / "electron" / "package.json").exists()
 
 
 def test_extension_uses_pause_stage_decide_and_browser_fallback() -> None:

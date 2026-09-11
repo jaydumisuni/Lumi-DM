@@ -58,8 +58,9 @@ def test_runtime_identity_points_only_to_verified_lumi_assets() -> None:
     assert sha256(ROOT / identity["desktop_builder_icon"]) == identity["desktop_builder_icon_sha256"]
 
     sidebar_source = brand["surfaces"]["main_sidebar"]["source"]
-    assert sidebar_source == identity["desktop_builder_logo"]
-    assert f'src="/{sidebar_source}" alt="Lumi" class="brand-logo"' in html
+    assert sidebar_source in generated
+    assert sha256(ROOT / sidebar_source) == generated[sidebar_source]
+    assert f'src="/{sidebar_source}" alt="Lumi Download Manager" class="brand-logo"' in html
 
     extension_path = ROOT / identity["browser_extension_icon"]
     extension = extension_path.read_text(encoding="utf-8")

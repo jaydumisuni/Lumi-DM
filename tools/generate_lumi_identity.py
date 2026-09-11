@@ -167,7 +167,7 @@ def update_manifest() -> None:
 
     identity = brand.setdefault("verified_runtime_identity", {})
     representative = {
-        "desktop_builder_icon_sha256": "static/favicon-256.png",
+        "desktop_builder_icon_sha256": "static/favicon-512.png",
         "desktop_builder_logo_sha256": "static/favicon-96.png",
         "browser_extension_icon_sha256": EXTENSION_SVG,
         "windows_native_icon_sha256": WINDOWS_ICO,

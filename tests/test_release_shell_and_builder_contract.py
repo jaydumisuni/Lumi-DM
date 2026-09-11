@@ -19,15 +19,13 @@ def test_ttg_shell_is_created_directly_by_lumi_main_process():
 
 
 def test_custom_builder_uses_unpacked_payload_not_stock_nsis_installer():
-    package = json.loads((ROOT / "electron" / "package.json").read_text(encoding="utf-8"))
     config = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
-    assert package["main"] == "main.js"
-    assert package["scripts"]["pack"].endswith("electron-builder --dir")
-    assert package["scripts"]["build"] == "electron-builder --dir"
-    assert "nsis" not in package["build"]
     assert config["entryFile"] == "electron/main.js"
-    assert config["electron"]["preferredScript"] == "pack"
-    assert config["electron"]["packageMode"] == "unpacked-for-custom-installer"
+    assert config["projectType"] == "multi-platform-source"
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["electron"]["sourceRoot"] == "electron"
+    assert set(config["targets"]) >= {"windows-exe", "windows-installer"}
+    assert not (ROOT / "electron" / "package.json").exists()
     assert config["installer"]["requireCustomGraphicalInstaller"] is True
     assert config["installer"]["rejectVendorInstallerArtifacts"] is True
     assert config["installer"]["requireRegisteredUninstall"] is True

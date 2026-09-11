@@ -74,7 +74,7 @@ def test_ttg_shell_and_builder_release_contract_are_packaged() -> None:
     root = Path(__file__).resolve().parents[1]
     shell = json.loads((root / "assets" / "ttg-app-shell-standard.json").read_text(encoding="utf-8"))
     release = json.loads((root / "assets" / "builder-github-release-contract.json").read_text(encoding="utf-8"))
-    package = json.loads((root / "electron" / "package.json").read_text(encoding="utf-8"))
+    config = json.loads((root / "techguy-build.json").read_text(encoding="utf-8"))
     main = (root / "electron" / "main.js").read_text(encoding="utf-8")
     index = (root / "static" / "index.html").read_text(encoding="utf-8")
 
@@ -86,17 +86,17 @@ def test_ttg_shell_and_builder_release_contract_are_packaged() -> None:
     assert shell["settings_gear"]["single_settings_entry"] is True
     assert release["security"]["never_store_token_in_project"] is True
     assert release["release"]["generate_sha256_sidecars"] is True
-    assert package["main"] == "main.js"
-    assert "main.js" in package["build"]["files"]
+    assert release["builder_repository"] == "jaydumisuni/thetechguy-software-builder"
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["electron"]["sourceRoot"] == "electron"
+    assert (root / "electron" / "main.js").is_file()
+    assert not (root / "electron" / "package.json").exists()
     assert "frame: false" in main
     assert 'title: "Lumi DM"' in main
     for asset in (
-        "/static/ttg-shell.css",
-        "/static/ttg-shell.js",
-        "/static/ttg-theme.css",
-        "/static/ttg-theme.js",
-        "/static/operating-systems.css",
-        "/static/operating-systems.js",
+        "/static/ttg-shell.css", "/static/ttg-shell.js",
+        "/static/ttg-theme.css", "/static/lumi-theme.js",
+        "/static/operating-systems.css", "/static/operating-systems.js",
     ):
         assert asset in index
 

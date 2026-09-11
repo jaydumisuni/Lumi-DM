@@ -41,28 +41,25 @@ def test_invalid_windows_filename_characters_are_sanitized():
 
 
 def test_consolidated_desktop_runtime_is_packaged_without_legacy_bootstraps():
-    package = (ROOT / "electron" / "package.json").read_text(encoding="utf-8")
+    import json
+    config = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
     main = (ROOT / "electron" / "main.js").read_text(encoding="utf-8")
-    assert '"main": "main.js"' in package
+    source_files = {item.name for item in (ROOT / "electron").iterdir() if item.is_file()}
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["electron"]["sourceRoot"] == "electron"
     for filename in (
-        "native-session.js",
-        "server-supervisor.js",
-        "connection-capacity.js",
-        "widget.html",
-        "confirm.html",
+        "native-session.js", "server-supervisor.js", "connection-capacity.js",
+        "widget.html", "confirm.html",
     ):
-        assert filename in package
+        assert filename in source_files
     for obsolete in (
-        "bootstrap-v5-final.js",
-        "bootstrap-v5.js",
-        "legacy-guards-v5.js",
-        "notification-baseline-v6.js",
-        "widget-v5.html",
-        "confirm-v5.html",
+        "bootstrap-v5-final.js", "bootstrap-v5.js", "legacy-guards-v5.js",
+        "notification-baseline-v6.js", "widget-v5.html", "confirm-v5.html",
         "Reminal Download Manager",
     ):
-        assert obsolete not in package
+        assert obsolete not in source_files
         assert obsolete not in main
+    assert not (ROOT / "electron" / "package.json").exists()
 
 
 def test_widget_distinguishes_live_use_from_connection_capacity():

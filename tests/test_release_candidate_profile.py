@@ -15,11 +15,13 @@ def test_builder_profile_matches_lumi_release_contract():
     config = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
     assert config["appName"] == "Lumi DM"
     assert config["appVersion"] == "1.0.0"
-    assert config["projectType"] == "electron"
-    assert config["repository"] == "jaydumisuni/lumi-dm"
+    assert config["projectType"] == "multi-platform-source"
+    assert config["repository"] == "jaydumisuni/Lumi-DM"
     assert config["entryFile"] == "electron/main.js"
-    assert config["electron"]["preferredScript"] == "pack"
-    assert config["electron"]["packageMode"] == "unpacked-for-custom-installer"
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["electron"]["sourceRoot"] == "electron"
+    assert config["electron"]["electronBuilderVersion"].startswith("^26.")
+    assert not (ROOT / "electron" / "package.json").exists()
     assert config["installer"]["runAsAdmin"] is True
     assert config["installer"]["desktopShortcutChecked"] is True
     assert config["installer"]["startMenuShortcutChecked"] is True
@@ -33,18 +35,17 @@ def test_builder_profile_matches_lumi_release_contract():
 
 def test_builder_sidecar_matches_electron_extra_resources():
     config = json.loads((ROOT / "techguy-build.json").read_text(encoding="utf-8"))
-    package = json.loads((ROOT / "electron" / "package.json").read_text(encoding="utf-8"))
     sidecar = config["electron"]["pythonSidecars"][0]
     assert sidecar["entry"] == "server.py"
     assert sidecar["name"] == "LUMIDM-server"
     assert sidecar["output"] == "dist/server"
     assert "libtorrent==2.0.13" in sidecar["extraRequirements"]
     assert any(item.startswith("imageio-ffmpeg") for item in sidecar["extraRequirements"])
-    server_resource = next(
-        item for item in package["build"]["extraResources"]
-        if item.get("to") == "server"
-    )
-    assert server_resource["from"] == "../dist/server"
+    assert config["electron"]["builderOwnsPackaging"] is True
+    assert config["output"]["dist"] == "dist/electron"
+    for relative in ("electron", "static", "Resouces", "assets", "browser-extension"):
+        assert (ROOT / relative).exists(), relative
+    assert not (ROOT / "electron" / "package.json").exists()
 
 
 def test_ffmpeg_falls_back_to_packaged_imageio_binary(monkeypatch, tmp_path):
