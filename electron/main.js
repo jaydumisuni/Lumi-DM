@@ -442,7 +442,7 @@ function registerIpc() {
   ipcMain.handle("ttg-window-control", (event, action) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!window || window.isDestroyed()) return { ok: false, maximized: false };
-    if (action === "minimize") window.minimize();
+    if (action === "minimize") hideMainToTray();
     if (action === "maximize") window.isMaximized() ? window.unmaximize() : window.maximize();
     if (action === "close") window.close();
     return { ok: true, maximized: window.isMaximized() };
