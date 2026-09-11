@@ -374,6 +374,17 @@ async function handleMessage(message) {
     snapshot: message.snapshot || { url: message.referrer || "", title: message.filename || "" },
     referrer: message.referrer || "",
   }) };
+  if (type === "lumi-linkgrabber-import") {
+    const links = Array.isArray(message.links) ? message.links : [];
+    const imported = await lumiRequest("/api/v5/browser/linkgrabber/import", {
+      method: "POST",
+      body: JSON.stringify({ page_url: message.pageUrl || "", title: message.title || "Browser page", links }),
+    });
+    try {
+      await lumiRequest("/api/v5/desktop/command", { method: "POST", body: JSON.stringify({ action: "show-main" }) });
+    } catch (_) {}
+    return { imported };
+  }
   if (type === "lumi-open-main") {
     return { command: await lumiRequest("/api/v5/desktop/command", { method: "POST", body: JSON.stringify({ action: "show-main" }) }) };
   }

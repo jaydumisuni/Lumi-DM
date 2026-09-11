@@ -12,7 +12,8 @@ The owner-approved Overview screen has:
 - Search and native window controls on the right.
 - The approved Lumi logo in the left sidebar.
 - Navigation: Overview, All Downloads, Unfinished, Finished.
-- A collapsible `TECHNICIAN` group containing Mobile Firmware, Operating Systems, Queues, Categories, and LinkGrabber.
+- Queues, Categories, and LinkGrabber remain top-level navigation tools.
+- A collapsible `TECHNICIAN` group containing only Mobile Firmware and Operating Systems.
 - Flexible empty sidebar space below LinkGrabber.
 - `STORAGE LEFT` docked to the absolute bottom of the sidebar.
 - No full-width application footer.
@@ -36,7 +37,7 @@ The current implementation does **not** yet match the approved Overview:
 1. The sidebar contains a `Lumi / Download Manager` branding block rather than the exact approved sidebar treatment.
 2. The repository has no full-width top title bar containing only `THETECHGUY TOOL`.
 3. The Technician navigation is not implemented as the approved collapsible dropdown.
-4. Queues, Categories, and LinkGrabber are separated under an `Organise` label rather than remaining inside Technician.
+4. Queues, Categories, and LinkGrabber must remain top-level tools; Technician contains only Mobile Firmware and Operating Systems.
 5. The sidebar footer currently shows connection state and current speed, not the approved `STORAGE LEFT` card.
 6. Storage Left is therefore not docked at the absolute bottom of the sidebar.
 7. The implemented Overview uses Active, Completed, Waiting, and Warnings cards rather than Total Downloads, Downloading, Completed, and Queued.

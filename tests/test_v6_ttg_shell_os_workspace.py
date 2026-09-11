@@ -16,8 +16,11 @@ def test_sidebar_groups_technician_workspaces_and_keeps_os_separate_from_firmwar
     assert ">Operating Systems<" in html
     sidebar = html.split('<nav class="nav-list"', 1)[1].split("</nav>", 1)[0]
     submenu = sidebar.split('<div class="nav-submenu">', 1)[1].split("</div>", 1)[0]
-    for view in ("firmware", "operating_systems", "queues", "categories", "grabber"):
+    for view in ("firmware", "operating_systems"):
         assert f'data-view="{view}"' in submenu
+    for view in ("queues", "categories", "grabber"):
+        assert f'data-view="{view}"' not in submenu
+        assert f'data-view="{view}"' in sidebar.split('<div class="nav-group">', 1)[0]
     assert 'id="view-operating_systems"' in html
 
     assert 'data-view="settings"' not in sidebar
@@ -32,7 +35,9 @@ def test_operating_system_workspace_is_not_a_firmware_dropdown() -> None:
     assert 'data-catalogue-mode' not in source
     assert 'sessionStorage.getItem("LUMI.osFamily")' in source
     assert '"Windows", "macOS", "Linux"' in source
-    assert "/api/v5/os/windows/resolve" in source
+    assert "/api/v5/os/windows/resolve" not in source
+    assert 'data-os-action="resolve"' not in source
+    assert 'data-os-action="source"' not in source
     assert "/api/v5/os/stage" in source
 
 
@@ -83,6 +88,8 @@ def test_locked_builder_shell_contract_is_v2() -> None:
     assert contract["navigation"]["technician_sections"] == [
         "Mobile firmware",
         "Operating systems",
+    ]
+    assert contract["navigation"]["top_level_tools"] == [
         "Queues",
         "Categories",
         "LinkGrabber",

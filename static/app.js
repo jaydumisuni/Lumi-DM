@@ -20,6 +20,7 @@ const state = {
   mediaInfo: null,
   torrentInfo: null,
   grabResults: [],
+  browserLinkImportId: "",
   busy: new Set(),
   pollTimer: null,
 };
@@ -54,7 +55,8 @@ async function init() {
     document.getElementById("boot-screen").hidden = true;
     document.getElementById("app-shell").hidden = false;
     await refreshFoundation();
-    renderCurrentView();
+    const importedLinks = await syncBrowserLinkGrabberImport();
+    if (!importedLinks) renderCurrentView();
     startPolling();
   } catch (error) {
     showBootError(error);
@@ -267,6 +269,30 @@ async function refreshFoundation() {
   updateChrome();
 }
 
+async function syncBrowserLinkGrabberImport() {
+  try {
+    const response = await api("GET", "/api/v5/browser/linkgrabber/pending");
+    const pending = response?.import;
+    if (!pending?.id || pending.id === state.browserLinkImportId || !Array.isArray(pending.links)) return false;
+    state.browserLinkImportId = pending.id;
+    state.grabResults = pending.links.map(item => ({
+      url: String(item.url || ""),
+      filename: String(item.filename || item.title || "download"),
+      title: String(item.title || item.filename || "download"),
+      type: String(item.type || "link"),
+      source_page: String(item.source_page || pending.page_url || ""),
+    })).filter(item => /^https?:/i.test(item.url));
+    if (!state.grabResults.length) return false;
+    switchView("grabber");
+    await api("POST", `/api/v5/browser/linkgrabber/${encodeURIComponent(pending.id)}/ack`, {});
+    toast("Links imported from browser", `${state.grabResults.length} link${state.grabResults.length === 1 ? "" : "s"} ready in LinkGrabber.`, "success");
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+
 function startPolling() {
   clearInterval(state.pollTimer);
   state.pollTimer = setInterval(async () => {
@@ -278,7 +304,8 @@ function startPolling() {
       state.tasks = tasks.downloads || [];
       state.overview = overview || {};
       updateChrome();
-      if (["overview", "downloads", "unfinished", "finished", "queues"].includes(state.view)) {
+      const importedLinks = await syncBrowserLinkGrabberImport();
+      if (!importedLinks && ["overview", "downloads", "unfinished", "finished", "queues"].includes(state.view)) {
         renderCurrentView();
       }
       if (state.inspector) await refreshInspector(false);

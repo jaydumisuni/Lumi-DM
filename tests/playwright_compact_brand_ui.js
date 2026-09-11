@@ -196,7 +196,7 @@ async function main() {
   });
   console.log("COMPACT_BRAND_UI_TECHNICIAN", JSON.stringify(tech));
   assert(tech.open && tech.display === "grid", `Technician submenu did not open in flow: ${JSON.stringify(tech)}`);
-  assert(tech.boxes.length === 5, `Expected five locked Technician children: ${JSON.stringify(tech)}`);
+  assert(tech.boxes.length === 2, `Expected only Firmware and Operating Systems under Technician: ${JSON.stringify(tech)}`);
   assert(tech.boxes.every((box, index) => index === tech.boxes.length - 1 || box.bottom <= tech.boxes[index + 1].top + 0.5), `Technician rows overlap: ${JSON.stringify(tech.boxes)}`);
   assert(tech.footerClearance >= 0, `Technician submenu overlaps storage footer: ${JSON.stringify(tech)}`);
   assert(tech.labelBoxes.every(label => label.whiteSpace === "nowrap" && label.height <= 16), `Technician labels wrap/overlap: ${JSON.stringify(tech.labelBoxes)}`);

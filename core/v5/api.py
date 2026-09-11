@@ -190,13 +190,26 @@ def current_promotion():
     return jsonify({"promotion": None})
 
 
+def _downloadable_providers(values):
+    return [dict(item) for item in values if bool(item.get("direct_files"))]
+
+
+def _downloadable_firmware_results(values):
+    allowed = ("http://", "https://", "ftp://")
+    return [
+        dict(item) for item in values
+        if bool(item.get("direct")) and str(item.get("url") or "").startswith(allowed)
+    ]
+
+
 @wave5_api.get("/firmware/catalogue")
 def firmware_catalogue():
+    visible = _downloadable_providers(providers())
     return jsonify({
         "brands": brands(),
-        "providers": providers(),
-        "groups": ["Official OS", "Custom OS", "Community mirrors", "Community knowledge"],
-        "warning": "Always verify the exact model, region, bootloader and rollback requirements before flashing.",
+        "providers": visible,
+        "groups": list(dict.fromkeys(str(item.get("group") or "") for item in visible if item.get("group"))),
+        "warning": "Only downloadable firmware artifacts are listed. Always verify the exact model, region, bootloader and rollback requirements before flashing.",
     })
 
 
@@ -211,14 +224,15 @@ def firmware_devices():
 
 @wave5_api.get("/firmware/search")
 def firmware_search():
-    return jsonify({"results": search_firmware(
+    values = search_firmware(
         provider=str(request.args.get("provider") or "all"),
         brand=str(request.args.get("brand") or ""),
         device=str(request.args.get("device") or ""),
         query=str(request.args.get("query") or ""),
         channel=str(request.args.get("channel") or "all"),
         include_community=str(request.args.get("include_community") or "true").lower() not in {"0", "false", "no"},
-    )})
+    )
+    return jsonify({"results": _downloadable_firmware_results(values)})
 
 
 def _stage_samsung_resolved(

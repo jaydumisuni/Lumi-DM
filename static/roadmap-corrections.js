@@ -268,7 +268,7 @@
         include_community: form.elements.include_community.checked ? "true" : "false",
       });
       const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
-      let results = response.results || [];
+      let results = (response.results || []).filter(item => item?.direct && item?.url);
       if (window.LumiMainUI?.approvedMockupActive) {
         results = results.filter(item => v5State.platform === "Apple"
           ? /apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`)

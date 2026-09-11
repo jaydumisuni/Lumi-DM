@@ -222,6 +222,7 @@ function createMainWindow(startHidden = false) {
     minHeight: 500,
     center: true,
     show: false,
+    skipTaskbar: Boolean(startHidden),
     frame: false,
     title: "Lumi DM",
     icon: iconPath(),
@@ -234,11 +235,15 @@ function createMainWindow(startHidden = false) {
     void shell.openExternal(url);
     return { action: "deny" };
   });
+  mainWindow.on("minimize", event => {
+    if (isQuitting) return;
+    event.preventDefault();
+    hideMainToTray();
+  });
   mainWindow.on("close", event => {
     if (isQuitting) return;
     event.preventDefault();
-    mainWindow.hide();
-    showWidget();
+    hideMainToTray();
   });
   mainWindow.on("closed", () => { mainWindow = null; });
   mainWindow.on("maximize", broadcastWindowState);
@@ -250,14 +255,25 @@ function createMainWindow(startHidden = false) {
     await loadOwnedRuntime(mainWindow);
     if (!startHidden && mainWindow && !mainWindow.isDestroyed()) {
       hideWidget();
+      mainWindow.setSkipTaskbar(false);
       mainWindow.show();
     }
   })();
   return mainWindow;
 }
+function hideMainToTray() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    showWidget();
+    return;
+  }
+  mainWindow.setSkipTaskbar(true);
+  mainWindow.hide();
+  showWidget();
+}
 function showMainWindow() {
   const window = createMainWindow(false);
   hideWidget();
+  window.setSkipTaskbar(false);
   if (window.isMinimized()) window.restore();
   window.show();
   window.focus();

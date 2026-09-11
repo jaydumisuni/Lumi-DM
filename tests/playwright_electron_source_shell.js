@@ -165,18 +165,21 @@ async function main() {
     await page.click('[data-window-action="minimize"]');
     await waitForIpcResponse("ttg-window-control", responseCount);
     responseCount += 1;
-    if (platform === "win32") {
-      await waitFor(async () => {
-        const windows = await nativeWindows(electronApp);
-        return Boolean(windows.find(window => window.url.startsWith("http://127.0.0.1:7000") && window.minimized));
-      }, "Real minimize IPC did not minimize the native manager");
-    }
-    await electronApp.evaluate(({ BrowserWindow }) => {
-      const window = BrowserWindow.getAllWindows().find(candidate => String(candidate.webContents.getURL() || "").startsWith("http://127.0.0.1:7000"));
-      if (window?.isMinimized()) window.restore();
-      window?.show();
-      window?.focus();
-    });
+    await waitFor(async () => {
+      const windows = await nativeWindows(electronApp);
+      const currentManager = windows.find(window => window.url.startsWith("http://127.0.0.1:7000"));
+      const currentWidget = windows.find(window => window.url.includes("widget.html"));
+      return currentManager && currentWidget && !currentManager.visible && currentWidget.visible;
+    }, "Minimize-to-tray lifecycle did not hide manager and reveal widget");
+    const widgetAfterMinimize = electronApp.windows().find(candidate => candidate.url().includes("widget.html"));
+    assert(widgetAfterMinimize, "Widget renderer unavailable after minimize-to-tray");
+    await widgetAfterMinimize.evaluate(() => window.lumiWidget.showMain());
+    await waitFor(async () => {
+      const windows = await nativeWindows(electronApp);
+      const currentManager = windows.find(window => window.url.startsWith("http://127.0.0.1:7000"));
+      const currentWidget = windows.find(window => window.url.includes("widget.html"));
+      return currentManager && currentWidget && currentManager.visible && !currentWidget.visible;
+    }, "Widget Open action did not restore the full manager");
 
     await page.click('[data-window-action="maximize"]');
     await waitForIpcResponse("ttg-window-control", responseCount);

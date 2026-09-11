@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_locked_technician_group_contains_all_five_tool_workspaces():
+def test_locked_navigation_keeps_general_tools_above_two_item_technician_group():
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     soup = BeautifulSoup(html, "html.parser")
     group = soup.select_one(".nav-group")
@@ -12,9 +12,14 @@ def test_locked_technician_group_contains_all_five_tool_workspaces():
     submenu = group.select_one(".nav-submenu")
     assert submenu is not None
     views = [button.get("data-view") for button in submenu.select("button[data-view]")]
-    assert views == ["firmware", "operating_systems", "queues", "categories", "grabber"]
+    assert views == ["firmware", "operating_systems"]
+    top_level = [button.get("data-view") for button in soup.select(".nav-list > button[data-view]")]
+    assert top_level[-3:] == ["queues", "categories", "grabber"]
+    group_index = list(soup.select_one(".nav-list").children).index(group)
     for view in ("queues", "categories", "grabber"):
-        assert soup.select_one(f".nav-list > button[data-view={view}]") is None
+        button = soup.select_one(f".nav-list > button[data-view={view}]")
+        assert button is not None
+        assert list(soup.select_one(".nav-list").children).index(button) < group_index
 
 
 def test_overview_keeps_clear_completed_action_instead_of_categories_rewrite():

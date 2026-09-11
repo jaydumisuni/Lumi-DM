@@ -6,6 +6,7 @@ formation gradually, and treats pause/cancel as controlled state transitions.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import errno
 import os
 from pathlib import Path
 import re
@@ -28,6 +29,44 @@ _CONNECT_TIMEOUT = 20
 _READ_TIMEOUT = 90
 _JOURNAL_INTERVAL = 0.5
 _REPORT_INTERVAL = 0.2
+
+
+def _finalize_partial_file(partial: Path, final: Path, *, task_id: str) -> None:
+    """Move a completed partial into place, including across filesystems.
+
+    ``os.replace`` is the fast/atomic path when temporary and destination
+    directories share a filesystem.  When they do not, copy into a temporary
+    file beside the destination first, fsync it, atomically replace the final
+    pathname there, and only then remove the source partial.
+    """
+    partial = Path(partial)
+    final = Path(final)
+    try:
+        os.replace(partial, final)
+        return
+    except OSError as exc:
+        if exc.errno != errno.EXDEV:
+            raise
+
+    safe_task = re.sub(r"[^A-Za-z0-9._-]+", "-", str(task_id or "task"))[:80] or "task"
+    staging = final.parent / f"{final.name}.lumi-move-{safe_task}.tmp"
+    try:
+        staging.unlink(missing_ok=True)
+        with partial.open("rb") as source, staging.open("wb") as destination:
+            shutil.copyfileobj(source, destination, length=1024 * 1024)
+            destination.flush()
+            os.fsync(destination.fileno())
+        try:
+            shutil.copystat(partial, staging)
+        except OSError:
+            pass
+        os.replace(staging, final)
+        partial.unlink()
+    finally:
+        try:
+            staging.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 class TransferPaused(Exception):
@@ -673,7 +712,7 @@ class HTTPTransferRunner:
                 f"Final size mismatch: expected {task.total_bytes}, got {actual}"
             )
         final.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(partial, final)
+        _finalize_partial_file(partial, final, task_id=task.id)
         self.store.delete_resume(task.id)
         task.status = TaskStatus.COMPLETED.value
         task.finished_at = utc_now()

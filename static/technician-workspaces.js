@@ -107,19 +107,17 @@ function firmwareResultsHtml() {
   return `<section class="approved-dense-table approved-firmware-table"><div class="approved-table-head"><span>Device</span><span>Build / Version</span><span>Region</span><span>Package Type</span><span>Size</span><span>Release Date</span><span>Signing / Status</span><span>Action</span></div><div class="approved-table-body">${v5State.results.length ? v5State.results.map(firmwareCard).join("") : `<div class="approved-empty"><strong>No firmware results yet</strong><span>Select a platform, brand/model, then search official sources.</span></div>`}</div><div class="approved-table-foot"><span>${v5State.results.length} result${v5State.results.length === 1 ? "" : "s"}</span><span>Verify exact model and region before flashing.</span></div></section>`;
 }
 function firmwareCard(item) {
+  if (!(item?.direct && item?.url)) return "";
   const index = v5State.results.indexOf(item);
   const region = item.region || item.metadata?.region || item.metadata?.market || "Global";
   const packageType = item.file_type || (item.official ? "Official ROM" : "Community");
   const device = item.device || item.model || item.brand || "Device";
   const version = [item.build, item.version].filter(Boolean).join(" · ") || item.title || "—";
-  const status = item.signed === true ? "✓ Signed" : item.signed === false ? "Unsigned" : item.official ? "✓ Official" : item.metadata?.resolver === "samsung-fus" ? "Samsung FUS" : "Source";
-  const action = item.metadata?.resolver === "samsung-fus"
-    ? `<button class="approved-icon-action primary" type="button" data-firmware-action="resolve-samsung" data-index="${index}" title="Resolve Samsung firmware">⌕</button>`
-    : item.direct && item.url
-      ? `<button class="approved-icon-action primary" type="button" data-firmware-action="download" data-index="${index}" title="Download">↓</button>`
-      : `<button class="approved-icon-action" type="button" data-firmware-action="source" data-index="${index}" title="Open source">↗</button>`;
+  const status = item.signed === true ? "✓ Signed" : item.signed === false ? "Unsigned" : item.official ? "✓ Official" : item.sha256 ? "✓ SHA-256" : "Downloadable";
+  const action = `<button class="approved-icon-action primary" type="button" data-firmware-action="download" data-index="${index}" title="Download">↓</button>`;
   return `<div class="approved-table-row approved-firmware-row"><div class="approved-file-cell"><img src="${/apple|iphone|ipad/i.test(`${item.brand} ${device}`) ? "/static/brand/apple.svg" : "/static/brand/android.svg"}" alt=""><span><strong>${v5Esc(device)}</strong><small>${v5Esc(item.brand || item.source_name || "")}</small></span></div><span title="${v5Esc(version)}">${v5Esc(version)}</span><span>${v5Esc(region)}</span><span class="approved-package-type">${v5Esc(packageType)}</span><span>${item.size ? v5FmtBytes(item.size) : "—"}</span><span>${v5Esc(item.release_date || "—")}</span><span class="${item.signed === false ? "approved-bad" : "approved-verified"}">${v5Esc(status)}</span><span class="approved-actions">${action}</span></div>`;
 }
+
 async function handleFirmwareSubmit(event) {
   if (event.target.id !== "firmware-search-form") return;
   event.preventDefault();
@@ -134,7 +132,7 @@ async function handleFirmwareSubmit(event) {
       include_community: data.include_community ? "true" : "false",
     });
     const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
-    let results = response.results || [];
+    let results = (response.results || []).filter(item => item?.direct && item?.url);
     results = results.filter(item => v5State.platform === "Apple" ? /apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`) : !/apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`));
     if (data.region && data.region !== "all") results = results.filter(item => `${item.region || item.metadata?.region || item.metadata?.market || ""}`.toLowerCase().includes(data.region.toLowerCase()));
     if (data.package_type && data.package_type !== "all") results = results.filter(item => `${item.file_type || ""}`.toLowerCase().includes(data.package_type.toLowerCase()) || (data.package_type === "official" && item.official));
@@ -176,44 +174,8 @@ async function handleFirmwareClick(event) {
     return;
   }
   const item = v5State.results[Number(button.dataset.index)];
-  if (!item) return;
-  if (action === "copy") {
-    try { await navigator.clipboard.writeText(item.url || item.source_url); v5Toast("URL copied", item.filename || item.source_name, "success"); }
-    catch { v5Toast("Could not copy", "Copy the source address manually.", "error"); }
-  }
-  if (action === "source") window.open(item.source_url || item.url, "_blank", "noopener");
+  if (!item?.direct || !item?.url) return;
   if (action === "download") await stageFirmware(item, button);
-  if (action === "resolve-samsung") await stageSamsungFirmware(item, button);
-}
-
-async function stageSamsungFirmware(item, button) {
-  const model = String(item.metadata?.model || item.device || "").trim().toUpperCase();
-  const cscValue = window.prompt(`Samsung CSC for ${model}:\n\nEnter the exact 3-character CSC, for example EUX, XFA or XFE.`, "");
-  if (cscValue === null) return;
-  const csc = String(cscValue).trim().toUpperCase();
-  if (!/^[A-Z0-9]{3}$/.test(csc)) {
-    v5Toast("Invalid Samsung CSC", "Enter the exact 3-character Samsung CSC.", "error");
-    return;
-  }
-  const defaultDir = (typeof state !== "undefined" && state.settings?.default_dir) || "";
-  const targetDir = window.prompt("Save Samsung firmware to:", defaultDir || "") ?? null;
-  if (targetDir === null) return;
-  button.disabled = true;
-  try {
-    const task = await v5Api("POST", "/api/v5/firmware/samsung/stage", {
-      model, csc, target_dir: targetDir, connections: 0,
-    });
-    await v5Api("POST", `/api/downloads/${encodeURIComponent(task.id)}/confirm`, {
-      filename: task.filename, target_dir: targetDir, connections: 0,
-    });
-    if (typeof refreshFoundation === "function") await refreshFoundation();
-    v5Toast("Samsung firmware queued", `${model} · ${csc} · ${task.filename}`, "success");
-    if (typeof switchView === "function") switchView("downloads");
-  } catch (error) {
-    v5Toast("Samsung firmware not queued", error.message, "error");
-  } finally {
-    button.disabled = false;
-  }
 }
 
 async function stageFirmware(item, button) {

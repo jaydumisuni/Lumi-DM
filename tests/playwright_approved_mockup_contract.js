@@ -10,7 +10,7 @@ async function main(){
  }}));
  const p=await c.newPage(); await p.goto(BASE,{waitUntil:"domcontentloaded",timeout:30000}); await p.locator("#app-shell").waitFor({state:"visible",timeout:20000}); await p.waitForFunction(()=>window.LumiMainUI);
  const go=async view=>{
-  const nested=new Set(["queues","categories","grabber","firmware","operating_systems"]);
+  const nested=new Set(["firmware","operating_systems"]);
   if(nested.has(view)){
    const target=p.locator(`.nav-submenu .nav-item[data-view="${view}"]`);
    if(!(await target.isVisible())) await p.click(".nav-group-toggle");

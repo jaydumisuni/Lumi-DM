@@ -79,10 +79,7 @@
     }
     const item = osState.results[Number(actionButton.dataset.index)];
     if (!item) return;
-    if (action === "copy") return copyOsUrl(item);
-    if (action === "source") return window.open(item.source_url || item.url, "_blank", "noopener");
-    if (action === "resolve") return void resolveWindows(item, actionButton);
-    if (action === "download") return void stageOperatingSystem(item, actionButton);
+    if (action === "download" && item?.direct && item?.url) return void stageOperatingSystem(item, actionButton);
   }
 
   async function handleSubmit(event) {
@@ -94,7 +91,7 @@
     updateResults();
     try {
       const response = await osApi("GET", `/api/v5/os/search?${new URLSearchParams(data)}`);
-      osState.results = response.results || [];
+      osState.results = (response.results || []).filter(item => item?.direct && item?.url);
     } catch (error) {
       osState.results = [];
       osToast("Operating-system search failed", error.message, "error");
@@ -115,37 +112,15 @@
   }
 
   function osCard(item) {
+    if (!(item?.direct && item?.url)) return "";
     const index = osState.results.indexOf(item);
-    const resolver = item.metadata?.resolver === "fido" && !item.direct;
     const version = item.version || item.title || "—";
     const edition = item.file_type || item.metadata?.edition || item.metadata?.distribution || "Recommended";
     const arch = item.metadata?.architecture || item.device || "—";
     const channel = item.channel || "Stable";
     const release = item.build || item.release_date || item.metadata?.build || "—";
-    const action = resolver ? `<button class="approved-btn" type="button" data-os-action="resolve" data-index="${index}">Resolve</button>` : item.direct && item.url ? `<button class="approved-btn primary" type="button" data-os-action="download" data-index="${index}">Download</button>` : `<button class="approved-btn" type="button" data-os-action="source" data-index="${index}">Source</button>`;
+    const action = `<button class="approved-btn primary" type="button" data-os-action="download" data-index="${index}">Download</button>`;
     return `<div class="approved-table-row approved-os-row"><div class="approved-file-cell"><img src="${osState.family === "Windows" ? "/static/brand/windows.svg" : osState.family === "macOS" ? "/static/brand/apple.svg" : "/static/brand/linux.svg"}" alt=""><span><strong>${osEsc(version)}</strong><small>${osEsc(item.source_name || osState.family)}</small></span></div><span>${osEsc(edition)}</span><span>${osEsc(arch)}</span><span>${osEsc(titleCase(channel))}</span><span>${item.size ? osFmtBytes(item.size) : "—"}</span><span>${osEsc(release)}</span><span class="approved-actions">${action}</span></div>`;
-  }
-  async function resolveWindows(item, button) {
-    const form = document.getElementById("os-catalogue-form");
-    const data = Object.fromEntries(new FormData(form).entries());
-    button.disabled = true;
-    button.textContent = "Resolving with Fido…";
-    try {
-      const response = await osApi("POST", "/api/v5/os/windows/resolve", {
-        version: data.version || item.version || "Windows 11",
-        edition: data.edition || item.file_type || "Home/Pro",
-        language: data.language || item.metadata?.language || "English International",
-        architecture: data.architecture || item.metadata?.architecture || "x64",
-      });
-      osState.results.unshift(response.result);
-      updateResults();
-      osToast("Official Microsoft link resolved", "The temporary Microsoft ISO URL is ready. Confirm it before starting the download.", "success");
-    } catch (error) {
-      osToast("Windows link not resolved", error.message, "error");
-    } finally {
-      button.disabled = false;
-      button.textContent = "Resolve official link";
-    }
   }
 
   async function stageOperatingSystem(item, button) {
@@ -184,15 +159,6 @@
       osToast("Operating system not queued", error.message, "error");
     } finally {
       button.disabled = false;
-    }
-  }
-
-  async function copyOsUrl(item) {
-    try {
-      await navigator.clipboard.writeText(item.url || item.source_url);
-      osToast("URL copied", item.filename || item.source_name, "success");
-    } catch {
-      osToast("Could not copy", "Open the source and copy the link manually.", "error");
     }
   }
 

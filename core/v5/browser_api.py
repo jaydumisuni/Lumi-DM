@@ -7,7 +7,9 @@ resumes, or both copies are cancelled.
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import Any
+import uuid
 
 from flask import Blueprint, current_app, jsonify, request
 
@@ -17,6 +19,7 @@ from core.v2.wave2 import services as wave2_services
 
 wave5_browser_api = Blueprint("lumi_wave5_browser", __name__, url_prefix="/api/v5/browser")
 _BROWSER_PENDING = "browser_pending"
+_LINKGRABBER_KEY = "browser.linkgrabber.pending.v1"
 
 
 def _body() -> dict[str, Any]:
@@ -239,3 +242,71 @@ def cancel_handoff(handoff_id: str):
         ))
     except Exception as exc:
         return _error(exc)
+
+
+def _normalise_linkgrabber_rows(data: dict[str, Any]) -> list[dict[str, Any]]:
+    page_url = str(data.get("page_url") or data.get("url") or "").strip()
+    raw = data.get("links")
+    if not isinstance(raw, list):
+        raise ValueError("links must be a list")
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for value in raw[:1000]:
+        item = value if isinstance(value, dict) else {"url": value}
+        url = str(item.get("url") or "").strip()
+        if not url.startswith(("http://", "https://")) or url in seen:
+            continue
+        seen.add(url)
+        title = str(item.get("title") or item.get("filename") or "").strip()[:260]
+        filename = str(item.get("filename") or title or Path(url.split("?", 1)[0]).name or "download").strip()[:260]
+        rows.append({
+            "url": url,
+            "filename": filename,
+            "title": title or filename,
+            "type": str(item.get("type") or "link").strip()[:40] or "link",
+            "source_page": page_url,
+        })
+        if len(rows) >= 500:
+            break
+    return rows
+
+
+@wave5_browser_api.post("/linkgrabber/import")
+def import_linkgrabber_rows():
+    data = _body()
+    try:
+        rows = _normalise_linkgrabber_rows(data)
+        if not rows:
+            raise ValueError("no http/https links were found on this page")
+        payload = {
+            "id": uuid.uuid4().hex,
+            "page_url": str(data.get("page_url") or data.get("url") or "").strip(),
+            "title": str(data.get("title") or "Browser page").strip()[:300],
+            "links": rows,
+            "count": len(rows),
+            "created_at": time.time(),
+            "expires_at": time.time() + 60 * 60,
+        }
+        _services().runtime.store.set_setting(_LINKGRABBER_KEY, payload)
+        return jsonify(payload)
+    except Exception as exc:
+        return _error(exc)
+
+
+@wave5_browser_api.get("/linkgrabber/pending")
+def pending_linkgrabber_rows():
+    value = _services().runtime.store.get_setting(_LINKGRABBER_KEY)
+    if not isinstance(value, dict):
+        return jsonify({"import": None})
+    if float(value.get("expires_at") or 0) <= time.time():
+        _services().runtime.store.set_setting(_LINKGRABBER_KEY, None)
+        return jsonify({"import": None})
+    return jsonify({"import": value})
+
+
+@wave5_browser_api.post("/linkgrabber/<import_id>/ack")
+def acknowledge_linkgrabber_rows(import_id: str):
+    value = _services().runtime.store.get_setting(_LINKGRABBER_KEY)
+    if isinstance(value, dict) and str(value.get("id") or "") == import_id:
+        _services().runtime.store.set_setting(_LINKGRABBER_KEY, None)
+    return jsonify({"status": "acknowledged"})

@@ -140,10 +140,11 @@ def test_media_torrent_firmware_and_os_surfaces_have_real_handlers():
     assert 'if (kind === "torrent-inspect") return inspectTorrent(form);' in app
     assert 'if (kind === "torrent-start") return startTorrent(form);' in app
     assert 'data-firmware-action="download"' in firmware
-    assert 'data-firmware-action="source"' in firmware
+    assert 'data-firmware-action="source"' not in firmware
     assert 'document.addEventListener("click", handleClick, true);' in operating_systems
     assert 'data-os-action="download"' in operating_systems
-    assert 'data-os-action="resolve"' in operating_systems
+    assert 'data-os-action="resolve"' not in operating_systems
+    assert 'data-os-action="source"' not in operating_systems
 
 
 def test_technician_submenu_visibility_contract_exists_in_css():

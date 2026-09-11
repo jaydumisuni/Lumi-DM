@@ -89,12 +89,12 @@ The approved sidebar order is:
 - All Downloads
 - Unfinished
 - Finished
+- Queues
+- Categories
+- LinkGrabber
 - Technician dropdown
   - Mobile Firmware
   - Operating Systems
-  - Queues
-  - Categories
-  - LinkGrabber
 
 The Technician group must expand and collapse using its arrow/dropdown control.
 
@@ -248,7 +248,7 @@ Mobile Firmware belongs under the collapsible Technician section.
 
 Technician functions must be collapsible and accessed through the approved dropdown structure.
 
-Firmware and Operating Systems remain inside the Technician group; they must not be moved outside it.
+Only Mobile Firmware and Operating Systems belong inside the Technician group. Queues, Categories and LinkGrabber remain top-level sidebar tools.
 
 ## 11. Storage information
 

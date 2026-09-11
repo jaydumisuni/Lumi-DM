@@ -134,6 +134,26 @@
     };
   }
 
+  function collectPageLinks() {
+    const seen = new Set();
+    const links = [];
+    for (const anchor of document.querySelectorAll("a[href]")) {
+      const url = absoluteUrl(anchor.href);
+      if (!/^https?:/i.test(url) || seen.has(url)) continue;
+      seen.add(url);
+      let filename = String(anchor.getAttribute("download") || anchor.textContent || "").trim().replace(/\s+/g, " ");
+      if (!filename) {
+        try { filename = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() || "link"); }
+        catch (_) { filename = "link"; }
+      }
+      const path = (() => { try { return new URL(url).pathname.toLowerCase(); } catch (_) { return ""; } })();
+      const type = /\.(zip|7z|rar|exe|msi|dmg|pkg|iso|img|apk|pdf|mp4|webm|mkv|mp3|m4a|torrent)$/i.test(path) ? "file" : "link";
+      links.push({ url, filename: filename.slice(0, 260), title: filename.slice(0, 260), type });
+      if (links.length >= 500) break;
+    }
+    return links;
+  }
+
   function pageHasMedia() {
     const snapshot = collectSnapshot();
     return snapshot.has_blob || snapshot.observations.some(item => item.kind !== "subtitle") || Boolean(document.querySelector("video,audio,[itemtype*='VideoObject'],meta[property='og:type'][content*='video']"));
@@ -283,7 +303,12 @@
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "lumi-page-state") {
       const snapshot = collectSnapshot();
-      sendResponse({ ok: true, hasMedia: pageHasMedia(), title: snapshot.title, directCount: snapshot.observations.filter(item => ["direct", "hls", "dash", "audio"].includes(item.kind)).length });
+      sendResponse({ ok: true, hasMedia: pageHasMedia(), title: snapshot.title, directCount: snapshot.observations.filter(item => ["direct", "hls", "dash", "audio"].includes(item.kind)).length, linkCount: collectPageLinks().length });
+      return;
+    }
+    if (message?.type === "lumi-page-links") {
+      const links = collectPageLinks();
+      sendResponse({ ok: true, url: location.href, title: document.title || location.href, links, count: links.length });
       return;
     }
     if (message?.type === "lumi-open-panel") {

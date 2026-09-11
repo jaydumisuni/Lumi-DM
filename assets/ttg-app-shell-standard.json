@@ -84,15 +84,17 @@
     "diagnostics_in_sidebar": false,
     "technician_sections": [
       "Mobile firmware",
-      "Operating systems",
-      "Queues",
-      "Categories",
-      "LinkGrabber"
+      "Operating systems"
     ],
     "operating_system_families": [
       "Windows",
       "macOS",
       "Linux"
+    ],
+    "top_level_tools": [
+      "Queues",
+      "Categories",
+      "LinkGrabber"
     ]
   },
   "branding": {

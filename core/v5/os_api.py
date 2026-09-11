@@ -44,6 +44,27 @@ def _ensure_os_category() -> None:
     ))
 
 
+def _downloadable_os_results(*, family: str, distribution: str, version: str, edition: str, architecture: str, channel: str, language: str, query: str):
+    values = search_os(
+        family=family, distribution=distribution, version=version, edition=edition,
+        architecture=architecture, channel=channel, language=language, query=query,
+    )
+    direct = [dict(item) for item in values if bool(item.get("direct")) and str(item.get("url") or "").startswith(("http://", "https://", "ftp://"))]
+    if family.strip().lower() == "windows" and not direct:
+        has_fido = any(str((item.get("metadata") or {}).get("resolver") or "") == "fido" for item in values)
+        if has_fido:
+            try:
+                resolved = resolve_windows_iso(
+                    version=version or "Windows 11", edition=edition or "Home/Pro",
+                    language=language or "English International", architecture=architecture or "x64",
+                )
+                if resolved.get("direct") and str(resolved.get("url") or "").startswith(("http://", "https://", "ftp://")):
+                    direct.append(dict(resolved))
+            except Exception:
+                pass
+    return direct
+
+
 @wave5_os_api.get("/catalogue")
 def os_catalogue():
     return jsonify(catalogue())
@@ -52,7 +73,7 @@ def os_catalogue():
 @wave5_os_api.get("/search")
 def os_search():
     try:
-        return jsonify({"results": search_os(
+        return jsonify({"results": _downloadable_os_results(
             family=str(request.args.get("family") or ""),
             distribution=str(request.args.get("distribution") or ""),
             version=str(request.args.get("version") or ""),
