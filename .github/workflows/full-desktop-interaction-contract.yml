@@ -105,20 +105,21 @@ jobs:
         run: |
           npm install --no-save playwright@1.61.1 electron@43.2.0
           npx playwright install --with-deps --no-shell chromium
+          sudo apt-get install -y openbox
           printf 'LUMIDM_PYTHON=%s\n' "$(command -v python)" >> "$GITHUB_ENV"
 
       - name: Playwright real Electron source-shell proof
         run: |
           mkdir -p artifacts
-          xvfb-run -a node tests/playwright_electron_source_shell.js
+          xvfb-run -a tests/run_xvfb_with_wm.sh node tests/playwright_electron_source_shell.js
 
       - name: Playwright real widget browser-handoff lifecycle
         run: |
-          xvfb-run -a node tests/playwright_widget_handoff_lifecycle.js
+          xvfb-run -a tests/run_xvfb_with_wm.sh node tests/playwright_widget_handoff_lifecycle.js
 
       - name: Playwright inline widget pending-confirmation lifecycle
         run: |
-          xvfb-run -a node tests/playwright_widget_pending_confirmation.js
+          xvfb-run -a tests/run_xvfb_with_wm.sh node tests/playwright_widget_pending_confirmation.js
 
       - name: Assert Electron source shell released Runtime port
         run: |

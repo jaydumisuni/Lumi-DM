@@ -34,3 +34,18 @@ def test_promotion_waits_for_real_session_completion_without_polling_window():
     assert "return loadPromotionAuthenticated();" in text
     assert "attempt <" not in text
     assert "setTimeout(resolve, 50)" not in text
+
+
+def test_linux_native_electron_ci_uses_a_real_x11_window_manager():
+    workflow = (WORKFLOWS / "full-desktop-interaction-contract.yml").read_text(encoding="utf-8")
+    helper = (ROOT / "tests" / "run_xvfb_with_wm.sh").read_text(encoding="utf-8") if (ROOT / "tests" / "run_xvfb_with_wm.sh").exists() else ""
+    assert "sudo apt-get install -y openbox" in workflow
+    for script in (
+        "playwright_electron_source_shell.js",
+        "playwright_widget_handoff_lifecycle.js",
+        "playwright_widget_pending_confirmation.js",
+    ):
+        assert f"xvfb-run -a tests/run_xvfb_with_wm.sh node tests/{script}" in workflow
+    assert "_NET_SUPPORTING_WM_CHECK" in helper
+    assert "openbox" in helper
+    assert '"$@"' in helper
