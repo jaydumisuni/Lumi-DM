@@ -1,10 +1,11 @@
 # Lumi DM — KRATOS Pickup / Continuation
 
-Last updated: 2026-09-10
+Last updated: 2026-09-12
 Authority branch: `fix/issue8-packaged-runtime-child-pid`
 Repository: `jaydumisuni/Lumi-DM`
-KRATOS worktree used for this pass: `/home/kratos/lumi-athena-sync-20260910`
+KRATOS proof/freeze checkout: `/home/kratos/lumi-release-candidate-20260911`
 Base checkpoint before this pass: `93b9c8071a8d6dd941107a9b72b969a0c1ed23c1`
+Verified remote product head before this handoff sync: `fb10b5b5d19701884e474e890946da6639f64f1a`
 
 ## Continuation rule
 
@@ -27,8 +28,9 @@ The release/update pipeline is deliberately deferred until the product gaps belo
 
 ### Technician navigation / Overview contract
 
-- Technician dropdown now owns all five planned entries: Mobile Firmware, Operating Systems, Queues, Categories, LinkGrabber.
-- Five compact rows physically fit at 920x560 with no overlap and 11 px clearance above Storage in the proof run.
+- Queues, Categories, and LinkGrabber are top-level sidebar tools.
+- Technician dropdown owns only Mobile Firmware and Operating Systems. This is the newer authority locked by `docs/design/LUMI_APP_DESIGN_SPEC.md`, `static/index.html`, and regression tests in commit `69a91c2`.
+- The two Technician rows physically fit at 920x560 with no overlap; the sidebar remains scroll-free.
 - Overview `Clear Completed` is restored; the old `lumi-ui.js` rewrite to `Categories` is removed.
 
 ### Browser extension bridge finding
@@ -39,7 +41,7 @@ The earlier ATHENA conclusion that the extension bridge source was broken was co
 - WebSocket readyState `1` (OPEN)
 - reconnect attempts `0`
 
-Server-side `browser.hello -> browser.ready` also passed. The ATHENA failure is treated as stale packaged Builder/runtime dependency state until the next Windows rebuild proves otherwise. `websockets>=12,<16` is already declared.
+Server-side `browser.hello -> browser.ready` also passed. Fresh KRATOS extension proof on the current remote also passed end-to-end: exact extension ID, automatic local identity, token acquisition, `bridge=connected`, 14 media variants, and creation of the canonical 32-connection browser-pending task. The next Windows rebuild still needs to re-prove the packaged dependency/runtime path. `websockets>=12,<16` is already declared.
 
 ### Firmware device identity breadth
 
@@ -131,7 +133,7 @@ Final architecture and proof:
 Live Samsung proof on KRATOS, without downloading the multi-gigabyte payload:
 
 - `SM-S921B / EUX` resolved in about 4.34 s.
-- Version resolved: `S921BXXSAGYH1/S921BOXMAGYH1/S921BXXSAGYH1/S921BXXSAGYH1`.
+- Latest live version re-proved on 2026-09-12: `S921BXXSHDZH3/S921BOXMHDZH3/S921BXXSHDZH3/S921BXXSHDZH3`.
 - Official encrypted package size: `17,592,535,024` bytes.
 - Official cloud host: `cloud-neofussvr.samsungmobile.com`.
 - 16-byte ranged transfer ticket test returned HTTP `206` with `Content-Range: bytes 0-15/17592535024`.
@@ -153,34 +155,32 @@ Live proof while the API was rate-limited still recovered the same two `spinel` 
 
 ## Final verification state for this KRATOS product pass
 
-Fresh evidence on the final tree:
+Fresh evidence on remote product head `fb10b5b5d19701884e474e890946da6639f64f1a`:
 
-- Native Samsung/Xiaomi/integrity focused contracts: green.
-- Current functional core batch: **104/104 PASS**.
-- Workflow filtered groups: **6 PASS + 1 PASS + 4 PASS + 8 PASS**.
-- Full pytest collection after final Xiaomi fallback: **203 PASS / 11 FAIL**.
-- The 11 failures are confirmed pre-existing/deferred release-pipeline baseline debt: builder profile/icon expectations, missing `electron/package.json`, missing Builder GitHub release contract/publisher, and missing TTG shell standard document. Their owning release/pipeline files are unchanged from the pre-pass branch state.
-- Python compileall: PASS.
-- JavaScript syntax on changed UI/Electron test files: PASS.
-- Real Electron source shell: PASS; exactly two native surfaces, manager 920x560, widget hidden while manager is open, close -> widget handoff works.
-- Physical widget pending confirmation: PASS.
-- Approved mockup, compact geometry, settled views, 14-screen visual sweep, main interactions, both-theme readability/palette, glass accessibility/polish/parity: PASS.
-- Final live Samsung metadata + ranged transfer + protected stage: PASS.
-- Final live Xiaomi public-digest fallback + protected stage: PASS.
+- Full Python collection: **227/227 PASS**. The earlier 203-pass/11-fail release-baseline state is obsolete; those contracts have since been repaired on the branch.
+- Focused Samsung/Xiaomi/Lineage/OS/widget/navigation contracts: **42/42 PASS**.
+- Browser/UI freeze batch: **10/10 Playwright suites PASS**, including approved mockup, compact geometry, settled views, 14-screen visual sweep, main interactions, both-theme readability/palette, and glass accessibility/polish.
+- Real Electron source shell: **PASS** under the repository's required X11 window-manager harness; exactly two native surfaces, manager 920x560, widget hidden while manager is open, minimize/close -> widget handoff, maximize/restore, and IPC controls all passed.
+- Physical widget lifecycle: **2/2 PASS** for browser handoff and inline pending confirmation; compact `240x66`, expanded `360x320`, canonical-task preservation, Download Later, and Cancel all passed.
+- MV3 extension: **PASS** with exact extension ID, local identity, token, persistent bridge connected, 14 media variants, and canonical browser-pending task at 32 connections.
+- Live Xiaomi provider: **PASS**; current `spinel` EEA + Global artifacts resolve with their own versions/regions and exact GitHub SHA-256 digests.
+- Live Samsung FOTA/FUS metadata: **PASS**; `SM-S921B / EUX` resolves current official package metadata and a valid FUS session without downloading the payload.
+- Live protected Samsung stage: **PASS**; canonical `status=staged`, `type=http`, `category=firmware`, 17,592,535,024-byte package metadata, `Authorization=<redacted>`, and decrypt key exposed only as `<secure-reference>`. No payload was started during this proof.
+- Git worktree was clean before this handoff-document correction and matched `origin/fix/issue8-packaged-runtime-child-pid` exactly.
 
 ## Exact next execution order after this freeze
 
-1. Commit and push the remaining post-checkpoint hardening delta; verify remote SHA.
-2. ATHENA pulls the same branch when available; do not manually copy files.
-3. Rebuild/package on Windows from the frozen source and prove the extension WebSocket/runtime dependency path on the fresh package.
+1. Push this handoff-only correction and verify the remote SHA. No product-code delta is pending from this proof pass.
+2. ATHENA pulls `fix/issue8-packaged-runtime-child-pid`; do not manually copy files between machines.
+3. When pipeline work resumes, rebuild/package on Windows from this frozen source and re-prove the extension WebSocket/runtime dependency path on the fresh package.
 4. Complete the deliberately deferred GitHub Release/build pipeline consumed by Lumi's in-app updater.
-5. Resolve the 11 historical release/pipeline baseline tests as part of that pipeline work, not by weakening product tests.
+5. Do not reopen already-green product areas unless new evidence fails a locked contract.
 
 ## Do not regress these locked decisions
 
 - Existing approved 920x560 Lumi manager/glass UI remains the visual baseline.
 - Existing widget is the confirmation surface; no third confirmation window.
-- Technician owns all five grouped functions.
+- Queues, Categories, and LinkGrabber remain top-level sidebar tools; Technician owns only Mobile Firmware and Operating Systems.
 - Quick Action remains `Clear Completed`, not `Categories`.
 - Broad device identity does not equal verified firmware availability.
 - Community sources must remain labeled community.
