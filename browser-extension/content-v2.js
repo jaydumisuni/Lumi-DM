@@ -12,7 +12,17 @@
     media: null,
     snapshot: null,
     mutationTimer: null,
+    readinessTimer: null,
+    readinessKey: "",
+    readinessInFlight: "",
+    introTimer: null,
+    introActive: false,
+    introShownKey: "",
   };
+  const READINESS_DEBOUNCE_MS = 350;
+  const INTRO_FULL_MS = 5000;
+  const READINESS_FAILURE_TTL_MS = 8000;
+  const readinessCache = new Map();
   const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 
   function send(message, timeout = 16000) {
@@ -154,18 +164,71 @@
     return links;
   }
 
-  function pageHasMedia() {
-    const snapshot = collectSnapshot();
+  function pageHasMedia(snapshot = collectSnapshot()) {
     return snapshot.has_blob || snapshot.observations.some(item => item.kind !== "subtitle") || Boolean(document.querySelector("video,audio,[itemtype*='VideoObject'],meta[property='og:type'][content*='video']"));
+  }
+
+  function mediaIdentity(snapshot) {
+    const resources = (snapshot?.observations || [])
+      .filter(item => String(item.kind || "").toLowerCase() !== "subtitle")
+      .map(item => `${String(item.kind || "direct").toLowerCase()}:${String(item.url || "")}`)
+      .sort();
+    const domSources = [...document.querySelectorAll("video,audio")].map(element => {
+      const sources = [...element.querySelectorAll("source")].map(node => absoluteUrl(node.src)).filter(Boolean).sort();
+      return [absoluteUrl(element.currentSrc || element.src || ""), ...sources].filter(Boolean).join(",") || element.tagName;
+    }).sort();
+    return `${String(snapshot?.url || location.href)}::${snapshot?.has_blob ? "blob" : "plain"}::${resources.join("|")}::${domSources.join("|")}`;
+  }
+
+  function mediaReady(media) {
+    return String(media?.state || "") === "variants_found" && Array.isArray(media?.variants) && media.variants.length > 0;
+  }
+
+  function cacheReadiness(key, snapshot, media) {
+    readinessCache.set(key, { snapshot, media, at: Date.now() });
+    while (readinessCache.size > 12) readinessCache.delete(readinessCache.keys().next().value);
   }
 
   function styles() {
     return `
       :host{all:initial;position:fixed;z-index:2147483647;font-family:"Segoe UI",Inter,Arial,sans-serif;color:#f5f7fc;line-height:1.35}
       *{box-sizing:border-box}.root{position:relative}.trigger{height:42px;border:1px solid rgba(178,75,255,.7);border-radius:11px;background:linear-gradient(100deg,rgba(49,11,91,.98),rgba(6,37,78,.98));color:#fff;display:flex;align-items:center;gap:9px;padding:0 13px 0 8px;font:800 12px "Segoe UI",Arial;cursor:pointer;box-shadow:0 10px 32px rgba(0,0,0,.48),0 0 24px rgba(123,34,232,.24)}
+      .trigger{transition:width .18s ease,height .18s ease,opacity .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease;white-space:nowrap;overflow:hidden}
+      .trigger[data-mode="compact-mark"]{width:34px;height:34px;padding:2px;gap:0;border-radius:999px;opacity:.26;background:rgba(7,13,24,.72);border-color:rgba(133,87,194,.42);box-shadow:0 4px 14px rgba(0,0,0,.28)}
+      .trigger[data-mode="compact-mark"] span{display:none}.trigger[data-mode="compact-mark"] img{width:28px;height:28px}
+      .trigger[data-mode^="full"]{width:auto;opacity:1}
+      @media (prefers-reduced-motion:reduce){.trigger{transition:none!important}.spinner{animation:none!important}}
       .trigger img{width:29px;height:29px;object-fit:contain}.panel{width:430px;margin-top:8px;border:1px solid rgba(126,149,184,.28);border-radius:16px;background:linear-gradient(145deg,rgba(7,13,24,.995),rgba(2,7,14,.995));box-shadow:0 26px 78px rgba(0,0,0,.7);overflow:hidden}.head{display:flex;align-items:center;gap:11px;padding:14px;border-bottom:1px solid rgba(255,255,255,.07)}.head img{width:42px;height:42px;object-fit:contain}.title{min-width:0;flex:1}.title strong,.title small{display:block}.title strong{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.title small{margin-top:4px;color:#8290a6;font-size:9px}.close{width:31px;height:31px;border:1px solid rgba(111,133,166,.22);border-radius:9px;background:#07101d;color:#aeb9ca;cursor:pointer}.body{padding:13px}.state{min-height:105px;border:1px solid rgba(104,124,155,.18);border-radius:11px;background:#07101c;display:grid;place-items:center;text-align:center;padding:14px;color:#9aa6b9;font-size:10px}.state strong{display:block;color:#eef3fa;font-size:12px;margin-bottom:5px}.state.bad{border-color:rgba(255,82,96,.25);color:#ff98a1}.state.ok{border-color:rgba(37,204,98,.22);color:#77e69c}.spinner{width:27px;height:27px;border:3px solid rgba(124,145,177,.2);border-top-color:#a82cff;border-right-color:#159cff;border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 9px}@keyframes spin{to{transform:rotate(360deg)}}
       .groups{display:grid;gap:12px;max-height:410px;overflow:auto;padding-right:3px}.group h4{margin:0 0 6px;color:#8997aa;font:800 9px "Segoe UI";text-transform:uppercase;letter-spacing:.08em}.row{width:100%;min-height:57px;border:1px solid rgba(105,125,157,.18);border-radius:10px;background:linear-gradient(145deg,#08111e,#06101b);color:#eef2f8;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:9px 11px;text-align:left;cursor:pointer;margin-bottom:7px}.row:hover{border-color:#9a35e8}.row strong,.row small{display:block}.row strong{font-size:11px}.row small{margin-top:4px;color:#8491a5;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row b{min-width:62px;padding:6px 8px;border-radius:999px;background:rgba(30,120,255,.13);color:#72b5ff;text-align:center;font-size:9px}.row.audio b{color:#65df90;background:rgba(36,204,100,.13)}.actions{display:flex;gap:8px;margin-top:11px}.btn{height:38px;border:1px solid rgba(111,133,164,.25);border-radius:9px;background:#091321;color:#dce4ef;padding:0 12px;font:800 10px "Segoe UI";cursor:pointer}.btn.primary{flex:1;border-color:#a642ef;background:linear-gradient(100deg,#7c16d4,#2369e5);color:#fff}.note{margin:10px 2px 0;color:#748197;font-size:9px;line-height:1.5}
     `;
+  }
+
+  function setTriggerMode(mode) {
+    const trigger = state.shadow?.querySelector(".trigger");
+    if (!trigger) return;
+    trigger.dataset.mode = mode;
+  }
+
+  function collapseTriggerIfIdle() {
+    const trigger = state.shadow?.querySelector(".trigger");
+    if (!trigger || state.introActive || state.open || trigger.matches(":focus") || trigger.matches(":hover")) return;
+    setTriggerMode("compact-mark");
+  }
+
+  function startIntro(key) {
+    clearTimeout(state.introTimer);
+    if (state.introShownKey === key) {
+      state.introActive = false;
+      collapseTriggerIfIdle();
+      return;
+    }
+    state.introShownKey = key;
+    state.introActive = true;
+    setTriggerMode("full-intro");
+    state.introTimer = setTimeout(() => {
+      state.introActive = false;
+      collapseTriggerIfIdle();
+    }, INTRO_FULL_MS);
   }
 
   function ensureHost() {
@@ -174,11 +237,16 @@
     host.id = "lumi-media-capture-host";
     const shadow = host.attachShadow({ mode: "open" });
     const icon = chrome.runtime.getURL("icon.svg");
-    shadow.innerHTML = `<style>${styles()}</style><div class="root"><button class="trigger" type="button"><img src="${icon}" alt=""><span>Download with Lumi</span><span>⌄</span></button><div class="panel" hidden></div></div>`;
+    shadow.innerHTML = `<style>${styles()}</style><div class="root"><button class="trigger" type="button" data-mode="compact-mark" aria-label="Lumi has downloadable qualities"><img src="${icon}" alt=""><span>Download with Lumi</span><span>⌄</span></button><div class="panel" hidden></div></div>`;
     document.documentElement.appendChild(host);
     state.host = host;
     state.shadow = shadow;
-    shadow.querySelector(".trigger").addEventListener("click", () => togglePanel());
+    const trigger = shadow.querySelector(".trigger");
+    trigger.addEventListener("click", () => togglePanel());
+    trigger.addEventListener("mouseenter", () => { if (!state.introActive && !state.open) setTriggerMode("full-hover"); });
+    trigger.addEventListener("mouseleave", () => collapseTriggerIfIdle());
+    trigger.addEventListener("focus", () => { if (!state.introActive && !state.open) setTriggerMode("full-focus"); });
+    trigger.addEventListener("blur", () => collapseTriggerIfIdle());
     shadow.querySelector(".panel").addEventListener("click", onPanelClick);
     positionHost();
     return host;
@@ -194,7 +262,69 @@
     state.host.style.left = `${Math.round(left)}px`;
   }
 
-  function removeHost() { state.host?.remove(); state.host = null; state.shadow = null; state.open = false; state.media = null; }
+  function removeHost({ clearReady = true } = {}) {
+    clearTimeout(state.introTimer);
+    state.introTimer = null;
+    state.introActive = false;
+    state.host?.remove();
+    state.host = null;
+    state.shadow = null;
+    state.open = false;
+    if (clearReady) {
+      state.media = null;
+      state.snapshot = null;
+      state.readinessKey = "";
+    }
+  }
+
+  function revealReady(key, snapshot, media, { openWhenReady = false } = {}) {
+    state.readinessKey = key;
+    state.snapshot = snapshot;
+    state.media = media;
+    ensureHost();
+    startIntro(key);
+    positionHost();
+    if (openWhenReady) togglePanel(true);
+  }
+
+  async function probeReadiness({ force = false, openWhenReady = false } = {}) {
+    if (!state.enabled) { removeHost(); return false; }
+    const snapshot = collectSnapshot();
+    if (!pageHasMedia(snapshot)) { removeHost(); return false; }
+    const key = mediaIdentity(snapshot);
+    if (state.readinessKey && state.readinessKey !== key) removeHost();
+
+    const cached = readinessCache.get(key);
+    if (!force && cached) {
+      if (mediaReady(cached.media)) { revealReady(key, cached.snapshot, cached.media, { openWhenReady }); return true; }
+      if (Date.now() - cached.at < READINESS_FAILURE_TTL_MS) { removeHost(); return false; }
+      readinessCache.delete(key);
+    }
+    if (state.readinessInFlight === key) return false;
+    state.readinessInFlight = key;
+    try {
+      const result = await send({ type: "lumi-media-discover", snapshot });
+      const media = result.media || {};
+      cacheReadiness(key, snapshot, media);
+      const current = collectSnapshot();
+      if (mediaIdentity(current) !== key) { scheduleReadinessProbe(); return false; }
+      if (!mediaReady(media)) { removeHost(); return false; }
+      revealReady(key, snapshot, media, { openWhenReady });
+      return true;
+    } catch (_) {
+      cacheReadiness(key, snapshot, { state: "resolver_timeout", variants: [] });
+      removeHost();
+      return false;
+    } finally {
+      if (state.readinessInFlight === key) state.readinessInFlight = "";
+    }
+  }
+
+  function scheduleReadinessProbe({ immediate = false, force = false, openWhenReady = false } = {}) {
+    clearTimeout(state.readinessTimer);
+    state.readinessTimer = setTimeout(() => { void probeReadiness({ force, openWhenReady }); }, immediate ? 0 : READINESS_DEBOUNCE_MS);
+  }
+
   function render(content) {
     const panel = state.shadow?.querySelector(".panel");
     if (!panel) return;
@@ -244,8 +374,9 @@
     render(`<div class="groups">${html}</div><div class="actions"><button class="btn" type="button" data-action="rescan">↻ Scan again</button></div><p class="note">${variants.length} downloadable variant${variants.length === 1 ? "" : "s"}${subtitleCount ? ` · ${subtitleCount} subtitle track${subtitleCount === 1 ? "" : "s"}` : ""}. Protected/DRM streams remain unavailable rather than spinning forever.</p>`);
   }
 
-  async function inspect() {
+  async function inspect(force = false) {
     if (state.busy) return;
+    if (!force && mediaReady(state.media)) { renderVariants(state.media); return; }
     state.busy = true;
     state.snapshot = collectSnapshot();
     loading();
@@ -258,8 +389,13 @@
       }
       const result = await send({ type: "lumi-media-discover", snapshot: state.snapshot });
       state.media = result.media || {};
+      const key = mediaIdentity(state.snapshot);
+      cacheReadiness(key, state.snapshot, state.media);
       const terminal = String(state.media.state || "error");
-      if (terminal === "variants_found" && state.media.variants?.length) renderVariants(state.media);
+      if (terminal === "variants_found" && state.media.variants?.length) {
+        state.readinessKey = key;
+        renderVariants(state.media);
+      }
       else if (terminal === "resolver_timeout") stateCard("Media scan timed out", "The browser observations did not produce a downloadable variant before the resolver deadline.", "bad");
       else if (terminal === "unsupported_protected") stateCard("Protected media", "This stream appears protected or DRM-controlled and Lumi will not pretend it is downloadable.", "bad", false);
       else if (terminal === "session_unavailable") stateCard("Browser session required", "The page uses session-bound/blob media and no transferable source was observable yet.", "bad");
@@ -271,6 +407,7 @@
       state.busy = false;
     }
   }
+
 
   async function stageVariant(index) {
     if (state.busy) return;
@@ -290,20 +427,41 @@
     const button = event.target.closest("button");
     if (!button) return;
     if (button.dataset.action === "close") return closePanel();
-    if (button.dataset.action === "rescan") return void inspect();
+    if (button.dataset.action === "rescan") return void inspect(true);
     if (button.dataset.variant !== undefined) return void stageVariant(button.dataset.variant);
   }
-  function closePanel() { state.open = false; const panel = state.shadow?.querySelector(".panel"); if (panel) panel.hidden = true; positionHost(); }
-  function togglePanel(forceOpen = false) { state.open = forceOpen || !state.open; if (!state.open) return closePanel(); positionHost(); void inspect(); }
-  function syncPresence() { if (!state.enabled || !pageHasMedia()) return removeHost(); ensureHost(); positionHost(); }
-  function schedulePresence() { clearTimeout(state.mutationTimer); state.mutationTimer = setTimeout(syncPresence, 350); }
+  function closePanel() {
+    state.open = false;
+    const panel = state.shadow?.querySelector(".panel");
+    if (panel) panel.hidden = true;
+    collapseTriggerIfIdle();
+    positionHost();
+  }
+  function togglePanel(forceOpen = false) {
+    state.open = forceOpen || !state.open;
+    if (!state.open) return closePanel();
+    setTriggerMode("full-panel");
+    positionHost();
+    if (mediaReady(state.media)) renderVariants(state.media);
+    else void inspect();
+  }
+  function schedulePresence() { scheduleReadinessProbe(); }
 
-  chrome.storage.local.get(["lumiEnabled"], value => { state.enabled = value.lumiEnabled !== false; syncPresence(); });
-  chrome.storage.onChanged.addListener(changes => { if (!changes.lumiEnabled) return; state.enabled = changes.lumiEnabled.newValue !== false; syncPresence(); });
+  chrome.storage.local.get(["lumiEnabled"], value => {
+    state.enabled = value.lumiEnabled !== false;
+    if (state.enabled) scheduleReadinessProbe({ immediate: true });
+    else removeHost();
+  });
+  chrome.storage.onChanged.addListener(changes => {
+    if (!changes.lumiEnabled) return;
+    state.enabled = changes.lumiEnabled.newValue !== false;
+    if (state.enabled) scheduleReadinessProbe({ immediate: true });
+    else removeHost();
+  });
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "lumi-page-state") {
       const snapshot = collectSnapshot();
-      sendResponse({ ok: true, hasMedia: pageHasMedia(), title: snapshot.title, directCount: snapshot.observations.filter(item => ["direct", "hls", "dash", "audio"].includes(item.kind)).length, linkCount: collectPageLinks().length });
+      sendResponse({ ok: true, hasMedia: pageHasMedia(snapshot), title: snapshot.title, directCount: snapshot.observations.filter(item => ["direct", "hls", "dash", "audio"].includes(item.kind)).length, linkCount: collectPageLinks().length });
       return;
     }
     if (message?.type === "lumi-page-links") {
@@ -312,13 +470,17 @@
       return;
     }
     if (message?.type === "lumi-open-panel") {
-      if (!pageHasMedia()) { sendResponse({ ok: false, error: "No supported media was detected on this page" }); return; }
-      state.enabled = true; ensureHost(); togglePanel(true); sendResponse({ ok: true });
+      const snapshot = collectSnapshot();
+      if (!pageHasMedia(snapshot)) { sendResponse({ ok: false, error: "No supported media was detected on this page" }); return; }
+      state.enabled = true;
+      if (mediaReady(state.media)) togglePanel(true);
+      else scheduleReadinessProbe({ immediate: true, force: true, openWhenReady: true });
+      sendResponse({ ok: true, pending: !mediaReady(state.media) });
     }
   });
 
   new MutationObserver(schedulePresence).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["src"] });
   addEventListener("resize", positionHost, { passive: true });
   addEventListener("scroll", positionHost, { passive: true });
-  setInterval(syncPresence, 2500);
+  setInterval(() => scheduleReadinessProbe({ immediate: true }), 2500);
 })();
