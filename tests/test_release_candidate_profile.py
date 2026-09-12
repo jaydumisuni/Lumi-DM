@@ -67,29 +67,26 @@ def test_7zip_remains_optional_in_release_profile():
     assert sevenzip["required"] is False
 
 
-def test_notification_flood_guard_is_part_of_installed_extension():
-    manifest = json.loads(
-        (ROOT / "browser-extension" / "manifest.json").read_text(encoding="utf-8")
-    )
+def test_installed_extension_uses_auto_trust_and_quiet_browser_fallback():
+    manifest = json.loads((ROOT / "browser-extension" / "manifest.json").read_text(encoding="utf-8"))
+    background = (ROOT / "browser-extension" / "background.js").read_text(encoding="utf-8")
+    popup = (ROOT / "browser-extension" / "popup.html").read_text(encoding="utf-8")
+
     assert manifest["background"]["service_worker"] == "background.js"
     assert manifest["action"]["default_popup"] == "popup.html"
-    assert manifest["content_scripts"][0]["js"] == ["content.js", "content-safety.js"]
-
-    background = (ROOT / "browser-extension" / "background.js").read_text(encoding="utf-8")
-    assert 'import "./notification-guard.js"' in background
-    assert 'import "./browser-bridge.js"' in background
-
-    guard = (ROOT / "browser-extension" / "notification-guard.js").read_text(encoding="utf-8")
-    assert "OFFLINE_NOTICE_COOLDOWN_MS" in guard
-    assert "DUPLICATE_WINDOW_MS" in guard
-    assert "isQuietAutomaticFailure" in guard
-    assert "if (isQuietAutomaticFailure(options)) return CONNECTIVITY_ID" in guard
-    assert "chrome.notifications.clear" in guard
-    assert 'const CONNECTIVITY_ID = "LUMIDM-connectivity-state"' in guard
+    assert manifest["content_scripts"][0]["js"] == ["content-v2.js"]
+    assert "cookies" not in manifest["permissions"]
+    assert "webRequest" not in manifest["permissions"]
+    assert 'mode: "local_extension"' in background
+    assert "await safePause(item.id)" in background
+    assert "if (!handoffId) throw new Error" in background
+    assert "No pause occurred if persistence failed" in background
+    assert "Automatic local trust" in popup
+    assert 'id="pair-code"' not in popup
 
     for obsolete in (
-        "background-v4.js", "background-v5.js", "notification-guard-v6.js",
-        "content-v5.js", "popup-v4.html", "popup-v5.js",
+        "popup-security.js", "security-shim.js", "popup-native-handoff.js",
+        "browser-bridge.js", "notification-guard.js", "content-safety.js",
     ):
         assert not (ROOT / "browser-extension" / obsolete).exists()
 

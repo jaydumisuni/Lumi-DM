@@ -1,69 +1,51 @@
 {
   "manifest_version": 3,
   "name": "Lumi Download Manager",
-  "short_name": "Lumi DM",
-  "version": "5.0.1",
-  "description": "Securely stage browser downloads in Lumi, choose options in the corner popup, and safely fall back to the browser.",
+  "version": "5.1.0",
+  "description": "Browser capture surface for the local Lumi Runtime.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8zkdhhC2jXsGkcfN5E4nnj1lZQ1pRNKbs6Zg8koeCRZVTyUOtgokeklAK2+pKOQsyQ93OyjfvVuRWT78y009KSY4XWJAHOAWPRMEbB1hN5gMKxzDhp7P4jDFOtGRwaOJ9XuH0jGATT5Z4Osn1gO7LHsFDqGPqmy1pa6CdDyINDHN8mIOrBLILjSQf4xPOThl0psAPnpY+QoNW/bwWEoeRsPUpXvRK8mMxD5+CqqstSIGy2D7oljEi4d+GEfeOwAf5iNZOYEwFSh7Rs+t48J4/8fTEkfL4y2WbzvRIPRlZAYrTUauhLPmRRNYWsyzJNC9kEdqj73GJhaj8f9VvNmwIDAQAB",
   "permissions": [
-    "alarms",
-    "contextMenus",
-    "cookies",
+    "activeTab",
     "downloads",
     "notifications",
-    "scripting",
     "storage",
-    "tabs",
-    "webNavigation",
-    "webRequest"
+    "tabs"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "http://*/*",
+    "https://*/*"
   ],
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "Lumi DM",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "commands": {
-    "lumi-force-next": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+L",
-        "mac": "Command+Shift+L"
-      },
-      "description": "Force the next download in this tab into Lumi"
-    },
-    "lumi-bypass-next": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+B",
-        "mac": "Command+Shift+B"
-      },
-      "description": "Let the browser handle the next download in this tab"
-    }
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js", "content-safety.js"],
-      "run_at": "document_idle"
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content-v2.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
   "web_accessible_resources": [
     {
-      "resources": ["icons/*.png"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "icon.svg"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
     }
-  ]
+  ],
+  "action": {
+    "default_title": "Lumi DM",
+    "default_popup": "popup.html"
+  }
 }

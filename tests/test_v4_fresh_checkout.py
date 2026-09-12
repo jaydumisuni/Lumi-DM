@@ -184,7 +184,7 @@ def test_final_ui_and_extension_sources_are_valid_and_clean() -> None:
     assert "onclick=" not in popup
     assert manifest["background"]["service_worker"] == "background.js"
     assert manifest["action"]["default_popup"] == "popup.html"
-    assert manifest["content_scripts"][0]["js"] == ["content.js", "content-safety.js"]
+    assert manifest["content_scripts"][0]["js"] == ["content-v2.js"]
 
     node = shutil.which("node")
     if not node:
@@ -196,13 +196,9 @@ def test_final_ui_and_extension_sources_are_valid_and_clean() -> None:
         "static/operating-systems.js",
         "static/ttg-shell.js",
         "static/ttg-theme.js",
-        "browser-extension/security-shim.js",
-        "browser-extension/notification-guard.js",
         "browser-extension/content.js",
-        "browser-extension/content-safety.js",
+        "browser-extension/content-v2.js",
         "browser-extension/popup.js",
-        "browser-extension/popup-security.js",
-        "browser-extension/popup-native-handoff.js",
     ]
     for relative in classic_scripts:
         result = subprocess.run(

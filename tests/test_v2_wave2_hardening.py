@@ -35,17 +35,18 @@ def test_public_request_view_survives_missing_vault_entry(tmp_path: Path) -> Non
     assert "private-token" not in str(public)
 
 
-def test_browser_capture_is_bounded_and_keeps_oversized_posts_in_browser() -> None:
+def test_browser_extension_avoids_page_secret_and_post_body_capture() -> None:
     root = Path(__file__).resolve().parents[1]
-    source = (root / "browser-extension" / "browser-bridge.js").read_text(
-        encoding="utf-8"
-    )
+    manifest = __import__("json").loads((root / "browser-extension" / "manifest.json").read_text(encoding="utf-8"))
+    background = (root / "browser-extension" / "background.js").read_text(encoding="utf-8")
+    content = (root / "browser-extension" / "content-v2.js").read_text(encoding="utf-8")
 
-    assert "MAX_BODY=4*1024*1024" in source
-    assert "POST body exceeds Lumi's 4 MB capture limit" in source
-    assert "Browser kept download" in source
-    assert "env.capture_error" in source
-    assert "localServer()" in source
+    assert "cookies" not in manifest["permissions"]
+    assert "webRequest" not in manifest["permissions"]
+    assert "requestBody" not in background
+    assert "document.cookie" not in content
+    assert 'mode: "local_extension"' in background
+    assert "browser.capture" in background
 
 
 def test_local_server_rejects_unbounded_request_envelopes(tmp_path: Path) -> None:

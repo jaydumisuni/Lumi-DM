@@ -347,9 +347,14 @@ def test_server_launcher_and_browser_contracts_are_present(tmp_path: Path) -> No
 
     manifest = json.loads((root / "browser-extension" / "manifest.json").read_text())
     background = (root / "browser-extension" / "background.js").read_text()
-    assert "cookies" in manifest["permissions"]
-    assert "lumi-force-next" in manifest["commands"]
-    assert "isLocalServer" in background
-    assert "Request secrets can only be sent to local Lumi" in background
-    assert "/api/browser/repair-capture" in background
+    popup = (root / "browser-extension" / "popup.html").read_text()
+    assert "key" in manifest
+    assert "cookies" not in manifest["permissions"]
+    assert "webRequest" not in manifest["permissions"]
+    assert manifest["content_scripts"][0]["js"] == ["content-v2.js"]
+    assert 'mode: "local_extension"' in background
+    assert 'BRIDGE_URL = "ws://127.0.0.1:7001"' in background
+    assert "browser.capture" in background
+    assert "Automatic local trust" in popup
+    assert 'id="pair-code"' not in popup
     assert "Authorization" not in json.dumps(manifest)

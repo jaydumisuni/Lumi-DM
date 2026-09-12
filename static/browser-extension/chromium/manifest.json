@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Lumi Download Manager",
-  "version": "2.1.0",
+  "version": "5.1.0",
   "description": "Browser capture surface for the local Lumi Runtime.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwE8zkdhhC2jXsGkcfN5E4nnj1lZQ1pRNKbs6Zg8koeCRZVTyUOtgokeklAK2+pKOQsyQ93OyjfvVuRWT78y009KSY4XWJAHOAWPRMEbB1hN5gMKxzDhp7P4jDFOtGRwaOJ9XuH0jGATT5Z4Osn1gO7LHsFDqGPqmy1pa6CdDyINDHN8mIOrBLILjSQf4xPOThl0psAPnpY+QoNW/bwWEoeRsPUpXvRK8mMxD5+CqqstSIGy2D7oljEi4d+GEfeOwAf5iNZOYEwFSh7Rs+t48J4/8fTEkfL4y2WbzvRIPRlZAYrTUauhLPmRRNYWsyzJNC9kEdqj73GJhaj8f9VvNmwIDAQAB",
   "permissions": [

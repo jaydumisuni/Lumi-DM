@@ -148,20 +148,19 @@ def test_background_and_branding_contract_are_packaged() -> None:
     assert not (root / "electron" / "package.json").exists()
 
 
-def test_extension_uses_pause_stage_decide_and_browser_fallback() -> None:
+def test_extension_uses_persist_then_pause_decide_and_browser_fallback() -> None:
     root = Path(__file__).resolve().parents[1]
-    source = (root / "browser-extension" / "browser-bridge.js").read_text(encoding="utf-8")
-    loader = (root / "browser-extension" / "background.js").read_text(encoding="utf-8")
+    source = (root / "browser-extension" / "background.js").read_text(encoding="utf-8")
     manifest = json.loads((root / "browser-extension" / "manifest.json").read_text(encoding="utf-8"))
 
     assert manifest["background"]["service_worker"] == "background.js"
-    assert 'import "./browser-bridge.js"' in loader
-    assert 'import "./notification-guard.js"' in loader
-    assert "/api/v5/browser/capture" in source
-    assert "chrome.downloads.pause" in source
-    assert "resumeDownload" in source
-    assert 'decision==="browser"' in source
-    assert "Lumi became unavailable" in source
+    assert 'mode: "local_extension"' in source
+    assert "browser.capture" in source
+    assert "if (!handoffId) throw new Error" in source
+    assert "await safePause(item.id)" in source
+    assert 'decision === "browser"' in source
+    assert "await safeResume(downloadId)" in source
+    assert "No pause occurred if persistence failed" in source
     assert "/api/downloads/start" not in source
 
 
