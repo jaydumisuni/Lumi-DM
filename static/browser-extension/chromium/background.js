@@ -13,9 +13,94 @@ let reconnectTimer = null;
 let reconnectAttempt = 0;
 let heartbeatTimer = null;
 
+const SHIELD_RULESET_ID = "lumi_shield";
+const SHIELD_SESSION_RULE_BASE = 100000;
+const shieldPopupCounts = new Map();
+
+function normaliseHostname(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  try { return new URL(raw.includes("://") ? raw : `https://${raw}`).hostname.toLowerCase(); }
+  catch (_) { return raw.split(":")[0].replace(/^\.+|\.+$/g, ""); }
+}
+
 function storageGet(keys) { return new Promise(resolve => chrome.storage.local.get(keys, resolve)); }
 function storageSet(value) { return new Promise(resolve => chrome.storage.local.set(value, resolve)); }
 function storageRemove(keys) { return new Promise(resolve => chrome.storage.local.remove(keys, resolve)); }
+function dnrUpdateEnabled(enabled) {
+  if (!chrome.declarativeNetRequest?.updateEnabledRulesets) return Promise.resolve();
+  return new Promise((resolve, reject) => chrome.declarativeNetRequest.updateEnabledRulesets({
+    enableRulesetIds: enabled ? [SHIELD_RULESET_ID] : [],
+    disableRulesetIds: enabled ? [] : [SHIELD_RULESET_ID],
+  }, () => {
+    const error = chrome.runtime.lastError;
+    if (error) reject(new Error(error.message)); else resolve();
+  }));
+}
+function dnrSessionRules() {
+  if (!chrome.declarativeNetRequest?.getSessionRules) return Promise.resolve([]);
+  return new Promise((resolve, reject) => chrome.declarativeNetRequest.getSessionRules(rules => {
+    const error = chrome.runtime.lastError;
+    if (error) reject(new Error(error.message)); else resolve(Array.isArray(rules) ? rules : []);
+  }));
+}
+function dnrUpdateSessionRules(options) {
+  if (!chrome.declarativeNetRequest?.updateSessionRules) return Promise.resolve();
+  return new Promise((resolve, reject) => chrome.declarativeNetRequest.updateSessionRules(options, () => {
+    const error = chrome.runtime.lastError;
+    if (error) reject(new Error(error.message)); else resolve();
+  }));
+}
+async function rebuildShieldSiteRules(siteAllow = null) {
+  const stored = siteAllow || (await storageGet(["lumiShieldSiteAllow"])).lumiShieldSiteAllow || {};
+  const allowedHosts = Object.keys(stored).map(normaliseHostname).filter(Boolean).filter(host => stored[host] !== false).sort().slice(0, 500);
+  const existing = await dnrSessionRules();
+  const removeRuleIds = existing.map(rule => Number(rule.id)).filter(id => id >= SHIELD_SESSION_RULE_BASE && id < SHIELD_SESSION_RULE_BASE + 10000);
+  const addRules = allowedHosts.map((hostname, index) => ({
+    id: SHIELD_SESSION_RULE_BASE + index,
+    priority: 10000,
+    action: { type: "allow" },
+    condition: { initiatorDomains: [hostname] },
+  }));
+  await dnrUpdateSessionRules({ removeRuleIds, addRules });
+}
+async function initialiseShield() {
+  const stored = await storageGet(["lumiShield", "lumiShieldSiteAllow"]);
+  const masterEnabled = stored.lumiShield !== false;
+  if (stored.lumiShield === undefined) await storageSet({ lumiShield: true });
+  await dnrUpdateEnabled(masterEnabled);
+  await rebuildShieldSiteRules(stored.lumiShieldSiteAllow || {});
+  return masterEnabled;
+}
+async function shieldState(hostname = "") {
+  const host = normaliseHostname(hostname);
+  const stored = await storageGet(["lumiShield", "lumiShieldSiteAllow"]);
+  const masterEnabled = stored.lumiShield !== false;
+  const allow = stored.lumiShieldSiteAllow || {};
+  return {
+    masterEnabled,
+    siteEnabled: masterEnabled && !Boolean(allow[host]),
+    hostname: host,
+    blockedRequests: null,
+    blockedPopups: Number(shieldPopupCounts.get(host) || 0),
+  };
+}
+async function setShieldMaster(enabled) {
+  const masterEnabled = enabled !== false;
+  await storageSet({ lumiShield: masterEnabled });
+  await dnrUpdateEnabled(masterEnabled);
+  return shieldState();
+}
+async function setShieldSite(hostname, enabled) {
+  const host = normaliseHostname(hostname);
+  if (!host) throw new Error("A valid site hostname is required");
+  const stored = await storageGet(["lumiShieldSiteAllow"]);
+  const allow = { ...(stored.lumiShieldSiteAllow || {}) };
+  if (enabled === false) allow[host] = true; else delete allow[host];
+  await storageSet({ lumiShieldSiteAllow: allow });
+  await rebuildShieldSiteRules(allow);
+  return shieldState(host);
+}
 function downloadCall(method, ...args) {
   return new Promise((resolve, reject) => {
     chrome.downloads[method](...args, result => {
@@ -358,6 +443,9 @@ async function stageCapture({ source = "", url = "", filename = "", variant = nu
 
 async function handleMessage(message) {
   const type = String(message?.type || "");
+  if (type === "lumi-shield-state") return await shieldState(message.hostname || "");
+  if (type === "lumi-shield-set-master") return await setShieldMaster(message.enabled !== false);
+  if (type === "lumi-shield-set-site") return await setShieldSite(message.hostname || "", message.enabled !== false);
   if (type === "lumi-extension-status") return { status: await extensionStatus() };
   if (type === "lumi-media-discover") return { media: await discoverMedia(message.snapshot || {}) };
   if (type === "lumi-media-stage") return { handoff: await stageCapture({
@@ -470,4 +558,5 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 chrome.runtime.onStartup.addListener(() => { void ensureToken().then(() => connectBridge()).catch(() => scheduleReconnect()); });
+void initialiseShield().catch(() => {});
 void ensureToken().then(() => connectBridge()).catch(() => scheduleReconnect());
