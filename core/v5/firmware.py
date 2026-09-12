@@ -149,8 +149,8 @@ def _safe_id(*parts: str) -> str:
 _PROVIDERS = [
     FirmwareProvider(
         id="samsung-fus",
-        name="Samsung FUS resolver",
-        group="Official Samsung firmware resolver",
+        name="Samsung Firmware",
+        group="Official Samsung firmware",
         brands=["Samsung"],
         description="Resolves Samsung-hosted firmware through Lumi's native FUS adapter; Lumi owns authentication, resumable transfer and decryption.",
         official=False,
@@ -1068,12 +1068,12 @@ def search_firmware(
     if selected in {"all", "samsung-fus"} and brand.lower() == "samsung" and device:
         results.append(FirmwareResult(
             id=_safe_id("samsung-fus", device), provider="samsung-fus",
-            source_name="Samsung FUS · Lumi native resolver",
-            source_group="Official Samsung firmware resolver", official=False,
-            brand="Samsung", device=device, title=f"Resolve latest Samsung firmware for {device}",
-            channel="stable", file_type="official firmware resolver",
+            source_name="Samsung Firmware",
+            source_group="Official Samsung firmware", official=False,
+            brand="Samsung", device=device, title=f"Latest Samsung firmware for {device}",
+            channel="stable", file_type="Official firmware",
             url="", source_url="https://www.samsung.com/support/",
-            notes="Requires exact 3-character Samsung CSC. Lumi negotiates Samsung FUS natively, keeps session authentication in its encrypted vault, and owns the download/decrypt lifecycle.",
+            notes="Enter the exact 3-character Samsung CSC when the download starts. Lumi retrieves the package from Samsung update services and handles the download/decrypt lifecycle.",
             direct=False, metadata={"resolver": "samsung-fus", "model": device},
         ))
     if (include_community or selected == "xiaomi-firmware-updater") and _canonical_brand(brand) in {"Xiaomi", "Redmi", "POCO"} and device:

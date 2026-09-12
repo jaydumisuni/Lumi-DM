@@ -247,7 +247,7 @@
     }));
     const exactProviders = new Set(matched.map(item => item.provider).filter(Boolean));
     const providers = (v5State.catalogue?.providers || []).filter(provider => providerSupports(provider, brand, exactProviders));
-    source.innerHTML = `<option value="all">All available sources</option>${groupProviders(providers)}`;
+    source.innerHTML = `<option value="all">All sources</option>${groupProviders(providers)}`;
     source.disabled = false;
   }
 
@@ -268,7 +268,7 @@
         include_community: form.elements.include_community.checked ? "true" : "false",
       });
       const response = await v5Api("GET", `/api/v5/firmware/search?${params}`);
-      let results = (response.results || []).filter(item => item?.direct && item?.url);
+      let results = (response.results || []).filter(isActionableFirmware);
       if (window.LumiMainUI?.approvedMockupActive) {
         results = results.filter(item => v5State.platform === "Apple"
           ? /apple|iphone|ipad|ipsw/i.test(`${item.brand} ${item.device} ${item.file_type}`)

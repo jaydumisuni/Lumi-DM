@@ -1,10 +1,17 @@
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
-def test_samsung_resolver_is_not_exposed_as_a_fake_download_row():
+def test_samsung_uses_same_visible_download_action_as_other_firmware():
     src=(ROOT/"static"/"technician-workspaces.js").read_text(encoding="utf-8")
+    active=(ROOT/"static"/"roadmap-corrections.js").read_text(encoding="utf-8")
     assert 'data-firmware-action="resolve-samsung"' not in src
-    assert 'data-firmware-action="source"' not in src
+    assert 'data-firmware-action="download"' in src
+    assert 'item.metadata?.resolver === "samsung-fus"' in src
+    assert '"/api/v5/firmware/samsung/stage"' in src
+    assert 'Downloadable' not in src
+    assert 'filter(isActionableFirmware)' in active
+    assert 'All available sources' not in active
+    assert 'All sources' in active
 
 def test_samsung_postprocess_is_installed_after_wave3_runtime_activation():
     server=(ROOT/"server.py").read_text(encoding="utf-8")
