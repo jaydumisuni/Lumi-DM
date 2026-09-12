@@ -317,14 +317,19 @@ function createWidget() {
     minimizable: false,
     fullscreenable: false,
     skipTaskbar: true,
+    icon: iconPath(),
     focusable: false,
     show: false,
     alwaysOnTop: true,
     webPreferences: { contextIsolation: true, preload: path.join(__dirname, "preload-widget.js") },
   });
+  widgetWindow.setSkipTaskbar(true);
   widgetWindow.setAlwaysOnTop(true, "floating");
   widgetWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   void widgetWindow.loadFile(path.join(__dirname, "widget.html"));
+  widgetWindow.on("show", () => {
+    if (widgetWindow && !widgetWindow.isDestroyed()) widgetWindow.setSkipTaskbar(true);
+  });
   widgetWindow.on("closed", () => { widgetWindow = null; });
   widgetWindow.once("ready-to-show", () => {
     if (widgetShowRequested && readDesktopPrefs().visible !== false && widgetWindow && !widgetWindow.isDestroyed()) {

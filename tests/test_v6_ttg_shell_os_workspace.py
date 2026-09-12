@@ -68,7 +68,7 @@ def test_ttg_shell_v2_owns_window_controls_and_gear_surfaces() -> None:
     assert "autoHideMenuBar: true" in main
 
 
-def test_locked_builder_shell_contract_is_v2() -> None:
+def test_approved_builder_shell_contract_is_v2() -> None:
     contract = json.loads(
         (ROOT / "assets" / "ttg-app-shell-standard.json").read_text(
             encoding="utf-8"
@@ -76,7 +76,8 @@ def test_locked_builder_shell_contract_is_v2() -> None:
     )
 
     assert contract["standard_id"] == "ttg-app-shell-v2"
-    assert contract["status"] == "locked"
+    assert contract["status"] == "approved-current"
+    assert contract["derived_from"] == "LUMI_APPROVED.md"
     assert contract["window"]["native_frame"] is False
     assert contract["settings_gear"]["appearance_control"] == [
         "System",
@@ -101,9 +102,7 @@ def test_locked_builder_shell_contract_is_v2() -> None:
 def test_advanced_diagnostics_remains_available_only_as_hidden_workspace() -> None:
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     shell = (ROOT / "static" / "ttg-shell.js").read_text(encoding="utf-8")
-    docs = (ROOT / "docs" / "TTG_APP_SHELL_STANDARD.md").read_text(
-        encoding="utf-8"
-    )
+    docs = (ROOT / "LUMI_APPROVED.md").read_text(encoding="utf-8")
 
     assert 'id="view-diagnostics"' in html
     assert 'data-shell-action="diagnostics"' in shell

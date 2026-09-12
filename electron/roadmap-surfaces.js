@@ -90,9 +90,13 @@ function resizeAnchored(window, expand) {
     width,
     height,
   }, true);
+  window.setSkipTaskbar(true);
   window.setFocusable(expand);
   if (expand) window.show();
   else window.showInactive();
+  // Windows can reconsider taskbar ownership when a tool window becomes
+  // focusable/visible. Reassert the widget contract after that transition.
+  window.setSkipTaskbar(true);
 }
 
 function effectiveExpanded() {

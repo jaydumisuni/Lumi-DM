@@ -2,6 +2,12 @@
 
 **Lumi DM** is the THETECHGUY DIGITAL SOLUTIONS multi-source download manager.
 
+## Product authority
+
+**`LUMI_APPROVED.md` is the only current product/design/behavior authority for this repository.**
+
+Before changing Lumi, read that file and the current source/tests. Do not reconstruct current product state from old commits, chats, screenshots, pickup notes, or historical design documents. Machine-readable Builder/shell contracts are derived implementation metadata and cannot override `LUMI_APPROVED.md`.
+
 ## Official download
 
 End users download Lumi only from the repository's **GitHub Releases** page or from:

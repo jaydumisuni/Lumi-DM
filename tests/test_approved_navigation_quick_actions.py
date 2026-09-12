@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_locked_navigation_keeps_general_tools_above_two_item_technician_group():
+def test_approved_navigation_keeps_only_firmware_and_os_inside_technician():
     html = (ROOT / "static" / "index.html").read_text(encoding="utf-8")
     soup = BeautifulSoup(html, "html.parser")
     group = soup.select_one(".nav-group")
@@ -14,12 +14,7 @@ def test_locked_navigation_keeps_general_tools_above_two_item_technician_group()
     views = [button.get("data-view") for button in submenu.select("button[data-view]")]
     assert views == ["firmware", "operating_systems"]
     top_level = [button.get("data-view") for button in soup.select(".nav-list > button[data-view]")]
-    assert top_level[-3:] == ["queues", "categories", "grabber"]
-    group_index = list(soup.select_one(".nav-list").children).index(group)
-    for view in ("queues", "categories", "grabber"):
-        button = soup.select_one(f".nav-list > button[data-view={view}]")
-        assert button is not None
-        assert list(soup.select_one(".nav-list").children).index(button) < group_index
+    assert top_level == ["overview", "downloads", "unfinished", "finished", "queues", "categories", "grabber"]
 
 
 def test_overview_keeps_clear_completed_action_instead_of_categories_rewrite():
