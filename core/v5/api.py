@@ -191,15 +191,22 @@ def current_promotion():
 
 
 def _downloadable_providers(values):
-    return [dict(item) for item in values if bool(item.get("direct_files"))]
+    return [
+        dict(item) for item in values
+        if bool(item.get("direct_files")) or str(item.get("id") or "") == "samsung-fus"
+    ]
 
 
 def _downloadable_firmware_results(values):
     allowed = ("http://", "https://", "ftp://")
-    return [
-        dict(item) for item in values
-        if bool(item.get("direct")) and str(item.get("url") or "").startswith(allowed)
-    ]
+    output = []
+    for item in values:
+        value = dict(item)
+        direct = bool(value.get("direct")) and str(value.get("url") or "").startswith(allowed)
+        resolver = str(dict(value.get("metadata") or {}).get("resolver") or "") == "samsung-fus"
+        if direct or resolver:
+            output.append(value)
+    return output
 
 
 @wave5_api.get("/firmware/catalogue")

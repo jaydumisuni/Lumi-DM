@@ -18,3 +18,20 @@ def test_samsung_postprocess_is_installed_after_wave3_runtime_activation():
     assert 'from core.v3.api import wave3_api' in server
     assert 'from core.v5.samsung_postprocess import install_samsung_postprocess' in server
     assert server.index('install_samsung_postprocess()') < server.index('install_os_api()')
+
+
+def test_samsung_resolver_survives_downloadable_api_filters():
+    from core.v5.api import _downloadable_firmware_results, _downloadable_providers
+    results = [
+        {"id":"direct","direct":True,"url":"https://example.invalid/fw.zip","metadata":{}},
+        {"id":"samsung","direct":False,"url":"","metadata":{"resolver":"samsung-fus"}},
+        {"id":"research","direct":False,"url":"https://example.invalid/search","metadata":{}},
+    ]
+    assert [item["id"] for item in _downloadable_firmware_results(results)] == ["direct", "samsung"]
+
+    providers = [
+        {"id":"lineageos","direct_files":True},
+        {"id":"samsung-fus","direct_files":False},
+        {"id":"research-only","direct_files":False},
+    ]
+    assert [item["id"] for item in _downloadable_providers(providers)] == ["lineageos", "samsung-fus"]
