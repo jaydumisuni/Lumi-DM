@@ -65,7 +65,7 @@ class RangeHandler(BaseHTTPRequestHandler):
                     self.wfile.write(body[offset : offset + 64 * 1024])
                     self.wfile.flush()
                     if self.slow:
-                        time.sleep(0.01)
+                        time.sleep(type(self).chunk_delay)
             finally:
                 with type(self).range_lock:
                     type(self).active_range = max(0, type(self).active_range - 1)
