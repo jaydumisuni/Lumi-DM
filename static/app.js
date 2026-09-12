@@ -601,6 +601,7 @@ async function handleContentClick(event) {
   if (action === "settings-tab") return switchSettingsTab(button.dataset.tab);
   if (action === "delete-host-profile") return deleteHostProfile(button.dataset.id);
   if (action === "revoke-client") return revokeClient(button.dataset.id);
+  if (action === "remove-paired-target") return removePairedTarget(button.dataset.id);
   if (action === "diagnostic-export") return diagnosticAction("export");
   if (action === "database-backup") return diagnosticAction("backup");
   if (action === "database-repair") return diagnosticAction("repair");
@@ -618,6 +619,7 @@ async function handleContentSubmit(event) {
   if (kind === "storage-settings") return saveStorageSettings(form);
   if (kind === "host-profile") return saveHostProfile(form);
   if (kind === "pairing-code") return generatePairingCode(form);
+  if (kind === "pair-lumi-target") return pairLumiTarget(form);
 }
 
 async function handleSourceClick(event) {
@@ -877,20 +879,39 @@ async function saveHostProfile(form) {
 async function generatePairingCode(form) {
   const data = formObject(form);
   try {
-    const result = await api("POST", "/api/v4/security/pairing", { client_name: data.client_name, role: data.role, expires_in: 600 });
+    const result = await api("POST", "/api/v7/devices/pairing", { client_name: data.client_name, role: data.role, expires_in: 600 });
     const output = document.getElementById("pair-code-output");
-    output.innerHTML = `<div style="margin-top:14px"><div class="pair-code">${esc(result.code)}</div><p style="font-size:10px;color:var(--muted)">Enter this code in the Lumi browser extension or remote client before ${esc(result.expires_at)}.</p></div>`;
+    const endpoints = (result.endpoints || []).map(value => `<code class="lumi-health-code">${esc(value)}</code>`).join("");
+    output.innerHTML = `<div style="margin-top:14px"><div class="pair-code">${esc(result.code)}</div><p style="font-size:10px;color:var(--muted)">One-time code expires ${esc(result.expires_at)}. For another Lumi app, copy the full key below; it already contains this device identity and LAN destination.</p>${endpoints || `<div class="warning-box">No private LAN address is currently available. Connect both devices to the same network and try again.</div>`}<textarea class="input" rows="4" readonly style="margin-top:8px">${esc(result.pairing_key || "")}</textarea></div>`;
     await loadPairedClients();
-  } catch (error) { toast("Code not generated", error.message, "error"); }
+  } catch (error) { toast("Pairing key not generated", error.message, "error"); }
+}
+
+async function pairLumiTarget(form) {
+  const data = formObject(form);
+  try {
+    const result = await api("POST", "/api/v7/devices/pair", { pairing_key: data.pairing_key });
+    form.reset();
+    await loadPairedClients();
+    toast("Lumi device paired", `${result.paired?.name || result.paired?.id || "Device"} can now receive routed downloads.`, "success");
+  } catch (error) { toast("Lumi device not paired", error.message, "error"); }
 }
 
 async function loadPairedClients() {
   try {
-    const result = await api("GET", "/api/v4/security/clients");
+    const [incoming, outgoing] = await Promise.all([api("GET", "/api/v4/security/clients"), api("GET", "/api/v7/devices")]);
     const element = document.getElementById("paired-clients");
-    if (!element) return;
-    element.innerHTML = result.clients.length ? result.clients.map(client => `<div class="client-row"><div><strong>${esc(client.client_name)}</strong><small>${esc(client.created_at)} · last seen ${esc(client.last_seen_at || "never")}</small></div><span class="tag">${esc(client.role)}${client.revoked ? " · revoked" : ""}</span>${client.revoked ? `<span></span>` : `<button class="icon-btn" data-action="revoke-client" data-id="${esc(client.id)}">×</button>`}</div>`).join("") : `<div class="empty">No paired clients.</div>`;
-  } catch (error) { toast("Clients unavailable", error.message, "error"); }
+    if (element) element.innerHTML = incoming.clients.length ? incoming.clients.map(client => `<div class="client-row"><div><strong>${esc(client.client_name)}</strong><small>${esc(client.device_kind || "client")}${client.device_id ? ` · ${esc(client.device_id)}` : ""} · last seen ${esc(client.last_seen_at || "never")}</small></div><span class="tag">${esc(client.role)}${client.revoked ? " · revoked" : ""}</span>${client.revoked ? `<span></span>` : `<button class="icon-btn" data-action="revoke-client" data-id="${esc(client.id)}">×</button>`}</div>`).join("") : `<div class="empty">No devices currently control this Lumi.</div>`;
+    const targets = document.getElementById("paired-targets");
+    if (targets) targets.innerHTML = (outgoing.targets || []).length ? outgoing.targets.map(target => `<div class="client-row"><div><strong>${esc(target.name || target.id)}</strong><small>${esc(target.kind || "device")} · ${esc(target.endpoint)} · last seen ${esc(target.last_seen_at || "never")}</small></div><span class="tag">${esc(target.role || "owner")}</span><button class="icon-btn" data-action="remove-paired-target" data-id="${esc(target.id)}">×</button></div>`).join("") : `<div class="empty">No paired download destinations.</div>`;
+  } catch (error) { toast("Paired devices unavailable", error.message, "error"); }
+}
+
+
+async function removePairedTarget(id) {
+  if (!confirm("Remove this Lumi download destination?")) return;
+  try { await api("DELETE", `/api/v7/devices/${encodeURIComponent(id)}`); await loadPairedClients(); toast("Destination removed", "Remote downloads can no longer be routed to that Lumi until it is paired again.", "success"); }
+  catch (error) { toast("Destination not removed", error.message, "error"); }
 }
 
 async function revokeClient(id) {

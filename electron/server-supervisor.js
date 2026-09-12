@@ -22,6 +22,7 @@ let timer = null;
 function serverCommand(runtimeInstance, desktopSecret) {
   process.env.LUMIDM_DESKTOP_SECRET = desktopSecret;
   process.env.LUMIDM_RUNTIME_INSTANCE = runtimeInstance;
+  const bindHost = process.env.LUMIDM_LAN_PAIRING === "0" ? "127.0.0.1" : "0.0.0.0";
   const env = {
     ...process.env,
     LUMIDM_RUNTIME_INSTANCE: runtimeInstance,
@@ -33,13 +34,13 @@ function serverCommand(runtimeInstance, desktopSecret) {
     env.LUMIDM_DATA_DIR = app.getPath("userData");
     return {
       command: path.join(process.resourcesPath, "server", `LUMIDM-server${extension}`),
-      args: ["--host", "127.0.0.1", "--port", "7000"],
+      args: ["--host", bindHost, "--port", "7000"],
       env,
     };
   }
   return {
     command: process.env.LUMIDM_PYTHON || (process.platform === "win32" ? "python" : "python3"),
-    args: [path.resolve(__dirname, "..", "server.py"), "--host", "127.0.0.1", "--port", "7000"],
+    args: [path.resolve(__dirname, "..", "server.py"), "--host", bindHost, "--port", "7000"],
     env,
   };
 }

@@ -173,6 +173,8 @@ class SecurityManager:
         code: str,
         requested_name: str,
         remote_addr: str,
+        device_id: str = "",
+        device_kind: str = "",
     ) -> dict[str, Any]:
         if not self._allow_pair_attempt(remote_addr):
             raise PermissionError("Too many failed pairing attempts; try again later")
@@ -195,6 +197,8 @@ class SecurityManager:
                 or str(value.get("client_name") or "Paired client")
             ),
             "remote_addr": remote_addr,
+            "device_id": str(device_id or "").strip()[:120],
+            "device_kind": str(device_kind or "").strip()[:32],
             "created_at": utc_now(),
             "last_seen_at": utc_now(),
             "expires_at": 0,

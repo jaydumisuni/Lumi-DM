@@ -274,7 +274,7 @@ def test_v7_runtime_extension_media_widget_and_remote_contract(tmp_path: Path) -
             timeout=8,
         )
         assert wrong_destination.status_code == 400
-        assert "route the request" in wrong_destination.text
+        assert "not paired" in wrong_destination.text
     finally:
         if process.poll() is None:
             if os.name == "posix":

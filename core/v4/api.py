@@ -121,6 +121,8 @@ def security_pair():
             code=code,
             requested_name=str(data.get("client_name") or ""),
             remote_addr=request.remote_addr or "unknown",
+            device_id=str(data.get("device_id") or ""),
+            device_kind=str(data.get("device_kind") or ""),
         )
     )
 

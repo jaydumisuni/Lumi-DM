@@ -237,7 +237,7 @@ def test_remote_clients_reuse_runtime_rpc_instead_of_embedding_another_manager()
     runtime = text("core/v7/runtime_contract.py")
 
     assert 'name == "download.request"' in remote
-    assert 'return original(app, "download.create", data)' in remote
+    assert 'return original(app_value, "download.create", data)' in remote
     assert '"runtime.capabilities"' in remote
     assert '"download.request"' in remote
     assert '"download.pause"' in remote
