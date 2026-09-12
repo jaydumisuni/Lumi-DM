@@ -143,9 +143,8 @@ html[data-ttg-theme] .approved-faq summary{color:var(--lumi-text)!important}
 html[data-ttg-theme] .approved-filter:not(.active){color:var(--lumi-muted)!important}
 html[data-ttg-theme] .approved-theme-segment button:not(.active){color:var(--lumi-muted)!important}
 
-/* The user asked for a small visibility shadow, not a glow. */
-html[data-ttg-theme="dark"] :is(.approved-page,.lumi-overview,.lumi-page,.nav-item,.nav-subitem,.ttg-shell-menu,button,label,input,select,textarea){text-shadow:0 1px 1px rgba(0,0,0,.28)}
-html[data-ttg-theme="glass"] :is(.approved-page,.lumi-overview,.lumi-page,.nav-item,.nav-subitem,.ttg-shell-menu,button,label,input,select,textarea){text-shadow:0 1px 1px rgba(255,255,255,.35)}
+/* Functional copy stays optically crisp; glass depth belongs to surfaces, not glyphs. */
+html[data-ttg-theme] :is(.approved-page,.lumi-overview,.lumi-page,.nav-item,.nav-subitem,.ttg-shell-menu,button,label,input,select,textarea){text-shadow:none!important}
 
 html[data-ttg-theme] .approved-control-overlay{background:rgba(2,5,12,.56)!important;backdrop-filter:blur(6px)!important}
 html[data-ttg-theme="glass"] .approved-control-overlay{background:rgba(237,241,250,.48)!important}

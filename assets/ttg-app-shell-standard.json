@@ -2,7 +2,7 @@
   "schema_version": 2,
   "standard_id": "ttg-app-shell-v2",
   "owner": "THETECHGUY DIGITAL SOLUTIONS",
-  "status": "locked",
+  "status": "approved-current",
   "visual_reference": "MIBU PC Helper custom frameless shell",
   "window": {
     "native_frame": false,
@@ -124,5 +124,6 @@
       "light_theme",
       "dark_theme"
     ]
-  }
+  },
+  "derived_from": "LUMI_APPROVED.md"
 }

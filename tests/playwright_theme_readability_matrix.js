@@ -24,7 +24,7 @@ function luminance(color){const n=(String(color).match(/[0-9.]+/g)||[]).slice(0,
    });
    assert(s.brandImage.includes("lumi-background.png"),`${theme}: owned background is missing`);
    assert(s.panelImage.includes("radial-gradient"),`${theme}: panel lost glass reflection hierarchy`);
-   assert(s.primary.textShadow!=="none"&&s.secondary.textShadow!=="none",`${theme}: readability shadow missing`);
+   assert(s.primary.textShadow==="none"&&s.secondary.textShadow==="none",`${theme}: functional copy has a global text shadow`);
    const pL=luminance(s.primary.color),sL=luminance(s.secondary.color);
    if(theme==="dark"){
     assert(pL>=0.72,`dark: primary text too dim (${pL.toFixed(3)}) ${s.primary.color}`);

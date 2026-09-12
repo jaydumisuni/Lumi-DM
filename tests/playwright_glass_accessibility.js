@@ -14,7 +14,7 @@ function assert(value,message){if(!value)throw new Error(message)}
   assert(String(dark.backdrop).includes("blur(12px)"),`Dark surface glass blur missing: ${dark.backdrop}`);
   assert(dark.image.includes("radial-gradient"),`Dark surface reflection missing: ${dark.image}`);
   const darkTextShadow=await page.locator(".approved-settings-card label").first().evaluate(el=>getComputedStyle(el).textShadow);
-  assert(darkTextShadow!=="none",`Dark text has no readability shadow`);
+  assert(darkTextShadow==="none",`Dark functional text has a global shadow: ${darkTextShadow}`);
   const clear=await probe("glass");
   assert(String(clear.backdrop).includes("blur(14px)"),`Light surface glass blur missing: ${clear.backdrop}`);
   assert(clear.image.includes("radial-gradient"),`Light surface reflection missing: ${clear.image}`);

@@ -4,7 +4,7 @@ Status: Stage-0 diagnostic + issue #8 correction/review evidence
 Execution standard: `ttg.tenfold.v1`  
 Scope: PR #9 Stage-0 diagnostics, stacked PR #10 correction campaign, and PR #11 physical-recovery source proof
 
-This is Lumi's canonical repository assurance file for high-risk CI/review changes. It does not grant deployment, release, signing, secret, merge, or external-system authority.
+This file documents CI/review assurance only. `LUMI_APPROVED.md` is the sole Lumi product/design/behavior authority. This file cannot override it and does not grant deployment, release, signing, secret, merge, or external-system authority.
 
 ## `.github/workflows/current-functional-proof.yml`
 

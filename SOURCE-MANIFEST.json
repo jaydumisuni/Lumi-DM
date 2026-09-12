@@ -1,7 +1,6 @@
 {
   "schema_version": 2,
   "package": "Lumi-DM-clean-source",
-  "source_commit": "67daf3a4e3e95c81738da7bb5eb84b4cbe4186a4",
   "public_downloads": "GitHub Releases only",
   "builder_owned": [
     "all dependency preparation",
@@ -23,5 +22,8 @@
     "stock installer configuration",
     "generated artifacts",
     "old Reminal compatibility files"
-  ]
+  ],
+  "status": "approved-current",
+  "derived_from": "LUMI_APPROVED.md",
+  "source_commit_policy": "record exact Git commit in Builder/release evidence at package time"
 }
