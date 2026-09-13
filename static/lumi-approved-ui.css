@@ -332,7 +332,7 @@ html[data-ttg-theme="dark"] .ttg-desktop .app-shell{
     radial-gradient(circle at 4% 10%,rgba(168,85,247,.22),transparent 29%),
     radial-gradient(circle at 93% 16%,rgba(34,211,238,.15),transparent 27%),
     linear-gradient(110deg,rgba(2,5,13,.72),rgba(3,7,18,.80)),
-    url('/static/background.png') center/cover no-repeat;
+    url('/static/lumi-background.png') center/cover no-repeat;
 }
 html[data-ttg-theme="dark"] .ttg-desktop .workspace{
   background:linear-gradient(135deg,rgba(3,7,17,.32),rgba(3,8,20,.18));
